@@ -2,7 +2,7 @@
 
 from uuid import uuid4
 
-from app.core.consume.context import (
+from app.core.consume.consume_service import (
     TrackingContext,
     clear_tracking_context,
     get_tracking_context,

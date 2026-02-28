@@ -1,4 +1,9 @@
-"""Airwallex HTTP client for payment intent management."""
+"""Airwallex HTTP client for payment intent management.
+
+Also exports ``airwallex_adapter`` — a thin wrapper that conforms to the
+``PaymentProvider`` protocol so the client can be used interchangeably
+with other providers (e.g. PayPal).
+"""
 
 import hashlib
 import hmac
@@ -9,6 +14,7 @@ from datetime import datetime
 import httpx
 
 from app.configs import configs
+from app.core.payment.provider import CaptureResult, CreateOrderResult
 
 logger = logging.getLogger(__name__)
 
@@ -21,10 +27,10 @@ class AirwallexClient:
     """
 
     def __init__(self) -> None:
-        self._base_url = configs.Airwallex.BaseUrl
-        self._client_id = configs.Airwallex.ClientId
-        self._api_key = configs.Airwallex.ApiKey
-        self._webhook_secret = configs.Airwallex.WebhookSecret
+        self._base_url = configs.Payment.Airwallex.BaseUrl
+        self._client_id = configs.Payment.Airwallex.ClientId
+        self._api_key = configs.Payment.Airwallex.ApiKey
+        self._webhook_secret = configs.Payment.Airwallex.WebhookSecret
         self._token: str = ""
         self._token_expires_at: float = 0.0
         self._http = httpx.AsyncClient(timeout=30.0)
@@ -170,7 +176,7 @@ class AirwallexClient:
         Returns:
             True if the signature is valid.
         """
-        secret = configs.Airwallex.WebhookSecret
+        secret = configs.Payment.Airwallex.WebhookSecret
         if not secret:
             logger.warning("Webhook secret not configured, rejecting")
             return False
@@ -186,3 +192,80 @@ class AirwallexClient:
 
 # Module-level singleton
 airwallex_client = AirwallexClient()
+
+
+# ---------------------------------------------------------------------------
+# PaymentProvider adapter
+# ---------------------------------------------------------------------------
+
+
+class _AirwallexAdapter:
+    """Wraps ``AirwallexClient`` to conform to the ``PaymentProvider`` protocol.
+
+    The create + confirm two-step Airwallex flow is collapsed into a single
+    ``create_order`` call that returns a QR code URL.
+    """
+
+    def __init__(self, client: AirwallexClient) -> None:
+        self._client = client
+
+    async def create_order(
+        self,
+        amount: int,
+        currency: str,
+        order_id: str,
+        metadata: dict | None = None,
+        return_url: str = "",
+    ) -> CreateOrderResult:
+        actual_return_url = return_url or configs.Payment.Airwallex.ReturnUrl
+        payment_method_type = "alipaycn"  # default; overridden by service layer
+
+        intent = await self._client.create_payment_intent(
+            amount=amount,
+            currency=currency,
+            order_id=order_id,
+            metadata=metadata,
+            return_url=actual_return_url,
+        )
+        intent_id = intent["id"]
+
+        confirmation = await self._client.confirm_payment_intent(
+            intent_id=intent_id,
+            payment_method_type=payment_method_type,
+            flow="qrcode",
+        )
+
+        qr_code_url = ""
+        next_action = confirmation.get("next_action", {})
+        if next_action.get("type") == "render_qr_code":
+            qr_code_url = next_action.get("data", {}).get("qr_code_url", "")
+        elif next_action.get("url"):
+            qr_code_url = next_action["url"]
+
+        return CreateOrderResult(
+            provider_order_id=intent_id,
+            flow_type="qrcode",
+            qr_code_url=qr_code_url,
+        )
+
+    async def capture_order(self, provider_order_id: str) -> CaptureResult:
+        # Airwallex does not have a separate capture step for QR payments;
+        # the payment completes when the user scans. This is a no-op.
+        intent = await self._client.get_payment_intent(provider_order_id)
+        return CaptureResult(
+            provider_order_id=provider_order_id,
+            status=intent.get("status", "UNKNOWN"),
+            raw=intent,
+        )
+
+    async def get_order_status(self, provider_order_id: str) -> str:
+        intent = await self._client.get_payment_intent(provider_order_id)
+        return intent.get("status", "UNKNOWN")
+
+    async def verify_webhook(self, headers: dict[str, str], body: bytes) -> bool:
+        timestamp = headers.get("x-timestamp", "")
+        signature = headers.get("x-signature", "")
+        return AirwallexClient.verify_webhook_signature(timestamp, body, signature)
+
+
+airwallex_adapter = _AirwallexAdapter(airwallex_client)

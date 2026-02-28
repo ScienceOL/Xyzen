@@ -158,7 +158,7 @@ async def _execute_scheduled_chat_inner(scheduled_task_id: str) -> None:
 
     set_session_factory(TaskSessionLocal)
 
-    from app.core.consume.context import TrackingContext, clear_tracking_context, set_tracking_context
+    from app.core.consume.consume_service import TrackingContext, clear_tracking_context, set_tracking_context
 
     try:
         # ---- Transaction 1: Load ScheduledTask, resolve session/topic, save user message ----
@@ -259,7 +259,7 @@ async def _execute_scheduled_chat_inner(scheduled_task_id: str) -> None:
             if ctx.error_handled:
                 pass  # error handler already committed
             elif not ctx.is_aborted:
-                await handle_normal_finalization(ctx, 0.0, None)
+                await handle_normal_finalization(ctx, None)
 
         # ---- Transaction 3: Update ScheduledTask + chain next run ----
         async with TaskSessionLocal() as db:

@@ -64,3 +64,4 @@ class PlanCatalogResponse(BaseModel):
     plans: list[PlanResponse]
     topup_rates: list[TopUpRateResponse]
     sandbox_addon_rates: list[SandboxAddonRateResponse]
+    paypal_client_id: str = Field(default="", description="PayPal client ID for JS SDK initialization")

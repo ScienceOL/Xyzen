@@ -144,6 +144,7 @@ export interface PlanCatalogResponse {
   plans: PlanResponse[];
   topup_rates: TopUpRateResponse[];
   sandbox_addon_rates: SandboxAddonRateResponse[];
+  paypal_client_id: string;
 }
 
 // ==================== Service ====================

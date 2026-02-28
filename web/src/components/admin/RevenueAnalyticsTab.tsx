@@ -4,6 +4,7 @@ import {
   type CreditHeatmapEntry,
   type CreditRankingEntry,
 } from "@/service/redemptionService";
+import { subscriptionService } from "@/service/subscriptionService";
 import { useCallback, useEffect, useMemo, useState } from "react";
 import { AdminFilterBar } from "./shared/AdminFilterBar";
 import { AdminHeatmap } from "./shared/AdminHeatmap";
@@ -16,14 +17,6 @@ const SOURCE_OPTIONS = [
   { value: "redemption_code", label: "Redemption Code" },
   { value: "subscription_monthly", label: "Subscription Monthly" },
   { value: "daily_checkin", label: "Daily Check-in" },
-];
-
-const TIER_OPTIONS = [
-  { value: "", label: "All Tiers" },
-  { value: "free", label: "Free" },
-  { value: "standard", label: "Standard" },
-  { value: "professional", label: "Professional" },
-  { value: "ultra", label: "Ultra" },
 ];
 
 const LIMIT_OPTIONS = [10, 20, 50, 100];
@@ -45,6 +38,21 @@ export function RevenueAnalyticsTab({ adminSecret }: RevenueAnalyticsTabProps) {
   const [loading, setLoading] = useState(true);
   const [loadingRankings, setLoadingRankings] = useState(false);
   const [error, setError] = useState<string | null>(null);
+  const [tierOptions, setTierOptions] = useState<
+    { value: string; label: string }[]
+  >([]);
+
+  // Load tier options from plans API
+  useEffect(() => {
+    subscriptionService
+      .getPlans()
+      .then((res) => {
+        setTierOptions(
+          res.plans.map((p) => ({ value: p.name, label: p.display_name })),
+        );
+      })
+      .catch(() => {});
+  }, []);
 
   // Debounce search
   useEffect(() => {
@@ -188,7 +196,8 @@ export function RevenueAnalyticsTab({ adminSecret }: RevenueAnalyticsTabProps) {
           onChange={(e) => setSelectedTier(e.target.value)}
           className="rounded-md border border-neutral-700 bg-neutral-800 px-3 py-1.5 text-sm text-white focus:border-blue-500 focus:outline-none focus:ring-1 focus:ring-blue-500"
         >
-          {TIER_OPTIONS.map((opt) => (
+          <option value="">All Tiers</option>
+          {tierOptions.map((opt) => (
             <option key={opt.value} value={opt.value}>
               {opt.label}
             </option>
@@ -234,7 +243,7 @@ export function RevenueAnalyticsTab({ adminSecret }: RevenueAnalyticsTabProps) {
             colorClass: "from-lime-950/30 to-lime-900/30 border-lime-800",
           },
           {
-            label: "Daily Check-in",
+            label: "Check-in",
             value: summaryStats.daily_checkin_credits,
             colorClass: "from-green-950/30 to-green-900/30 border-green-800",
           },
@@ -334,7 +343,7 @@ export function RevenueAnalyticsTab({ adminSecret }: RevenueAnalyticsTabProps) {
                   Subscription
                 </th>
                 <th className="px-4 py-2 text-right text-xs text-neutral-400">
-                  Daily Check-in
+                  Check-in
                 </th>
                 <th className="px-4 py-2 text-right text-xs text-neutral-400">
                   Transactions

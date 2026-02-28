@@ -25,6 +25,8 @@ type BubbleBackgroundProps = React.ComponentProps<"div"> & {
   colors?: BubbleColors;
 };
 
+let bubbleIdCounter = 0;
+
 function BubbleBackground({
   ref,
   className,
@@ -43,6 +45,8 @@ function BubbleBackground({
 }: BubbleBackgroundProps) {
   const containerRef = React.useRef<HTMLDivElement>(null);
   React.useImperativeHandle(ref, () => containerRef.current as HTMLDivElement);
+
+  const [filterId] = React.useState(() => `goo-${++bubbleIdCounter}`);
 
   const mouseX = useMotionValue(0);
   const mouseY = useMotionValue(0);
@@ -103,6 +107,15 @@ function BubbleBackground({
     };
   }, [interactive, mouseX, mouseY]);
 
+  const cssVars = {
+    "--bb-c1": colors.first,
+    "--bb-c2": colors.second,
+    "--bb-c3": colors.third,
+    "--bb-c4": colors.fourth,
+    "--bb-c5": colors.fifth,
+    "--bb-c6": colors.sixth,
+  } as React.CSSProperties;
+
   return (
     <div
       ref={containerRef}
@@ -111,27 +124,15 @@ function BubbleBackground({
         "relative size-full overflow-hidden bg-linear-to-br from-violet-900 to-blue-900",
         className,
       )}
+      style={cssVars}
       {...props}
     >
-      <style>
-        {`
-            :root {
-              --first-color: ${colors.first};
-              --second-color: ${colors.second};
-              --third-color: ${colors.third};
-              --fourth-color: ${colors.fourth};
-              --fifth-color: ${colors.fifth};
-              --sixth-color: ${colors.sixth};
-            }
-          `}
-      </style>
-
       <svg
         xmlns="http://www.w3.org/2000/svg"
         className="absolute top-0 left-0 w-0 h-0"
       >
         <defs>
-          <filter id="goo">
+          <filter id={filterId}>
             <feGaussianBlur
               in="SourceGraphic"
               stdDeviation="16"
@@ -150,10 +151,10 @@ function BubbleBackground({
 
       <div
         className="absolute inset-0"
-        style={{ filter: "url(#goo) blur(40px)" }}
+        style={{ filter: `url(#${filterId}) blur(40px)` }}
       >
         <motion.div
-          className="absolute rounded-full size-[80%] top-[10%] left-[10%] mix-blend-hard-light bg-[radial-gradient(circle_at_center,rgba(var(--first-color),0.8)_0%,rgba(var(--first-color),0)_50%)]"
+          className="absolute rounded-full size-[80%] top-[10%] left-[10%] mix-blend-hard-light bg-[radial-gradient(circle_at_center,rgba(var(--bb-c1),0.8)_0%,rgba(var(--bb-c1),0)_50%)]"
           animate={{ y: [-50, 50, -50] }}
           transition={{ duration: 30, ease: "easeInOut", repeat: Infinity }}
           style={{ transform: "translateZ(0)", willChange: "transform" }}
@@ -170,7 +171,7 @@ function BubbleBackground({
           }}
           style={{ transform: "translateZ(0)", willChange: "transform" }}
         >
-          <div className="rounded-full size-[80%] top-[10%] left-[10%] mix-blend-hard-light bg-[radial-gradient(circle_at_center,rgba(var(--second-color),0.8)_0%,rgba(var(--second-color),0)_50%)]" />
+          <div className="rounded-full size-[80%] top-[10%] left-[10%] mix-blend-hard-light bg-[radial-gradient(circle_at_center,rgba(var(--bb-c2),0.8)_0%,rgba(var(--bb-c2),0)_50%)]" />
         </motion.div>
 
         <motion.div
@@ -179,11 +180,11 @@ function BubbleBackground({
           transition={{ duration: 40, ease: "linear", repeat: Infinity }}
           style={{ transform: "translateZ(0)", willChange: "transform" }}
         >
-          <div className="absolute rounded-full size-[80%] bg-[radial-gradient(circle_at_center,rgba(var(--third-color),0.8)_0%,rgba(var(--third-color),0)_50%)] mix-blend-hard-light top-[calc(50%+200px)] left-[calc(50%-500px)]" />
+          <div className="absolute rounded-full size-[80%] bg-[radial-gradient(circle_at_center,rgba(var(--bb-c3),0.8)_0%,rgba(var(--bb-c3),0)_50%)] mix-blend-hard-light top-[calc(50%+200px)] left-[calc(50%-500px)]" />
         </motion.div>
 
         <motion.div
-          className="absolute rounded-full size-[80%] top-[10%] left-[10%] mix-blend-hard-light bg-[radial-gradient(circle_at_center,rgba(var(--fourth-color),0.8)_0%,rgba(var(--fourth-color),0)_50%)] opacity-70"
+          className="absolute rounded-full size-[80%] top-[10%] left-[10%] mix-blend-hard-light bg-[radial-gradient(circle_at_center,rgba(var(--bb-c4),0.8)_0%,rgba(var(--bb-c4),0)_50%)] opacity-70"
           animate={{ x: [-50, 50, -50] }}
           transition={{ duration: 40, ease: "easeInOut", repeat: Infinity }}
           style={{ transform: "translateZ(0)", willChange: "transform" }}
@@ -195,12 +196,12 @@ function BubbleBackground({
           transition={{ duration: 20, ease: "linear", repeat: Infinity }}
           style={{ transform: "translateZ(0)", willChange: "transform" }}
         >
-          <div className="absolute rounded-full size-[160%] mix-blend-hard-light bg-[radial-gradient(circle_at_center,rgba(var(--fifth-color),0.8)_0%,rgba(var(--fifth-color),0)_50%)] top-[calc(50%-80%)] left-[calc(50%-80%)]" />
+          <div className="absolute rounded-full size-[160%] mix-blend-hard-light bg-[radial-gradient(circle_at_center,rgba(var(--bb-c5),0.8)_0%,rgba(var(--bb-c5),0)_50%)] top-[calc(50%-80%)] left-[calc(50%-80%)]" />
         </motion.div>
 
         {interactive && (
           <motion.div
-            className="absolute rounded-full size-full mix-blend-hard-light bg-[radial-gradient(circle_at_center,rgba(var(--sixth-color),0.8)_0%,rgba(var(--sixth-color),0)_50%)] opacity-70"
+            className="absolute rounded-full size-full mix-blend-hard-light bg-[radial-gradient(circle_at_center,rgba(var(--bb-c6),0.8)_0%,rgba(var(--bb-c6),0)_50%)] opacity-70"
             style={{
               x: springX,
               y: springY,

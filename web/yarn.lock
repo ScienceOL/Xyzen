@@ -2665,6 +2665,38 @@ __metadata:
   languageName: node
   linkType: hard
 
+"@paypal/paypal-js@npm:^9.3.0":
+  version: 9.3.0
+  resolution: "@paypal/paypal-js@npm:9.3.0"
+  dependencies:
+    promise-polyfill: "npm:^8.3.0"
+  checksum: 10c0/42df375e5befcc831619bffaa915eb1f7ec97cd6b939131fb05795ae373300a8d04aa308bb47b84a6316921359d189412cc174e63eb9c293722c97dcb55152fc
+  languageName: node
+  linkType: hard
+
+"@paypal/react-paypal-js@npm:^9.0.0":
+  version: 9.0.0
+  resolution: "@paypal/react-paypal-js@npm:9.0.0"
+  dependencies:
+    "@paypal/paypal-js": "npm:^9.3.0"
+    "@paypal/sdk-constants": "npm:^1.0.122"
+    server-only: "npm:^0.0.1"
+  peerDependencies:
+    react: ^16.8.0 || ^17 || ^18 || ^19
+    react-dom: ^16.8.0 || ^17 || ^18 || ^19
+  checksum: 10c0/7d77f39fbe376efe6c95817fe71e5283ff6d6dc0d5cf2ea9b6908aca67fce091e3ccf9e0787b075424dd198f1d021dd615c87f8a50b1a1f160c941bfcedc1fa5
+  languageName: node
+  linkType: hard
+
+"@paypal/sdk-constants@npm:^1.0.122":
+  version: 1.0.157
+  resolution: "@paypal/sdk-constants@npm:1.0.157"
+  dependencies:
+    hi-base32: "npm:^0.5.0"
+  checksum: 10c0/a7a8a15ec7ef0f08d08ad09bf4df8765b178cdc6e7f32e48ceee0bbf9faa98f627e134ea03e6d6b10b3f3412809b93ee52434c18d75e5520283a6faacee7eb79
+  languageName: node
+  linkType: hard
+
 "@pdf-lib/standard-fonts@npm:^1.0.0":
   version: 1.0.0
   resolution: "@pdf-lib/standard-fonts@npm:1.0.0"
@@ -5577,6 +5609,7 @@ __metadata:
     "@headlessui/react": "npm:^2.2.9"
     "@heroicons/react": "npm:^2.2.0"
     "@novu/react": "npm:3.13.0"
+    "@paypal/react-paypal-js": "npm:^9.0.0"
     "@platejs/ai": "npm:^52.0.16"
     "@platejs/autoformat": "npm:^52.0.11"
     "@platejs/basic-nodes": "npm:^52.0.11"
@@ -10680,6 +10713,13 @@ __metadata:
   languageName: node
   linkType: hard
 
+"hi-base32@npm:^0.5.0":
+  version: 0.5.1
+  resolution: "hi-base32@npm:0.5.1"
+  checksum: 10c0/45adb99249b04108fd689cb344f4b625b49d0518327117c34c403dbaf4723aaefb2a1bde6d7a0288ff0f835970d0f844a3ae103534dc237c99b8552a0e689177
+  languageName: node
+  linkType: hard
+
 "highlight.js@npm:~11.11.0":
   version: 11.11.1
   resolution: "highlight.js@npm:11.11.1"
@@ -14234,6 +14274,13 @@ __metadata:
   languageName: node
   linkType: hard
 
+"promise-polyfill@npm:^8.3.0":
+  version: 8.3.0
+  resolution: "promise-polyfill@npm:8.3.0"
+  checksum: 10c0/97141f07a31a6be135ec9ed53700a3423a771cabec0ba5e08fcb2bf8cfda855479ff70e444fceb938f560be42b450cd032c14f4a940ed2ad1e5b4dcb78368dce
+  languageName: node
+  linkType: hard
+
 "promise-retry@npm:^2.0.1":
   version: 2.0.1
   resolution: "promise-retry@npm:2.0.1"
@@ -15311,6 +15358,13 @@ __metadata:
   version: 1.5.0
   resolution: "seroval@npm:1.5.0"
   checksum: 10c0/aff16b14a7145388555cefd4ebd41759024ee1c2c064080fd8d4fabea4b7c89d103155cd98f5109523b8878e577da73cc6cd8abf98965f2d1f0ba19dc38317ab
+  languageName: node
+  linkType: hard
+
+"server-only@npm:^0.0.1":
+  version: 0.0.1
+  resolution: "server-only@npm:0.0.1"
+  checksum: 10c0/4704f0ef85da0be981af6d4ed8e739d39bcfd265b9c246a684060acda5642d0fdc6daffc2308e71e2682c5f508090978802eae0a77623c9b90a49f9ae68048d6
   languageName: node
   linkType: hard
 

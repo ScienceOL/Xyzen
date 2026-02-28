@@ -1,39 +1,16 @@
-"""Consumption service core module
+"""Settlement service — orchestrates wallet deduction, record finalization, and developer rewards."""
 
-Provides core business logic for consumption records, billing, and statistics.
-"""
+from __future__ import annotations
 
 import logging
 from uuid import UUID
 
 from sqlmodel.ext.asyncio.session import AsyncSession
 
-from app.models.consume import ConsumeRecord, UserConsumeSummary
 from app.repos.consume import ConsumeRepository
 from app.repos.redemption import RedemptionRepository
 
 logger = logging.getLogger(__name__)
-
-
-class ConsumeService:
-    """Core business logic layer for consumption service"""
-
-    def __init__(self, db: AsyncSession):
-        self.db = db
-        self.consume_repo = ConsumeRepository(db)
-        self.redemption_repo = RedemptionRepository(db)
-
-    async def get_consume_record_by_id(self, record_id: UUID) -> ConsumeRecord | None:
-        """Get consumption record"""
-        return await self.consume_repo.get_consume_record_by_id(record_id)
-
-    async def get_user_consume_summary(self, user_id: str) -> UserConsumeSummary | None:
-        """Get user consumption summary"""
-        return await self.consume_repo.get_user_consume_summary(user_id)
-
-    async def list_user_consume_records(self, user_id: str, limit: int = 100, offset: int = 0) -> list[ConsumeRecord]:
-        """Get user consumption record list"""
-        return await self.consume_repo.list_consume_records_by_user(user_id, limit, offset)
 
 
 async def settle_chat_records(
@@ -45,6 +22,7 @@ async def settle_chat_records(
     *,
     marketplace_id: UUID | None = None,
     developer_user_id: str | None = None,
+    developer_fork_mode: str | None = None,
     session_id: UUID | None = None,
     topic_id: UUID | None = None,
     message_id: UUID | None = None,
@@ -61,7 +39,7 @@ async def settle_chat_records(
         user_id: User ID.
         auth_provider: Authentication provider.
         record_ids: IDs of pending ConsumeRecords to settle.
-        total_amount: Total credit amount to deduct (sum of record amounts + BASE_COST).
+        total_amount: Total credit amount to deduct (sum of record amounts).
         marketplace_id: Marketplace listing ID for developer reward attribution.
         developer_user_id: Developer user ID for reward attribution.
         session_id: Session ID for reward context.
@@ -96,7 +74,9 @@ async def settle_chat_records(
 
     if deduct_target > 0:
         wallet, actual_amount = await redemption_repo.deduct_wallet_ordered(
-            user_id, deduct_target, "chat_settlement",
+            user_id,
+            deduct_target,
+            "chat_settlement",
             reference_id=str(message_id) if message_id else None,
         )
     else:
@@ -128,6 +108,7 @@ async def settle_chat_records(
                 topic_id=topic_id,
                 message_id=message_id,
                 total_consumed=actual_amount,
+                fork_mode=developer_fork_mode,
             )
         except Exception:
             logger.warning(

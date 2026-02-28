@@ -69,6 +69,11 @@ async def lifespan(app: FastAPI) -> AsyncGenerator[None, None]:
 
     register_builtin_tools()
 
+    # Validate model pricing coverage (blocks startup if any model lacks cost data)
+    from app.core.consume.pricing import validate_model_pricing_coverage
+
+    await validate_model_pricing_coverage()
+
     # Initialize system agents (Chat agent)
     # Bootstrap Novu notification (auto-create admin, fetch API keys)
     from app.core.notification.bootstrap import ensure_novu_setup

@@ -12,6 +12,8 @@ import {
   BanknotesIcon,
   EyeIcon,
   HeartIcon,
+  LockClosedIcon,
+  LockOpenIcon,
   RocketLaunchIcon,
   SparklesIcon,
   StarIcon,
@@ -193,68 +195,57 @@ export function CreatorTab() {
         <h3 className="mb-3 text-[13px] font-semibold text-neutral-900 dark:text-white">
           {t("subscription.creatorTab.walletTitle")}
         </h3>
-        <div className="grid grid-cols-3 gap-3">
-          {/* Available */}
+        <div className="grid grid-cols-2 gap-3">
+          {/* Pending */}
           <div className="rounded-lg bg-emerald-50/80 p-3 dark:bg-emerald-950/30">
             <div className="text-xs text-neutral-500 dark:text-neutral-400">
-              {t("subscription.creatorTab.available")}
+              {t("subscription.creatorTab.pending")}
             </div>
             <div className="mt-1 text-xl font-bold tabular-nums text-emerald-600 dark:text-emerald-400">
               {wallet?.available_balance?.toLocaleString() ?? "—"}
             </div>
+            {wallet && wallet.available_balance > 0 && !withdrawResult && (
+              <motion.button
+                initial={{ opacity: 0, scale: 0.9 }}
+                animate={{ opacity: 1, scale: 1 }}
+                whileHover={{ scale: 1.03 }}
+                whileTap={{ scale: 0.97 }}
+                onClick={handleWithdraw}
+                disabled={withdrawMutation.isPending}
+                className={cn(
+                  "mt-2 flex w-full items-center justify-center gap-1.5 rounded-md px-2 py-1.5 text-[11px] font-semibold text-white transition-all",
+                  "bg-gradient-to-r from-indigo-500 to-purple-500 shadow-sm shadow-indigo-500/25",
+                  withdrawMutation.isPending && "opacity-60",
+                )}
+              >
+                <BanknotesIcon className="h-3 w-3" />
+                {withdrawMutation.isPending
+                  ? t("subscription.creatorTab.confirming")
+                  : t("subscription.creatorTab.confirm")}
+              </motion.button>
+            )}
+            {withdrawResult && (
+              <motion.div
+                initial={{ opacity: 0, y: 4 }}
+                animate={{ opacity: 1, y: 0 }}
+                className="mt-2 flex items-center justify-center gap-1 rounded-md bg-emerald-100 px-2 py-1.5 text-[11px] font-medium text-emerald-600 dark:bg-emerald-900/30 dark:text-emerald-400"
+              >
+                {t("subscription.creatorTab.withdrawSuccess", {
+                  amount: withdrawResult.toLocaleString(),
+                })}
+              </motion.div>
+            )}
           </div>
-          {/* Total Earned */}
+          {/* Confirmed (Total Earned) */}
           <div className="rounded-lg bg-indigo-50/80 p-3 dark:bg-indigo-950/30">
             <div className="text-xs text-neutral-500 dark:text-neutral-400">
               {t("subscription.creatorTab.totalEarned")}
             </div>
             <div className="mt-1 text-xl font-bold tabular-nums text-indigo-600 dark:text-indigo-400">
-              {wallet?.total_earned?.toLocaleString() ?? "—"}
-            </div>
-          </div>
-          {/* Withdrawn */}
-          <div className="rounded-lg bg-neutral-100/60 p-3 dark:bg-white/[0.04]">
-            <div className="text-xs text-neutral-500 dark:text-neutral-400">
-              {t("subscription.creatorTab.totalWithdrawn")}
-            </div>
-            <div className="mt-1 text-xl font-bold tabular-nums text-neutral-700 dark:text-neutral-300">
               {wallet?.total_withdrawn?.toLocaleString() ?? "—"}
             </div>
           </div>
         </div>
-
-        {/* Withdraw button */}
-        {wallet && wallet.available_balance > 0 && !withdrawResult && (
-          <motion.button
-            initial={{ opacity: 0, scale: 0.9 }}
-            animate={{ opacity: 1, scale: 1 }}
-            whileHover={{ scale: 1.03 }}
-            whileTap={{ scale: 0.97 }}
-            onClick={handleWithdraw}
-            disabled={withdrawMutation.isPending}
-            className={cn(
-              "mt-3 flex w-full items-center justify-center gap-1.5 rounded-lg px-3 py-2 text-xs font-semibold text-white transition-all",
-              "bg-gradient-to-r from-indigo-500 to-purple-500 shadow-sm shadow-indigo-500/25",
-              withdrawMutation.isPending && "opacity-60",
-            )}
-          >
-            <BanknotesIcon className="h-3.5 w-3.5" />
-            {withdrawMutation.isPending
-              ? t("subscription.creatorTab.withdrawing")
-              : t("subscription.creatorTab.withdraw")}
-          </motion.button>
-        )}
-        {withdrawResult && (
-          <motion.div
-            initial={{ opacity: 0, y: 4 }}
-            animate={{ opacity: 1, y: 0 }}
-            className="mt-3 flex items-center justify-center gap-1.5 rounded-lg bg-emerald-50 px-3 py-2 text-xs font-medium text-emerald-600 dark:bg-emerald-900/20 dark:text-emerald-400"
-          >
-            {t("subscription.creatorTab.withdrawSuccess", {
-              amount: withdrawResult.toLocaleString(),
-            })}
-          </motion.div>
-        )}
       </motion.div>
 
       {/* Reward rates */}
@@ -331,7 +322,12 @@ export function CreatorTab() {
                   <div className="truncate text-[13px] font-medium text-neutral-900 dark:text-white">
                     {item.agent_name ?? item.marketplace_id.slice(0, 8)}
                   </div>
-                  <div className="text-[11px] text-neutral-400 dark:text-neutral-500">
+                  <div className="flex items-center gap-1 text-[11px] text-neutral-400 dark:text-neutral-500">
+                    {item.fork_mode === "locked" ? (
+                      <LockClosedIcon className="h-3 w-3" />
+                    ) : (
+                      <LockOpenIcon className="h-3 w-3" />
+                    )}
                     {item.fork_mode}
                   </div>
                 </div>

@@ -163,6 +163,32 @@ async def chat_websocket(
             await websocket.close(code=4003, reason="Session not found or access denied")
             return
 
+        # Resolve developer reward attribution once at connection time
+        agent_id_for_attribution: str | None = None
+        marketplace_id: str | None = None
+        developer_user_id: str | None = None
+        developer_fork_mode: str | None = None
+        if session and session.agent_id:
+            from app.repos.agent import AgentRepository
+            from app.repos.agent_marketplace import AgentMarketplaceRepository
+
+            agent_repo = AgentRepository(db)
+            agent = await agent_repo.get_agent_by_id(session.agent_id)
+            if agent and agent.original_source_id:
+                agent_id_for_attribution = str(agent.id)
+                marketplace_id = str(agent.original_source_id)
+
+                # Infer fork_mode from the fork's saved config fields
+                if agent.config_editable:
+                    developer_fork_mode = "editable"
+                else:
+                    developer_fork_mode = "locked"
+
+                mp_repo = AgentMarketplaceRepository(db)
+                listing = await mp_repo.get_by_id(agent.original_source_id)
+                if listing and listing.user_id:
+                    developer_user_id = listing.user_id
+
     await manager.connect(websocket, connection_id)
 
     # Track this connection for limit enforcement
@@ -234,24 +260,15 @@ async def chat_websocket(
                     }
                     await websocket.send_text(json.dumps(loading_event))
 
-                    # Pre-deduction / Balance Check
-                    base_cost = 3
-                    pre_deducted_amount = 0.0
+                    # Balance Check
                     try:
-                        access_key = None
-                        if auth_ctx.auth_provider.lower() == "bohr_app":
-                            access_key = auth_ctx.access_token
-
-                        pre_deducted_amount = await lifecycle.pre_deduct(
+                        await lifecycle.check_balance(
                             db=db,
                             user_id=user,
                             auth_provider=auth_ctx.auth_provider,
-                            amount=base_cost,
-                            access_key=access_key,
                             session_id=session_id,
                             topic_id=topic_id,
                             message_id=last_user_message.id,
-                            description="Chat regeneration (pre-deduction)",
                         )
 
                     except ErrCodeError as e:
@@ -269,10 +286,10 @@ async def chat_websocket(
                             }
                             await websocket.send_text(json.dumps(insufficient_balance_event, ensure_ascii=False))
                         else:
-                            logger.error(f"Pre-deduction failed for regeneration (ErrCodeError): {e}")
+                            logger.error(f"Balance check failed for regeneration (ErrCodeError): {e}")
                         continue
                     except Exception as e:
-                        logger.error(f"Pre-deduction failed for regeneration: {e}")
+                        logger.error(f"Balance check failed for regeneration: {e}")
                         continue
 
                     await db.commit()
@@ -285,9 +302,12 @@ async def chat_websocket(
                         auth_provider=auth_ctx.auth_provider,
                         message_text=message_text,
                         context=None,
-                        pre_deducted_amount=pre_deducted_amount,
                         access_token=auth_ctx.access_token if auth_ctx.auth_provider.lower() == "bohr_app" else None,
                         stream_id=stream_id,
+                        agent_id_for_attribution=agent_id_for_attribution,
+                        marketplace_id=marketplace_id,
+                        developer_user_id=developer_user_id,
+                        developer_fork_mode=developer_fork_mode,
                     )
 
                     logger.info(f"Regeneration dispatched for topic {topic_id}, using message: {last_user_message.id}")
@@ -312,54 +332,16 @@ async def chat_websocket(
                 user_message_create = MessageCreate(role="user", content=message_text, topic_id=topic_id)
                 user_message = await message_repo.create_message(user_message_create)
 
-                # 2. Link files
-                if file_ids:
-                    file_repo = FileRepository(db)
-                    await file_repo.update_files_message_id(
-                        file_ids=file_ids,
-                        message_id=user_message.id,
-                        user_id=user,
-                    )
-                    await db.flush()
-
-                # 3. Echo user message (include client_id for optimistic UI reconciliation)
-                user_message_with_files = await message_repo.get_message_with_files(user_message.id)
-                echo_model = user_message_with_files if user_message_with_files else user_message
-                echo_data = json.loads(echo_model.model_dump_json())
-                if client_id:
-                    echo_data["client_id"] = client_id
-                await websocket.send_text(json.dumps(echo_data, default=str))
-
-                # 4. Generate stream_id for this response lifecycle
-                stream_id = f"stream_{int(time.time() * 1000)}_{uuid4().hex[:8]}"
-
-                # 5. Loading status
-                loading_event = {
-                    "type": ChatEventType.LOADING,
-                    "data": {"message": "AI is thinking...", "stream_id": stream_id},
-                }
-                await websocket.send_text(json.dumps(loading_event))
-
-                # 6. Pre-deduction / Balance Check
-                base_cost = 3
-                pre_deducted_amount = 0.0
+                # 2. Balance Check (with message_id available, will rollback on continue if insufficient)
                 try:
-                    access_key = None
-                    if auth_ctx.auth_provider.lower() == "bohr_app":
-                        access_key = auth_ctx.access_token
-
-                    pre_deducted_amount = await lifecycle.pre_deduct(
+                    await lifecycle.check_balance(
                         db=db,
                         user_id=user,
                         auth_provider=auth_ctx.auth_provider,
-                        amount=base_cost,
-                        access_key=access_key,
                         session_id=session_id,
                         topic_id=topic_id,
                         message_id=user_message.id,
-                        description="Chat base cost (pre-deduction)",
                     )
-
                 except ErrCodeError as e:
                     if e.code == ErrCode.INSUFFICIENT_BALANCE:
                         insufficient_balance_event = {
@@ -370,14 +352,41 @@ async def chat_websocket(
                                 "message_cn": "积分余额不足，请充值后继续使用",
                                 "details": e.as_dict(),
                                 "action_required": "recharge",
-                                "stream_id": stream_id,
                             },
                         }
                         await websocket.send_text(json.dumps(insufficient_balance_event, ensure_ascii=False))
-                        continue  # Stop processing
+                        continue  # Exit without commit - message will be rolled back
                 except Exception as e:
-                    logger.error(f"Pre-deduction failed: {e}")
-                    # Fail open
+                    logger.error(f"Balance check failed: {e}")
+                    # Fail open - allow processing to continue
+
+                # 3. Link files
+                if file_ids:
+                    file_repo = FileRepository(db)
+                    await file_repo.update_files_message_id(
+                        file_ids=file_ids,
+                        message_id=user_message.id,
+                        user_id=user,
+                    )
+                    await db.flush()
+
+                # 4. Echo user message (include client_id for optimistic UI reconciliation)
+                user_message_with_files = await message_repo.get_message_with_files(user_message.id)
+                echo_model = user_message_with_files if user_message_with_files else user_message
+                echo_data = json.loads(echo_model.model_dump_json())
+                if client_id:
+                    echo_data["client_id"] = client_id
+                await websocket.send_text(json.dumps(echo_data, default=str))
+
+                # 5. Generate stream_id for this response lifecycle
+                stream_id = f"stream_{int(time.time() * 1000)}_{uuid4().hex[:8]}"
+
+                # 6. Loading status
+                loading_event = {
+                    "type": ChatEventType.LOADING,
+                    "data": {"message": "AI is thinking...", "stream_id": stream_id},
+                }
+                await websocket.send_text(json.dumps(loading_event))
 
                 # Commit user message before dispatching Celery task
                 # This ensures the Celery worker can see the message in its separate DB session
@@ -392,9 +401,12 @@ async def chat_websocket(
                     auth_provider=auth_ctx.auth_provider,
                     message_text=message_text,
                     context=context,
-                    pre_deducted_amount=pre_deducted_amount,
                     access_token=auth_ctx.access_token if auth_ctx.auth_provider.lower() == "bohr_app" else None,
                     stream_id=stream_id,
+                    agent_id_for_attribution=agent_id_for_attribution,
+                    marketplace_id=marketplace_id,
+                    developer_user_id=developer_user_id,
+                    developer_fork_mode=developer_fork_mode,
                 )
 
                 # 7b. Acknowledge message receipt to client

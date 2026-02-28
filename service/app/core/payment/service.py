@@ -1,4 +1,8 @@
-"""Payment business logic: checkout, fulfillment, and webhook handling."""
+"""Payment business logic: checkout, fulfillment, and webhook handling.
+
+Provider-agnostic — delegates to ``PaymentProvider`` implementations
+for PayPal, Airwallex, or any future gateway.
+"""
 
 import logging
 from datetime import datetime, timedelta, timezone
@@ -7,11 +11,11 @@ from uuid import UUID
 from fastapi import HTTPException
 from sqlmodel.ext.asyncio.session import AsyncSession
 
-from app.core.payment.airwallex_client import airwallex_client
+from app.configs import configs
+from app.core.payment.provider import get_payment_provider
 from app.core.plan_catalog import get_plan_pricing
 from app.core.subscription import SubscriptionService
 from app.core.user_events import broadcast_wallet_update
-from app.configs import configs
 from app.models.payment import PaymentOrderCreate
 from app.repos.payment import PaymentRepository
 from app.repos.redemption import RedemptionRepository
@@ -19,10 +23,11 @@ from app.repos.subscription import SubscriptionRepository
 
 logger = logging.getLogger(__name__)
 
-# Map payment methods to their Airwallex type and flow
+# Map payment methods to their currency and provider hint
 PAYMENT_METHOD_CONFIG: dict[str, dict[str, str]] = {
-    "alipaycn": {"type": "alipaycn", "flow": "qrcode"},
-    "wechatpay": {"type": "wechatpay", "flow": "qrcode"},
+    "alipaycn": {"currency": "CNY", "provider": "airwallex"},
+    "wechatpay": {"currency": "CNY", "provider": "airwallex"},
+    "paypal": {"currency": "USD", "provider": "paypal"},
 }
 
 
@@ -37,19 +42,18 @@ class PaymentService:
         self,
         user_id: str,
         plan_name: str,
-        payment_method: str = "alipaycn",
+        payment_method: str = "paypal",
     ) -> dict:
-        """Create a subscription checkout: order → PaymentIntent → confirm QR.
+        """Create a subscription checkout via the appropriate provider.
 
         Returns:
-            Dict with order_id, qr_code_url, amount, currency.
+            Dict with order_id, flow_type, and provider-specific URLs.
         """
         method_cfg = PAYMENT_METHOD_CONFIG.get(payment_method)
         if method_cfg is None:
             raise HTTPException(status_code=400, detail=f"Unsupported payment method: {payment_method}")
 
-        # Determine currency based on payment method
-        currency = "CNY" if payment_method in ("alipaycn", "wechatpay") else "USD"
+        currency = method_cfg["currency"]
         pricing = get_plan_pricing(plan_name, currency)
         if pricing is None:
             raise HTTPException(status_code=400, detail=f"Unknown plan: {plan_name}")
@@ -68,45 +72,76 @@ class PaymentService:
             )
         )
 
-        # 2. Create PaymentIntent on Airwallex
-        intent = await airwallex_client.create_payment_intent(
+        # 2. Create order on payment provider
+        provider = get_payment_provider(payment_method)
+        result = await provider.create_order(
             amount=pricing.amount,
             currency=currency,
             order_id=str(order.id),
             metadata={"user_id": user_id, "plan_name": plan_name},
-            return_url=configs.Airwallex.ReturnUrl,
-        )
-        intent_id = intent["id"]
-
-        # 3. Confirm to get QR code
-        confirmation = await airwallex_client.confirm_payment_intent(
-            intent_id=intent_id,
-            payment_method_type=method_cfg["type"],
-            flow=method_cfg["flow"],
+            return_url=configs.Payment.Airwallex.ReturnUrl,
         )
 
-        # Extract QR code URL from next_action
-        qr_code_url = ""
-        next_action = confirmation.get("next_action", {})
-        if next_action.get("type") == "render_qr_code":
-            qr_code_url = next_action.get("data", {}).get("qr_code_url", "")
-        elif next_action.get("url"):
-            qr_code_url = next_action["url"]
+        # 3. Save provider reference to order
+        await self.repo.set_provider_id_and_url(
+            order.id,
+            result.provider_order_id,
+            result.qr_code_url or result.approval_url,
+        )
 
-        # 4. Save intent ID and QR to order
-        await self.repo.set_intent_id_and_qr(order.id, intent_id, qr_code_url)
-
-        logger.info(f"Checkout created: order={order.id}, intent={intent_id}")
+        logger.info(
+            "Checkout created: order=%s, provider_order=%s, flow=%s",
+            order.id,
+            result.provider_order_id,
+            result.flow_type,
+        )
 
         return {
             "order_id": str(order.id),
-            "qr_code_url": qr_code_url,
+            "provider_order_id": result.provider_order_id,
+            "flow_type": result.flow_type,
+            "qr_code_url": result.qr_code_url,
+            "approval_url": result.approval_url,
             "amount": pricing.amount,
             "currency": currency,
         }
 
+    async def capture_order(self, order_id: UUID, user_id: str) -> dict:
+        """Capture a payment order (called after PayPal user approval).
+
+        For QR-based providers this is a no-op / status check.
+
+        Returns:
+            Dict with order_id, status, fulfilled.
+        """
+        order = await self.repo.get_order_by_id(order_id)
+        if order is None:
+            raise HTTPException(status_code=404, detail="Order not found")
+        if order.user_id != user_id:
+            raise HTTPException(status_code=403, detail="Not your order")
+        if not order.provider_order_id:
+            raise HTTPException(status_code=400, detail="Order has no provider reference")
+
+        provider = get_payment_provider(order.payment_method)
+        capture_result = await provider.capture_order(order.provider_order_id)
+
+        if capture_result.status in ("COMPLETED", "SUCCEEDED"):
+            await self.repo.update_order_status(order.id, "succeeded")
+            await self._fulfill_order(order.id)
+            return {
+                "order_id": str(order.id),
+                "status": "succeeded",
+                "fulfilled": True,
+            }
+
+        return {
+            "order_id": str(order.id),
+            "status": order.status,
+            "fulfilled": order.fulfilled,
+        }
+
     async def get_order_status(self, order_id: UUID, user_id: str) -> dict:
-        """Get order status. If still pending, check Airwallex for updates.
+        """Get order status. If still pending, check provider for updates.
 
         Returns:
             Dict with order_id, status, fulfilled.
@@ -117,21 +152,21 @@ class PaymentService:
         if order.user_id != user_id:
             raise HTTPException(status_code=403, detail="Not your order")
 
-        # If still pending, poll Airwallex
-        if order.status == "pending" and order.airwallex_intent_id:
+        # If still pending, poll the payment provider
+        if order.status == "pending" and order.provider_order_id:
             try:
-                intent = await airwallex_client.get_payment_intent(order.airwallex_intent_id)
-                remote_status = intent.get("status", "")
-                if remote_status == "SUCCEEDED":
+                provider = get_payment_provider(order.payment_method)
+                remote_status = await provider.get_order_status(order.provider_order_id)
+                if remote_status in ("SUCCEEDED", "COMPLETED"):
                     await self.repo.update_order_status(order.id, "succeeded")
                     await self._fulfill_order(order.id)
                     order.status = "succeeded"
                     order.fulfilled = True
-                elif remote_status in ("CANCELLED", "EXPIRED"):
+                elif remote_status in ("CANCELLED", "EXPIRED", "VOIDED"):
                     await self.repo.update_order_status(order.id, "failed")
                     order.status = "failed"
             except Exception:
-                logger.warning(f"Failed to poll Airwallex for order {order_id}", exc_info=True)
+                logger.warning("Failed to poll provider for order %s", order_id, exc_info=True)
 
         return {
             "order_id": str(order.id),
@@ -139,38 +174,72 @@ class PaymentService:
             "fulfilled": order.fulfilled,
         }
 
-    async def handle_webhook(self, event_type: str, data: dict) -> None:
-        """Handle Airwallex webhook events.
+    async def handle_webhook(self, source: str, event_type: str, data: dict) -> None:
+        """Handle webhook events from any payment provider.
 
-        Only processes payment_intent.succeeded.
+        Args:
+            source: "airwallex" or "paypal".
+            event_type: Provider-specific event name.
+            data: Event data payload.
         """
+        if source == "airwallex":
+            await self._handle_airwallex_webhook(event_type, data)
+        elif source == "paypal":
+            await self._handle_paypal_webhook(event_type, data)
+        else:
+            logger.warning("Unknown webhook source: %s", source)
+
+    async def _handle_airwallex_webhook(self, event_type: str, data: dict) -> None:
         if event_type != "payment_intent.succeeded":
-            logger.debug(f"Ignoring webhook event: {event_type}")
+            logger.debug("Ignoring Airwallex webhook event: %s", event_type)
             return
 
         intent_id = data.get("id", "")
         if not intent_id:
-            logger.warning("Webhook missing intent ID")
+            logger.warning("Airwallex webhook missing intent ID")
             return
 
-        order = await self.repo.get_order_by_intent_id(intent_id)
+        order = await self.repo.get_order_by_provider_id(intent_id)
         if order is None:
-            logger.warning(f"No order found for intent {intent_id}")
+            logger.warning("No order found for Airwallex intent %s", intent_id)
             return
 
         await self.repo.update_order_status(order.id, "succeeded")
         await self._fulfill_order(order.id)
 
+    async def _handle_paypal_webhook(self, event_type: str, data: dict) -> None:
+        if event_type != "CHECKOUT.ORDER.APPROVED":
+            logger.debug("Ignoring PayPal webhook event: %s", event_type)
+            return
+
+        paypal_order_id = data.get("id", "")
+        if not paypal_order_id:
+            logger.warning("PayPal webhook missing order ID")
+            return
+
+        order = await self.repo.get_order_by_provider_id(paypal_order_id)
+        if order is None:
+            logger.warning("No order found for PayPal order %s", paypal_order_id)
+            return
+
+        # Capture the order server-side
+        provider = get_payment_provider("paypal")
+        capture_result = await provider.capture_order(paypal_order_id)
+
+        if capture_result.status == "COMPLETED":
+            await self.repo.update_order_status(order.id, "succeeded")
+            await self._fulfill_order(order.id)
+
     async def _fulfill_order(self, order_id: UUID) -> None:
         """Fulfill a payment order: grant credits + upgrade subscription.
 
-        Idempotent — checks the `fulfilled` flag before acting.
+        Idempotent — checks the ``fulfilled`` flag before acting.
         """
         order = await self.repo.get_order_by_id(order_id)
         if order is None or order.fulfilled:
             return
 
-        logger.info(f"Fulfilling order {order_id}: type={order.order_type}, plan={order.plan_name}")
+        logger.info("Fulfilling order %s: type=%s, plan=%s", order_id, order.order_type, order.plan_name)
 
         redemption_repo = RedemptionRepository(self.db)
 
@@ -194,6 +263,9 @@ class PaymentService:
                 )
                 await broadcast_wallet_update(wallet)
 
+                # 3. Mark monthly credits as claimed so the user cannot double-claim
+                await sub_repo.update_last_credits_claimed(order.user_id)
+
         elif order.order_type == "topup":
             if order.credits_amount > 0:
                 wallet = await redemption_repo.credit_wallet_typed(
@@ -207,4 +279,4 @@ class PaymentService:
 
         # 3. Mark fulfilled
         await self.repo.mark_fulfilled(order_id)
-        logger.info(f"Order {order_id} fulfilled successfully")
+        logger.info("Order %s fulfilled successfully", order_id)

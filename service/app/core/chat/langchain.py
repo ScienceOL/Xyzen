@@ -87,13 +87,27 @@ async def get_ai_response_stream_langchain_legacy(
     agent = await _resolve_agent(db, agent, topic)
 
     # Determine provider and model
-    provider_id, model_name = await _resolve_provider_and_model(
+    provider_id, model_name, model_tier = await _resolve_provider_and_model(
         db=db,
         agent=agent,
         topic=topic,
         message_text=message_text,
         user_provider_manager=user_provider_manager,
     )
+
+    # Immediately backfill TrackingContext so all tools (subagent, delegation,
+    # image gen, read_image) executed during this chat turn have complete
+    # model metadata available before the first TOKEN_USAGE event arrives.
+    from app.core.consume.consume_service import get_tracking_context
+
+    tracking_ctx = get_tracking_context()
+    if tracking_ctx is not None:
+        tracking_ctx.model_tier = model_tier
+        tracking_ctx.model_name = model_name
+        tracking_ctx.model_provider = provider_id
+
+    if not all([model_tier, provider_id, model_name]):
+        logger.warning(f"Incomplete model metadata: tier={model_tier}, provider={provider_id}, model={model_name}")
 
     # Build system prompt
     prompt_build = await build_system_prompt_with_provenance(db, agent, model_name)
@@ -121,6 +135,9 @@ async def get_ai_response_stream_langchain_legacy(
             db=db,
             user_id=user_id,
             event_ctx=event_ctx,
+            model_tier=model_tier,
+            provider_id=provider_id,
+            model_name=model_name,
         )
 
         # Propagate stream_id to event context so all agent events include it
@@ -162,7 +179,7 @@ async def _resolve_provider_and_model(
     topic: TopicModel,
     message_text: str | None = None,
     user_provider_manager: Any = None,
-) -> tuple[str | None, str | None]:
+) -> tuple[str | None, str | None, str | None]:
     """
     Determine provider and model to use.
 
@@ -182,6 +199,7 @@ async def _resolve_provider_and_model(
 
     provider_id: str | None = None
     model_name: str | None = None
+    resolved_model_tier: str | None = None
 
     if session:
         # Clamp model_tier to subscription limit
@@ -257,6 +275,8 @@ async def _resolve_provider_and_model(
                 model_name = resolve_model_for_tier(effective_model_tier)
                 logger.info(f"Using tier fallback (no context): {model_name}")
 
+        resolved_model_tier = effective_model_tier.value if effective_model_tier else None
+
     if not provider_id and agent and agent.provider_id:
         provider_id = str(agent.provider_id)
 
@@ -291,6 +311,7 @@ async def _resolve_provider_and_model(
         else:
             model_name = resolve_model_for_tier(default_tier)
             logger.info(f"Using {default_tier.value} tier fallback: {model_name}")
+        resolved_model_tier = default_tier.value
 
     # Ensure we have the correct provider for the selected model.
     # The model's required provider takes precedence over session.provider_id.
@@ -307,7 +328,7 @@ async def _resolve_provider_and_model(
                     break
 
     logger.info(f"Resolved model: {model_name}, provider: {provider_id}")
-    return provider_id, model_name
+    return provider_id, model_name, resolved_model_tier
 
 
 async def _create_langchain_agent(
@@ -532,7 +553,9 @@ async def _handle_updates_mode(
                         logger.info(f"[ToolEvent] Skipping already emitted tool call: {tool_id}")
                         continue
                     logger.info(f"[ToolEvent] >>> Emitting tool_call_request for {tool_name} (id={tool_id})")
-                    yield ToolEventHandler.create_tool_request_event(tool_call, stream_id=ctx.stream_id)
+                    yield ToolEventHandler.create_tool_request_event(
+                        tool_call, stream_id=ctx.stream_id, model_tier=ctx.model_tier
+                    )
 
             # Emit tool_call_response for ToolMessage
             if isinstance(msg, ToolMessage):
@@ -556,6 +579,7 @@ async def _handle_updates_mode(
                         raw_result=raw_content,
                         error=error,
                         stream_id=ctx.stream_id,
+                        model_tier=ctx.model_tier,
                     )
 
         last_message = messages[-1]
@@ -933,6 +957,9 @@ async def _finalize_streaming(ctx: StreamContext, tracer: LangGraphTracer) -> As
                 ctx.stream_id,
                 cache_creation_input_tokens=ctx.total_cache_creation_tokens,
                 cache_read_input_tokens=ctx.total_cache_read_tokens,
+                model_tier=ctx.model_tier,
+                provider_id=ctx.provider_id,
+                model_name=ctx.model_name,
             )
 
 

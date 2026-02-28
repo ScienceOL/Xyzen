@@ -2,6 +2,7 @@ import { DEFAULT_TIMEZONE } from "@/configs/common";
 import {
   redemptionService,
   type ConsumptionHeatmapEntry,
+  type ProviderOption,
 } from "@/service/redemptionService";
 import { Fragment, useCallback, useEffect, useMemo, useState } from "react";
 import { AdminFilterBar } from "./shared/AdminFilterBar";
@@ -9,7 +10,6 @@ import { AdminHeatmap } from "./shared/AdminHeatmap";
 import { AdminStatCards } from "./shared/AdminStatCards";
 import {
   formatCompact,
-  PROVIDER_OPTIONS,
   TIER_BADGE_COLORS,
   TIER_DISPLAY_NAMES,
 } from "./shared/constants";
@@ -33,20 +33,34 @@ export function ConsumptionAnalyticsTab({
   const [selectedTier, setSelectedTier] = useState("");
   const [selectedModel, setSelectedModel] = useState("");
   const [selectedProvider, setSelectedProvider] = useState("");
+  const [selectedTool, setSelectedTool] = useState("");
   const [selectedDate, setSelectedDate] = useState<string | null>(null);
   const [modelOptions, setModelOptions] = useState<string[]>([]);
+  const [providerOptions, setProviderOptions] = useState<ProviderOption[]>([]);
+  const [tierOptions, setTierOptions] = useState<string[]>([]);
+  const [toolOptions, setToolOptions] = useState<string[]>([]);
   const [heatmapMetric, setHeatmapMetric] = useState<HeatmapMetric>("credits");
   const [heatmapData, setHeatmapData] = useState<ConsumptionHeatmapEntry[]>([]);
   const [loading, setLoading] = useState(true);
   const [error, setError] = useState<string | null>(null);
 
-  // Fetch model options from backend
+  // Fetch filter options from backend
   useEffect(() => {
     redemptionService
-      .getModelOptions(adminSecret)
-      .then((res) => setModelOptions(res.models))
+      .getFilterOptions(
+        adminSecret,
+        year,
+        DEFAULT_TIMEZONE,
+        selectedProvider || undefined,
+      )
+      .then((res) => {
+        setModelOptions(res.models);
+        setProviderOptions(res.providers);
+        setTierOptions(res.tiers);
+        setToolOptions(res.tools);
+      })
       .catch(() => {});
-  }, [adminSecret]);
+  }, [adminSecret, year, selectedProvider]);
 
   const fetchHeatmap = useCallback(
     async (signal?: AbortSignal) => {
@@ -60,6 +74,7 @@ export function ConsumptionAnalyticsTab({
           selectedTier || undefined,
           selectedModel || undefined,
           selectedProvider || undefined,
+          selectedTool || undefined,
         );
         if (!signal?.aborted) setHeatmapData(data);
       } catch (err) {
@@ -69,7 +84,14 @@ export function ConsumptionAnalyticsTab({
         if (!signal?.aborted) setLoading(false);
       }
     },
-    [adminSecret, year, selectedTier, selectedModel, selectedProvider],
+    [
+      adminSecret,
+      year,
+      selectedTier,
+      selectedModel,
+      selectedProvider,
+      selectedTool,
+    ],
   );
 
   useEffect(() => {
@@ -157,11 +179,16 @@ export function ConsumptionAnalyticsTab({
           onModelChange={setSelectedModel}
           selectedProvider={selectedProvider}
           onProviderChange={handleProviderChange}
-          providerOptions={PROVIDER_OPTIONS}
+          providerOptions={providerOptions}
           modelOptions={modelOptions}
+          tierOptions={tierOptions}
+          selectedTool={selectedTool}
+          onToolChange={setSelectedTool}
+          toolOptions={toolOptions}
           showTierFilter
           showModelFilter
           showProviderFilter
+          showToolFilter
         />
         <select
           value={heatmapMetric}
