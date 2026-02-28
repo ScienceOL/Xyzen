@@ -149,6 +149,7 @@ class MarketplaceAdminService {
   ): Promise<{ success: boolean }> {
     return http.delete(
       `/xyzen/api/v1/admin/marketplace/listings/${listingId}`,
+      undefined,
       {
         auth: false,
         headers: this.headers(adminSecret),

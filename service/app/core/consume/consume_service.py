@@ -60,6 +60,8 @@ class TrackingContext:
     agent_id: UUID | None = None
     marketplace_id: UUID | None = None
     developer_user_id: str | None = None
+    model_name: str | None = None
+    model_provider: str | None = None
 
 
 _tracking_ctx: ContextVar[TrackingContext | None] = ContextVar("tracking_ctx", default=None)
@@ -312,9 +314,9 @@ async def record_llm_usage_from_context(
             record = await service.record_llm_usage_with_pricing(
                 user_id=ctx.user_id,
                 auth_provider=ctx.auth_provider,
-                model_name=model_name,
+                model_name=model_name if model_name != "unknown" else (ctx.model_name or model_name),
                 model_tier=ctx.model_tier,
-                provider=provider,
+                provider=provider or ctx.model_provider,
                 input_tokens=input_tokens,
                 output_tokens=output_tokens,
                 total_tokens=total_tokens,
@@ -365,6 +367,12 @@ async def record_messages_usage_from_context(
 
     if total_input == 0 and total_output == 0:
         return None
+
+    ctx = get_tracking_context()
+    if model_name == "unknown" and ctx and ctx.model_name:
+        model_name = ctx.model_name
+    if provider is None and ctx and ctx.model_provider:
+        provider = ctx.model_provider
 
     return await record_llm_usage_from_context(
         model_name=model_name,

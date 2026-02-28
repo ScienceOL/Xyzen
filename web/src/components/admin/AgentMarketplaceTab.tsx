@@ -84,7 +84,10 @@ export function AgentMarketplaceTab({ adminSecret }: AgentMarketplaceTabProps) {
       setLoadingOverview(true);
       try {
         const data = await marketplaceAdminService.getOverview(adminSecret);
-        if (!signal?.aborted) setOverview(data);
+        if (!signal?.aborted) {
+          setError(null);
+          setOverview(data);
+        }
       } catch (err) {
         if (!signal?.aborted)
           setError(
@@ -108,7 +111,10 @@ export function AgentMarketplaceTab({ adminSecret }: AgentMarketplaceTabProps) {
           DEFAULT_TIMEZONE,
           selectedTier || undefined,
         );
-        if (!signal?.aborted) setHeatmapData(data);
+        if (!signal?.aborted) {
+          setError(null);
+          setHeatmapData(data);
+        }
       } catch (err) {
         if (!signal?.aborted)
           setError(
@@ -140,6 +146,7 @@ export function AgentMarketplaceTab({ adminSecret }: AgentMarketplaceTabProps) {
           offset: page * pageSize,
         });
         if (!signal?.aborted) {
+          setError(null);
           setListings(data.listings);
           setListingsTotal(data.total);
         }
@@ -166,7 +173,10 @@ export function AgentMarketplaceTab({ adminSecret }: AgentMarketplaceTabProps) {
           DEFAULT_TIMEZONE,
           selectedDate ?? undefined,
         );
-        if (!signal?.aborted) setTopDevelopers(devs);
+        if (!signal?.aborted) {
+          setError(null);
+          setTopDevelopers(devs);
+        }
       } catch (err) {
         if (!signal?.aborted)
           setError(
@@ -267,16 +277,12 @@ export function AgentMarketplaceTab({ adminSecret }: AgentMarketplaceTabProps) {
       {/* Section 1: Overview Stat Cards */}
       <AdminStatCards
         isLoading={loadingOverview}
-        columns={6}
+        columns={5}
         cards={[
           { label: "Total Listings", value: overview?.total_listings ?? 0 },
           {
             label: "Published",
             value: overview?.published_listings ?? 0,
-          },
-          {
-            label: "Community",
-            value: overview?.community_listings ?? 0,
           },
           { label: "Total Forks", value: overview?.total_forks ?? 0 },
           {
