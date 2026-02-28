@@ -86,6 +86,12 @@ class UserSubscriptionBase(SQLModel):
         sa_column=Column(TIMESTAMP(timezone=True), nullable=True),
         description="Last time monthly credits were claimed",
     )
+    purchased_sandbox_slots: int = Field(default=0, description="Extra sandbox slots purchased via add-on")
+    full_model_access_expires_at: datetime | None = Field(
+        default=None,
+        sa_column=Column(TIMESTAMP(timezone=True), nullable=True),
+        description="When full model-access pass expires (null = not active)",
+    )
 
 
 class UserSubscription(UserSubscriptionBase, table=True):

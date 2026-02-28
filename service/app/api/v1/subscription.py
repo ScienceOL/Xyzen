@@ -1,7 +1,7 @@
 """Subscription API endpoints for querying user plans and available tiers."""
 
 import logging
-from datetime import datetime
+from datetime import datetime, timezone
 from uuid import UUID
 
 from fastapi import APIRouter, Depends, Header, HTTPException, status
@@ -30,6 +30,9 @@ class SubscriptionResponse(BaseModel):
     subscription: UserSubscriptionRead
     role: SubscriptionRoleRead
     can_claim_credits: bool = Field(default=False, description="Whether monthly credits can be claimed now")
+    effective_max_model_tier: str = Field(
+        default="lite", description="Effective model tier including full-access pass override"
+    )
 
 
 class PlansResponse(BaseModel):
@@ -113,10 +116,17 @@ async def get_subscription(
         )
     sub, role = result
     can_claim = service.can_claim_credits(sub, role)
+
+    # Compute effective model tier (includes full-access pass override)
+    effective_tier = role.max_model_tier
+    if sub.full_model_access_expires_at and sub.full_model_access_expires_at > datetime.now(timezone.utc):
+        effective_tier = "ultra"
+
     return SubscriptionResponse(
         subscription=UserSubscriptionRead.model_validate(sub),
         role=SubscriptionRoleRead.model_validate(role),
         can_claim_credits=can_claim,
+        effective_max_model_tier=effective_tier,
     )
 
 

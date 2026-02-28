@@ -355,7 +355,7 @@
     "tiers": {
       "ultra": {
         "name": "Xyzen Ultra",
-        "description": "最强大的模型，适合复杂任务"
+        "description": "旗舰模型，适合复杂任务"
       },
       "pro": {
         "name": "Xyzen Pro",
@@ -612,5 +612,11 @@
     "answered": "已回答",
     "typeAnswer": "输入你的回答...",
     "other": "其他"
+  },
+  "tabContextMenu": {
+    "close": "关闭",
+    "closeOthers": "关闭其他标签页",
+    "closeToLeft": "关闭左侧标签页",
+    "closeToRight": "关闭右侧标签页"
   }
 }

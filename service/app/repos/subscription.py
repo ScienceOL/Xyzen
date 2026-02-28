@@ -1,5 +1,5 @@
 import logging
-from datetime import datetime, timezone
+from datetime import datetime, timedelta, timezone
 from typing import Any
 from uuid import UUID
 
@@ -120,3 +120,33 @@ class SubscriptionRepository:
         stmt = select(UserSubscription).order_by(col(UserSubscription.created_at).desc())
         result = await self.db.exec(stmt)
         return list(result.all())
+
+    async def add_purchased_sandbox_slots(self, user_id: str, quantity: int) -> UserSubscription | None:
+        """Atomically increment purchased_sandbox_slots for a user."""
+        sub = await self.get_user_subscription(user_id)
+        if sub is None:
+            return None
+        sub.purchased_sandbox_slots = sub.purchased_sandbox_slots + quantity
+        sub.updated_at = datetime.now(timezone.utc)
+        self.db.add(sub)
+        await self.db.flush()
+        await self.db.refresh(sub)
+        return sub
+
+    async def extend_full_model_access(self, user_id: str, days: int) -> UserSubscription | None:
+        """Extend full model-access pass by N days from now (or from current expiry if still active)."""
+        sub = await self.get_user_subscription(user_id)
+        if sub is None:
+            return None
+        now = datetime.now(timezone.utc)
+        base = (
+            sub.full_model_access_expires_at
+            if sub.full_model_access_expires_at and sub.full_model_access_expires_at > now
+            else now
+        )
+        sub.full_model_access_expires_at = base + timedelta(days=days)
+        sub.updated_at = now
+        self.db.add(sub)
+        await self.db.flush()
+        await self.db.refresh(sub)
+        return sub

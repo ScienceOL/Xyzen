@@ -32,6 +32,34 @@ class PaymentService {
     });
   }
 
+  async createTopUpCheckout(
+    credits: number,
+    paymentMethod: string = "paypal",
+  ): Promise<CheckoutResponse> {
+    return http.post("/xyzen/api/v1/payment/checkout/topup", {
+      credits,
+      payment_method: paymentMethod,
+    });
+  }
+
+  async createSandboxAddonCheckout(
+    quantity: number,
+    paymentMethod: string = "paypal",
+  ): Promise<CheckoutResponse> {
+    return http.post("/xyzen/api/v1/payment/checkout/sandbox-addon", {
+      quantity,
+      payment_method: paymentMethod,
+    });
+  }
+
+  async createFullAccessCheckout(
+    paymentMethod: string = "paypal",
+  ): Promise<CheckoutResponse> {
+    return http.post("/xyzen/api/v1/payment/checkout/full-access", {
+      payment_method: paymentMethod,
+    });
+  }
+
   async captureOrder(orderId: string): Promise<OrderStatusResponse> {
     return http.post(`/xyzen/api/v1/payment/orders/${orderId}/capture`, {});
   }

@@ -68,6 +68,8 @@
       "generateToken": "トークンを生成",
       "connectRunner": "ランナーを接続",
       "reconnectHint": "このマシンで xyzen connect を実行して再接続してください。",
+      "aiPrompt": "AI プロンプト",
+      "aiPromptHint": "AIアシスタント用のインストールプロンプトをコピー",
       "online": "オンライン",
       "offline": "オフライン",
       "disabled": "無効",

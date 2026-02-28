@@ -13,7 +13,9 @@ export function useSubscriptionInfo() {
   if (!enabled) return null;
 
   const roleName = subQuery.data?.role?.name ?? "free";
-  const maxTier = (subQuery.data?.role?.max_model_tier ?? "lite") as ModelTier;
+  const maxTier = (subQuery.data?.effective_max_model_tier ??
+    subQuery.data?.role?.max_model_tier ??
+    "lite") as ModelTier;
   const userPlan = roleName;
 
   return { subQuery, usageQuery, roleName, maxTier, userPlan };

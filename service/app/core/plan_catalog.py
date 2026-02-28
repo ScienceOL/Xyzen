@@ -157,12 +157,24 @@ class SandboxAddonRate:
 
 
 @dataclass(frozen=True)
+class FullAccessPassRate:
+    """Full model-access pass pricing (unlocks all model tiers for N days)."""
+
+    currency: str
+    amount: int  # minor units
+    display_price: str
+    duration_days: int
+    display_rate: str  # i18n key
+
+
+@dataclass(frozen=True)
 class RegionCatalog:
     """All catalog data for one deployment region."""
 
     plans: list[PlanCatalogEntry]
     topup_rates: list[TopUpRate]
     sandbox_addon_rates: list[SandboxAddonRate]
+    full_access_pass_rates: list[FullAccessPassRate] = field(default_factory=list)
 
 
 # ---------------------------------------------------------------------------
@@ -214,6 +226,7 @@ _GLOBAL_CATALOG = RegionCatalog(
         PlanCatalogEntry(
             plan_key="ultra",
             display_name_key="subscription.plan.ultra",
+            badge_key="subscription.plan.bestValue",
             pricing=[
                 CurrencyPricing(currency="USD", amount=9990, display_price="$99.9", credits=60000),
             ],
@@ -240,6 +253,15 @@ _GLOBAL_CATALOG = RegionCatalog(
             amount_per_sandbox=500,  # $5
             display_rate="subscription.sandboxAddon.rateIntl",
             min_plan="standard",
+        ),
+    ],
+    full_access_pass_rates=[
+        FullAccessPassRate(
+            currency="USD",
+            amount=680,  # $6.80
+            display_price="$6.80",
+            duration_days=30,
+            display_rate="subscription.fullAccess.rateIntl",
         ),
     ],
 )
@@ -307,6 +329,7 @@ _CHINA_CATALOG = RegionCatalog(
         PlanCatalogEntry(
             plan_key="ultra",
             display_name_key="subscription.plan.ultraChina",
+            badge_key="subscription.plan.bestValue",
             pricing=[
                 CurrencyPricing(currency="CNY", amount=26800, display_price="¥268.0", credits=60000),
             ],
@@ -333,6 +356,15 @@ _CHINA_CATALOG = RegionCatalog(
             amount_per_sandbox=2000,  # ¥20
             display_rate="subscription.sandboxAddon.rateChina",
             min_plan="standard",
+        ),
+    ],
+    full_access_pass_rates=[
+        FullAccessPassRate(
+            currency="CNY",
+            amount=4800,  # ¥48
+            display_price="¥48",
+            duration_days=30,
+            display_rate="subscription.fullAccess.rateChina",
         ),
     ],
 )
@@ -381,3 +413,30 @@ def get_catalog_region() -> str:
     """Return the region key used for the current catalog."""
     region = _get_region()
     return region if region in REGION_CATALOGS else "global"
+
+
+def get_topup_rate(currency: str) -> TopUpRate | None:
+    """Look up the top-up exchange rate for a given currency."""
+    catalog = get_plan_catalog()
+    for rate in catalog.topup_rates:
+        if rate.currency == currency:
+            return rate
+    return None
+
+
+def get_sandbox_addon_rate(currency: str) -> SandboxAddonRate | None:
+    """Look up the sandbox add-on price for a given currency."""
+    catalog = get_plan_catalog()
+    for rate in catalog.sandbox_addon_rates:
+        if rate.currency == currency:
+            return rate
+    return None
+
+
+def get_full_access_pass_rate(currency: str) -> FullAccessPassRate | None:
+    """Look up the full model-access pass price for a given currency."""
+    catalog = get_plan_catalog()
+    for rate in catalog.full_access_pass_rates:
+        if rate.currency == currency:
+            return rate
+    return None

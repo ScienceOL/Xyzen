@@ -68,6 +68,8 @@
       "generateToken": "生成 Token",
       "connectRunner": "连接 Runner",
       "reconnectHint": "在该设备上运行 xyzen connect 以重新连接。",
+      "aiPrompt": "AI 提示词",
+      "aiPromptHint": "复制提示词，让 AI 助手帮你安装 SDK",
       "online": "在线",
       "offline": "离线",
       "disabled": "已禁用",

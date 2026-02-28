@@ -355,7 +355,7 @@
     "tiers": {
       "ultra": {
         "name": "Xyzen ウルトラ",
-        "description": "複雑なタスク向けの最強モデル"
+        "description": "複雑なタスク向けのフラッグシップモデル"
       },
       "pro": {
         "name": "Xyzen プロ",
@@ -612,5 +612,11 @@
     "answered": "回答済み",
     "typeAnswer": "回答を入力...",
     "other": "その他"
+  },
+  "tabContextMenu": {
+    "close": "閉じる",
+    "closeOthers": "他のタブを閉じる",
+    "closeToLeft": "左側のタブを閉じる",
+    "closeToRight": "右側のタブを閉じる"
   }
 }

@@ -16,6 +16,7 @@ from app.repos.redemption import RedemptionRepository
 from app.repos.subscription import SubscriptionRepository
 from app.schemas.plan_catalog import (
     CurrencyPricingResponse,
+    FullAccessPassRateResponse,
     PlanCatalogResponse,
     PlanFeatureResponse,
     PlanLimitsResponse,
@@ -88,16 +89,28 @@ class SubscriptionService:
         role = await self.get_user_role(user_id)
         if role is None:
             return None
+        # Include purchased sandbox add-on slots
+        sub = await self.repo.get_user_subscription(user_id)
+        purchased_slots = sub.purchased_sandbox_slots if sub else 0
+
+        # Full model-access pass overrides max_model_tier to "ultra"
+        effective_model_tier = role.max_model_tier
+        if sub and sub.full_model_access_expires_at:
+            from datetime import datetime, timezone
+
+            if sub.full_model_access_expires_at > datetime.now(timezone.utc):
+                effective_model_tier = "ultra"
+
         return UserLimits(
             storage_limit_bytes=role.storage_limit_bytes,
             max_file_count=role.max_file_count,
             max_file_upload_bytes=role.max_file_upload_bytes,
             max_parallel_chats=role.max_parallel_chats,
-            max_sandboxes=role.max_sandboxes,
+            max_sandboxes=role.max_sandboxes + purchased_slots,
             max_scheduled_tasks=role.max_scheduled_tasks,
             max_terminals=role.max_terminals,
             max_deployments=role.max_deployments,
-            max_model_tier=role.max_model_tier,
+            max_model_tier=effective_model_tier,
             role_name=role.name,
             role_display_name=role.display_name,
         )
@@ -283,6 +296,16 @@ class SubscriptionService:
                     min_plan=sa.min_plan,
                 )
                 for sa in catalog.sandbox_addon_rates
+            ],
+            full_access_pass_rates=[
+                FullAccessPassRateResponse(
+                    currency=fa.currency,
+                    amount=fa.amount,
+                    display_price=fa.display_price,
+                    duration_days=fa.duration_days,
+                    display_rate=fa.display_rate,
+                )
+                for fa in catalog.full_access_pass_rates
             ],
             paypal_client_id=configs.Payment.PayPal.ClientId if configs.Payment.PayPal.Enabled else "",
         )

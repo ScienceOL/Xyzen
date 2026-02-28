@@ -227,8 +227,7 @@ const CeoAgentCard: React.FC<CeoAgentCardProps> = ({
             <p className="mt-0.5 text-[11px] text-neutral-500 dark:text-neutral-400 line-clamp-1">
               {agent.description ||
                 t("agents.rootAgent.description", {
-                  defaultValue:
-                    "Orchestrates and delegates to your other agents",
+                  defaultValue: "No need to overthink — just chat with me",
                 })}
             </p>
           </div>

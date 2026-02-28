@@ -6,18 +6,21 @@ import {
   TabsList,
   TabsTrigger,
 } from "@/components/animate-ui/components/animate/tabs";
+import { StepperInput } from "@/components/base/StepperInput";
 import { PaymentQRModal } from "@/components/features/PaymentQRModal";
 import {
   PayPalCheckoutButton,
   PayPalProvider,
 } from "@/components/features/PayPalCheckoutButton";
 import { usePlanCatalog } from "@/hooks/usePlanCatalog";
+import { useCelebration } from "@/hooks/useCelebration";
 import { useSubscriptionInfo, useBilling } from "@/hooks/ee";
 import { cn } from "@/lib/utils";
 import { paymentService } from "@/service/paymentService";
 import { subscriptionService } from "@/service/subscriptionService";
 import type { PlanResponse } from "@/service/subscriptionService";
 import {
+  BoltIcon,
   ChatBubbleLeftRightIcon,
   CheckIcon,
   ClockIcon,
@@ -530,7 +533,7 @@ function MySubscriptionTab() {
             </span>
           </div>
           <div className="text-xl font-bold tabular-nums text-neutral-900 dark:text-white">
-            {role.max_sandboxes}
+            {usage?.sandboxes.limit ?? role.max_sandboxes}
           </div>
         </motion.div>
 
@@ -832,7 +835,19 @@ function PlanCard({
 
       {/* Subscribe action */}
       {!isFree && !isLocked && !isChina ? (
-        <PayPalCheckoutButton planKey={plan.planKey} />
+        <PayPalCheckoutButton
+          className="mt-auto w-full"
+          onCreateOrder={async () => {
+            const result = await paymentService.createCheckout(
+              plan.planKey,
+              "paypal",
+            );
+            return {
+              order_id: result.order_id,
+              provider_order_id: result.provider_order_id,
+            };
+          }}
+        />
       ) : (
         <button
           disabled={isLocked || isFree}
@@ -859,41 +874,108 @@ function TopUpCard({
   displayRate,
   isChina,
   delay,
+  creditsPerUnit,
+  unitAmount,
+  currency,
+  onQRCheckout,
 }: {
   displayRate: string;
   isChina: boolean;
   delay: number;
+  creditsPerUnit: number;
+  unitAmount: number;
+  currency: string;
+  onQRCheckout?: (credits: number) => void;
 }) {
   const { t } = useTranslation();
+  const [credits, setCredits] = useState(0);
+
+  const priceMinor = credits > 0 ? (credits / creditsPerUnit) * unitAmount : 0;
+  const priceDisplay =
+    currency === "CNY"
+      ? `¥${(priceMinor / 100).toFixed(2)}`
+      : `$${(priceMinor / 100).toFixed(2)}`;
+
+  const canBuy = credits > 0;
+
+  const handleCreateOrder = useCallback(async () => {
+    if (!credits) throw new Error("No credits");
+    const result = await paymentService.createTopUpCheckout(credits, "paypal");
+    return {
+      order_id: result.order_id,
+      provider_order_id: result.provider_order_id,
+    };
+  }, [credits]);
+
+  const handleQRBuy = useCallback(() => {
+    if (credits && onQRCheckout) {
+      onQRCheckout(credits);
+    }
+  }, [credits, onQRCheckout]);
 
   return (
     <motion.div
       initial={{ opacity: 0, y: 12 }}
       animate={{ opacity: 1, y: 0 }}
       transition={{ delay, duration: 0.35 }}
-      className="flex flex-col gap-3 rounded-lg border border-dashed border-neutral-300 bg-neutral-50/50 px-3 py-3 sm:flex-row sm:items-center sm:justify-between sm:px-4 dark:border-neutral-600 dark:bg-neutral-800/30"
+      className="rounded-lg border border-dashed border-neutral-300 bg-neutral-50/50 px-3 py-3 sm:px-4 dark:border-neutral-600 dark:bg-neutral-800/30"
     >
-      <div className="flex items-center gap-3">
-        <div className="flex h-9 w-9 items-center justify-center rounded-lg bg-gradient-to-br from-amber-400 to-orange-500 shadow-sm">
-          <PlusIcon className="h-5 w-5 text-white" />
-        </div>
-        <div>
-          <div className="text-sm font-semibold text-neutral-800 dark:text-neutral-200">
-            {t("subscription.topUp.title")}
+      <div className="flex flex-col gap-3 sm:flex-row sm:items-center sm:justify-between">
+        <div className="flex items-center gap-3">
+          <div className="flex h-9 w-9 items-center justify-center rounded-lg bg-gradient-to-br from-amber-400 to-orange-500 shadow-sm">
+            <PlusIcon className="h-5 w-5 text-white" />
           </div>
-          <div className="text-xs text-neutral-500 dark:text-neutral-400">
-            {t("subscription.topUp.subtitle")}
+          <div>
+            <div className="text-sm font-semibold text-neutral-800 dark:text-neutral-200">
+              {t("subscription.topUp.title")}
+            </div>
+            <div className="text-xs text-neutral-500 dark:text-neutral-400">
+              {t("subscription.topUp.subtitle")}
+            </div>
+          </div>
+        </div>
+        <div className="text-right">
+          <div className="text-sm font-bold text-neutral-800 dark:text-neutral-200">
+            {t(displayRate)}
+          </div>
+          <div className="text-[11px] text-neutral-500 dark:text-neutral-400">
+            {isChina
+              ? t("subscription.topUp.methodsChina")
+              : t("subscription.topUp.methodsIntl")}
           </div>
         </div>
       </div>
-      <div className="text-right">
-        <div className="text-sm font-bold text-neutral-800 dark:text-neutral-200">
-          {t(displayRate)}
-        </div>
-        <div className="text-[11px] text-neutral-500 dark:text-neutral-400">
-          {isChina
-            ? t("subscription.topUp.methodsChina")
-            : t("subscription.topUp.methodsIntl")}
+
+      {/* Credit amount NumberField + price + buy */}
+      <div className="mt-3 flex items-center gap-3">
+        <StepperInput
+          value={credits}
+          onChange={setCredits}
+          minValue={0}
+          step={500}
+          className="w-36 shrink-0"
+        />
+        {canBuy && (
+          <span className="shrink-0 text-xs font-medium tabular-nums text-neutral-500 dark:text-neutral-400">
+            {priceDisplay}
+          </span>
+        )}
+        <div className="ml-auto shrink-0">
+          {canBuy &&
+            (isChina ? (
+              <button
+                onClick={handleQRBuy}
+                className="rounded-lg bg-indigo-500 px-5 py-2 text-xs font-semibold text-white transition-colors hover:bg-indigo-600 dark:hover:bg-indigo-400"
+              >
+                {t("subscription.topUp.buy")}
+              </button>
+            ) : (
+              <PayPalCheckoutButton
+                className="w-40"
+                label={t("subscription.topUp.buy")}
+                onCreateOrder={handleCreateOrder}
+              />
+            ))}
         </div>
       </div>
     </motion.div>
@@ -902,39 +984,226 @@ function TopUpCard({
 
 function SandboxPackCard({
   displayRate,
+  isChina,
   delay,
+  minPlan,
+  userPlan,
+  onQRCheckout,
 }: {
   displayRate: string;
+  isChina: boolean;
   delay: number;
+  minPlan: string;
+  userPlan: string;
+  onQRCheckout?: (quantity: number) => void;
 }) {
   const { t } = useTranslation();
+  const [quantity, setQuantity] = useState(1);
+
+  const planPriority: Record<string, number> = {
+    free: 0,
+    standard: 1,
+    professional: 2,
+    ultra: 3,
+  };
+  const meetsMinPlan =
+    (planPriority[userPlan] ?? 0) >= (planPriority[minPlan] ?? 1);
+
+  const handleCreateOrder = useCallback(async () => {
+    const result = await paymentService.createSandboxAddonCheckout(
+      quantity,
+      "paypal",
+    );
+    return {
+      order_id: result.order_id,
+      provider_order_id: result.provider_order_id,
+    };
+  }, [quantity]);
+
+  const handleQRBuy = useCallback(() => {
+    if (onQRCheckout) {
+      onQRCheckout(quantity);
+    }
+  }, [quantity, onQRCheckout]);
 
   return (
     <motion.div
       initial={{ opacity: 0, y: 12 }}
       animate={{ opacity: 1, y: 0 }}
       transition={{ delay, duration: 0.35 }}
-      className="flex flex-col gap-3 rounded-lg border border-dashed border-neutral-300 bg-neutral-50/50 px-3 py-3 sm:flex-row sm:items-center sm:justify-between sm:px-4 dark:border-neutral-600 dark:bg-neutral-800/30"
+      className="rounded-lg border border-dashed border-neutral-300 bg-neutral-50/50 px-3 py-3 sm:px-4 dark:border-neutral-600 dark:bg-neutral-800/30"
     >
-      <div className="flex items-center gap-3">
-        <div className="flex h-9 w-9 items-center justify-center rounded-lg bg-gradient-to-br from-emerald-400 to-teal-500 shadow-sm">
-          <CommandLineIcon className="h-5 w-5 text-white" />
-        </div>
-        <div>
-          <div className="text-sm font-semibold text-neutral-800 dark:text-neutral-200">
-            {t("subscription.sandboxAddon.title")}
+      <div className="flex flex-col gap-3 sm:flex-row sm:items-center sm:justify-between">
+        <div className="flex items-center gap-3">
+          <div className="flex h-9 w-9 items-center justify-center rounded-lg bg-gradient-to-br from-emerald-400 to-teal-500 shadow-sm">
+            <CommandLineIcon className="h-5 w-5 text-white" />
           </div>
-          <div className="text-xs text-neutral-500 dark:text-neutral-400">
-            {t("subscription.sandboxAddon.subtitle")}
+          <div>
+            <div className="text-sm font-semibold text-neutral-800 dark:text-neutral-200">
+              {t("subscription.sandboxAddon.title")}
+            </div>
+            <div className="text-xs text-neutral-500 dark:text-neutral-400">
+              {t("subscription.sandboxAddon.subtitle")}
+            </div>
+          </div>
+        </div>
+        <div className="text-right">
+          <div className="text-sm font-bold text-neutral-800 dark:text-neutral-200">
+            {t(displayRate)}
+          </div>
+          <div className="text-[11px] text-neutral-500 dark:text-neutral-400">
+            {t("subscription.sandboxAddon.requirement")}
           </div>
         </div>
       </div>
-      <div className="text-right">
-        <div className="text-sm font-bold text-neutral-800 dark:text-neutral-200">
-          {t(displayRate)}
+
+      {/* Quantity selector + buy */}
+      {meetsMinPlan ? (
+        <div className="mt-3 flex items-center gap-3">
+          <StepperInput
+            value={quantity}
+            onChange={setQuantity}
+            minValue={1}
+            maxValue={5}
+            step={1}
+            className="w-36 shrink-0"
+          />
+
+          <div className="ml-auto shrink-0">
+            {isChina ? (
+              <button
+                onClick={handleQRBuy}
+                className="rounded-lg bg-indigo-500 px-5 py-2 text-xs font-semibold text-white transition-colors hover:bg-indigo-600 dark:hover:bg-indigo-400"
+              >
+                {t("subscription.sandboxAddon.buy")}
+              </button>
+            ) : (
+              <PayPalCheckoutButton
+                className="w-40"
+                label={t("subscription.sandboxAddon.buy")}
+                onCreateOrder={handleCreateOrder}
+              />
+            )}
+          </div>
         </div>
-        <div className="text-[11px] text-neutral-500 dark:text-neutral-400">
-          {t("subscription.sandboxAddon.requirement")}
+      ) : (
+        <div className="mt-3">
+          <div className="rounded-lg bg-neutral-100/60 px-3 py-2 text-center text-xs text-neutral-500 dark:bg-white/[0.04] dark:text-neutral-400">
+            {t("subscription.sandboxAddon.requiresPlan")}
+          </div>
+        </div>
+      )}
+    </motion.div>
+  );
+}
+
+function FullAccessCard({
+  displayPrice,
+  isChina,
+  delay,
+  expiresAt,
+  onQRCheckout,
+}: {
+  displayPrice: string;
+  isChina: boolean;
+  delay: number;
+  expiresAt?: string | null;
+  onQRCheckout?: () => void;
+}) {
+  const { t } = useTranslation();
+
+  const handleCreateOrder = useCallback(async () => {
+    const result = await paymentService.createFullAccessCheckout("paypal");
+    return {
+      order_id: result.order_id,
+      provider_order_id: result.provider_order_id,
+    };
+  }, []);
+
+  const daysRemaining = useMemo(() => {
+    if (!expiresAt) return null;
+    const diff = new Date(expiresAt).getTime() - Date.now();
+    if (diff <= 0) return null;
+    return Math.ceil(diff / (1000 * 60 * 60 * 24));
+  }, [expiresAt]);
+
+  const isActive = daysRemaining !== null && daysRemaining > 0;
+
+  return (
+    <motion.div
+      initial={{ opacity: 0, y: 12 }}
+      animate={{ opacity: 1, y: 0 }}
+      transition={{ delay, duration: 0.35 }}
+      className={cn(
+        "rounded-lg border border-dashed px-3 py-3 sm:px-4",
+        isActive
+          ? "border-green-300 bg-green-50/40 dark:border-green-500/30 dark:bg-green-950/20"
+          : "border-indigo-300 bg-indigo-50/40 dark:border-indigo-500/30 dark:bg-indigo-950/20",
+      )}
+    >
+      <div className="flex flex-col gap-3 sm:flex-row sm:items-center sm:justify-between">
+        <div className="flex items-center gap-3">
+          <div
+            className={cn(
+              "flex h-9 w-9 items-center justify-center rounded-lg shadow-sm",
+              isActive
+                ? "bg-gradient-to-br from-green-500 to-emerald-500"
+                : "bg-gradient-to-br from-indigo-500 to-violet-500",
+            )}
+          >
+            <BoltIcon className="h-5 w-5 text-white" />
+          </div>
+          <div>
+            <div className="flex items-center gap-2 text-sm font-semibold text-neutral-800 dark:text-neutral-200">
+              {t("subscription.fullAccess.title")}
+              {isActive && (
+                <span className="rounded-full bg-green-100 px-2 py-0.5 text-[11px] font-medium text-green-700 dark:bg-green-900/40 dark:text-green-400">
+                  {t("subscription.fullAccess.active")}
+                </span>
+              )}
+            </div>
+            <div className="text-xs text-neutral-500 dark:text-neutral-400">
+              {isActive
+                ? t("subscription.fullAccess.remaining", {
+                    days: daysRemaining,
+                  })
+                : t("subscription.fullAccess.subtitle")}
+            </div>
+          </div>
+        </div>
+        <div className="flex items-center gap-3">
+          {!isActive && (
+            <div className="text-right">
+              <div className="text-sm font-bold text-indigo-600 dark:text-indigo-400">
+                {displayPrice}
+              </div>
+              <div className="text-[11px] text-neutral-500 dark:text-neutral-400">
+                {t("subscription.fullAccess.duration")}
+              </div>
+            </div>
+          )}
+          <div className="shrink-0">
+            {isChina ? (
+              <button
+                onClick={onQRCheckout}
+                className="rounded-lg bg-indigo-500 px-5 py-2 text-xs font-semibold text-white transition-colors hover:bg-indigo-600 dark:hover:bg-indigo-400"
+              >
+                {isActive
+                  ? t("subscription.fullAccess.renew")
+                  : t("subscription.fullAccess.buy")}
+              </button>
+            ) : (
+              <PayPalCheckoutButton
+                className="w-40"
+                label={
+                  isActive
+                    ? t("subscription.fullAccess.renew")
+                    : t("subscription.fullAccess.buy")
+                }
+                onCreateOrder={handleCreateOrder}
+              />
+            )}
+          </div>
         </div>
       </div>
     </motion.div>
@@ -947,6 +1216,7 @@ export function PointsInfoModal({ isOpen, onClose }: PointsInfoModalProps) {
   const { t } = useTranslation();
   const subInfo = useSubscriptionInfo();
   const queryClient = useQueryClient();
+  const celebrate = useCelebration();
   const { data: catalog, isLoading: catalogLoading } = usePlanCatalog();
 
   const roleName = subInfo?.roleName;
@@ -1012,7 +1282,83 @@ export function PointsInfoModal({ isOpen, onClose }: PointsInfoModalProps) {
 
   const handlePaymentSuccess = useCallback(() => {
     queryClient.invalidateQueries({ queryKey: ["subscription"] });
-  }, [queryClient]);
+    queryClient.invalidateQueries({ queryKey: ["subscription-usage"] });
+    celebrate();
+  }, [queryClient, celebrate]);
+
+  const handleTopUpQR = useCallback(
+    async (credits: number) => {
+      if (checkoutLoading) return;
+      setCheckoutLoading(true);
+      try {
+        const result = await paymentService.createTopUpCheckout(
+          credits,
+          "alipaycn",
+        );
+        setQrModal({
+          open: true,
+          orderId: result.order_id,
+          qrCodeUrl: result.qr_code_url,
+          amount: result.amount,
+          currency: result.currency,
+          planName: t("subscription.topUp.credits", {
+            amount: credits.toLocaleString(),
+          }),
+        });
+      } catch {
+        // TODO: toast error
+      } finally {
+        setCheckoutLoading(false);
+      }
+    },
+    [checkoutLoading, t],
+  );
+
+  const handleSandboxAddonQR = useCallback(
+    async (quantity: number) => {
+      if (checkoutLoading) return;
+      setCheckoutLoading(true);
+      try {
+        const result = await paymentService.createSandboxAddonCheckout(
+          quantity,
+          "alipaycn",
+        );
+        setQrModal({
+          open: true,
+          orderId: result.order_id,
+          qrCodeUrl: result.qr_code_url,
+          amount: result.amount,
+          currency: result.currency,
+          planName: t("subscription.sandboxAddon.title"),
+        });
+      } catch {
+        // TODO: toast error
+      } finally {
+        setCheckoutLoading(false);
+      }
+    },
+    [checkoutLoading, t],
+  );
+
+  const handleFullAccessQR = useCallback(async () => {
+    if (checkoutLoading) return;
+    setCheckoutLoading(true);
+    try {
+      const result = await paymentService.createFullAccessCheckout("alipaycn");
+      setQrModal({
+        open: true,
+        orderId: result.order_id,
+        qrCodeUrl: result.qr_code_url,
+        amount: result.amount,
+        currency: result.currency,
+        planName: t("subscription.fullAccess.title"),
+      });
+    } catch {
+      // TODO: toast error
+    } finally {
+      setCheckoutLoading(false);
+    }
+  }, [checkoutLoading, t]);
 
   return (
     <>
@@ -1085,6 +1431,12 @@ export function PointsInfoModal({ isOpen, onClose }: PointsInfoModalProps) {
                               displayRate={catalog.topup_rates[0].display_rate}
                               isChina={isChina}
                               delay={0.3}
+                              creditsPerUnit={
+                                catalog.topup_rates[0].credits_per_unit
+                              }
+                              unitAmount={catalog.topup_rates[0].unit_amount}
+                              currency={catalog.topup_rates[0].currency}
+                              onQRCheckout={handleTopUpQR}
                             />
                           )}
                           {catalog?.sandbox_addon_rates[0] && (
@@ -1092,7 +1444,25 @@ export function PointsInfoModal({ isOpen, onClose }: PointsInfoModalProps) {
                               displayRate={
                                 catalog.sandbox_addon_rates[0].display_rate
                               }
+                              isChina={isChina}
                               delay={0.35}
+                              minPlan={catalog.sandbox_addon_rates[0].min_plan}
+                              userPlan={roleName ?? "free"}
+                              onQRCheckout={handleSandboxAddonQR}
+                            />
+                          )}
+                          {catalog?.full_access_pass_rates[0] && (
+                            <FullAccessCard
+                              displayPrice={
+                                catalog.full_access_pass_rates[0].display_price
+                              }
+                              isChina={isChina}
+                              delay={0.4}
+                              expiresAt={
+                                subInfo?.subQuery.data?.subscription
+                                  ?.full_model_access_expires_at
+                              }
+                              onQRCheckout={handleFullAccessQR}
                             />
                           )}
                           {isChina && (
@@ -1111,18 +1481,6 @@ export function PointsInfoModal({ isOpen, onClose }: PointsInfoModalProps) {
                   </TabsContent>
                 </TabsContents>
               </Tabs>
-
-              {/* Beta notice */}
-              <motion.div
-                initial={{ opacity: 0, y: 8 }}
-                animate={{ opacity: 1, y: 0 }}
-                transition={{ delay: 0.4 }}
-                className="rounded-lg border border-amber-200/80 bg-gradient-to-r from-amber-50 to-orange-50 px-4 py-3 dark:border-amber-500/30 dark:from-amber-500/10 dark:to-orange-500/10"
-              >
-                <p className="text-center text-xs text-amber-700 dark:text-amber-300">
-                  {t("subscription.betaNotice")}
-                </p>
-              </motion.div>
 
               {/* Survey link */}
               <motion.a

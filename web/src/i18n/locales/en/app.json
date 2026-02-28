@@ -356,7 +356,7 @@
     "tiers": {
       "ultra": {
         "name": "Xyzen Ultra",
-        "description": "Most powerful models for complex tasks"
+        "description": "Flagship models for complex tasks"
       },
       "pro": {
         "name": "Xyzen Pro",
@@ -613,5 +613,11 @@
     "answered": "Answered",
     "typeAnswer": "Type your answer...",
     "other": "Other"
+  },
+  "tabContextMenu": {
+    "close": "Close",
+    "closeOthers": "Close Others",
+    "closeToLeft": "Close to the Left",
+    "closeToRight": "Close to the Right"
   }
 }

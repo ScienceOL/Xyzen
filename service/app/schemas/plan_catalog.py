@@ -57,6 +57,14 @@ class SandboxAddonRateResponse(BaseModel):
     min_plan: str
 
 
+class FullAccessPassRateResponse(BaseModel):
+    currency: str
+    amount: int
+    display_price: str
+    duration_days: int
+    display_rate: str
+
+
 class PlanCatalogResponse(BaseModel):
     """Full catalog response for a deployment region."""
 
@@ -64,4 +72,5 @@ class PlanCatalogResponse(BaseModel):
     plans: list[PlanResponse]
     topup_rates: list[TopUpRateResponse]
     sandbox_addon_rates: list[SandboxAddonRateResponse]
+    full_access_pass_rates: list[FullAccessPassRateResponse] = Field(default_factory=list)
     paypal_client_id: str = Field(default="", description="PayPal client ID for JS SDK initialization")

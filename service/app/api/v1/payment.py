@@ -25,6 +25,20 @@ class CheckoutRequest(BaseModel):
     payment_method: str = Field(default="paypal", description="Payment method: paypal, alipaycn, wechatpay")
 
 
+class TopUpCheckoutRequest(BaseModel):
+    credits: int = Field(description="Number of credits to purchase (must be a positive multiple of credits_per_unit)")
+    payment_method: str = Field(default="paypal", description="Payment method: paypal, alipaycn, wechatpay")
+
+
+class SandboxAddonCheckoutRequest(BaseModel):
+    quantity: int = Field(description="Number of extra sandbox slots to purchase", gt=0)
+    payment_method: str = Field(default="paypal", description="Payment method: paypal, alipaycn, wechatpay")
+
+
+class FullAccessCheckoutRequest(BaseModel):
+    payment_method: str = Field(default="paypal", description="Payment method: paypal, alipaycn, wechatpay")
+
+
 class CheckoutResponse(BaseModel):
     order_id: str
     provider_order_id: str = ""
@@ -81,6 +95,108 @@ async def create_checkout(
         raise HTTPException(
             status_code=status.HTTP_500_INTERNAL_SERVER_ERROR,
             detail="Failed to create checkout",
+        )
+
+
+@router.post("/checkout/topup", response_model=CheckoutResponse)
+async def create_topup_checkout(
+    body: TopUpCheckoutRequest,
+    current_user: str = Depends(get_current_user),
+    db: AsyncSession = Depends(get_db_session),
+) -> CheckoutResponse:
+    """Create a payment checkout to purchase top-up credits."""
+    logger.info(
+        "User %s creating top-up checkout: credits=%s, method=%s", current_user, body.credits, body.payment_method
+    )
+
+    try:
+        service = PaymentService(db)
+        result = await service.create_topup_checkout(
+            user_id=current_user,
+            credits=body.credits,
+            payment_method=body.payment_method,
+        )
+        await db.commit()
+
+        return CheckoutResponse(**result)
+
+    except HTTPException:
+        await db.rollback()
+        raise
+    except Exception as e:
+        await db.rollback()
+        logger.error("Top-up checkout failed for user %s: %s", current_user, e, exc_info=True)
+        raise HTTPException(
+            status_code=status.HTTP_500_INTERNAL_SERVER_ERROR,
+            detail="Failed to create top-up checkout",
+        )
+
+
+@router.post("/checkout/sandbox-addon", response_model=CheckoutResponse)
+async def create_sandbox_addon_checkout(
+    body: SandboxAddonCheckoutRequest,
+    current_user: str = Depends(get_current_user),
+    db: AsyncSession = Depends(get_db_session),
+) -> CheckoutResponse:
+    """Create a payment checkout to purchase extra sandbox slots."""
+    logger.info(
+        "User %s creating sandbox add-on checkout: quantity=%s, method=%s",
+        current_user,
+        body.quantity,
+        body.payment_method,
+    )
+
+    try:
+        service = PaymentService(db)
+        result = await service.create_sandbox_addon_checkout(
+            user_id=current_user,
+            quantity=body.quantity,
+            payment_method=body.payment_method,
+        )
+        await db.commit()
+
+        return CheckoutResponse(**result)
+
+    except HTTPException:
+        await db.rollback()
+        raise
+    except Exception as e:
+        await db.rollback()
+        logger.error("Sandbox add-on checkout failed for user %s: %s", current_user, e, exc_info=True)
+        raise HTTPException(
+            status_code=status.HTTP_500_INTERNAL_SERVER_ERROR,
+            detail="Failed to create sandbox add-on checkout",
+        )
+
+
+@router.post("/checkout/full-access", response_model=CheckoutResponse)
+async def create_full_access_checkout(
+    body: FullAccessCheckoutRequest,
+    current_user: str = Depends(get_current_user),
+    db: AsyncSession = Depends(get_db_session),
+) -> CheckoutResponse:
+    """Create a payment checkout for a full model-access pass (30 days all models)."""
+    logger.info("User %s creating full-access checkout: method=%s", current_user, body.payment_method)
+
+    try:
+        service = PaymentService(db)
+        result = await service.create_full_access_checkout(
+            user_id=current_user,
+            payment_method=body.payment_method,
+        )
+        await db.commit()
+
+        return CheckoutResponse(**result)
+
+    except HTTPException:
+        await db.rollback()
+        raise
+    except Exception as e:
+        await db.rollback()
+        logger.error("Full-access checkout failed for user %s: %s", current_user, e, exc_info=True)
+        raise HTTPException(
+            status_code=status.HTTP_500_INTERNAL_SERVER_ERROR,
+            detail="Failed to create full-access checkout",
         )
 
 

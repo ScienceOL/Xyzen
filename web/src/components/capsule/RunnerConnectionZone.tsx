@@ -7,11 +7,17 @@ import {
 import { useXyzen } from "@/store";
 import type { RunnerRead } from "@/service/runnerService";
 import {
+  Tooltip,
+  TooltipContent,
+  TooltipTrigger,
+} from "@/components/ui/tooltip";
+import {
   CheckIcon,
   ClipboardDocumentIcon,
   CommandLineIcon,
   EllipsisHorizontalIcon,
   PlusIcon,
+  SparklesIcon,
 } from "@heroicons/react/24/outline";
 import { useCallback, useEffect, useMemo, useState } from "react";
 import { useTranslation } from "react-i18next";
@@ -387,6 +393,52 @@ function PanelLayout({
    Install Guide — SDK download with platform detection
    ═══════════════════════════════════════════════════════════════════════════ */
 
+function buildInstallPrompt(platform: PlatformInfo): string {
+  return `Please help me download and install Xyzen Runner on my machine.
+
+Run the following command in the terminal:
+
+${platform.curlCmd}
+
+${platform.key.startsWith("darwin-") ? `If macOS blocks the binary, guide me to System Settings → Privacy & Security → "Allow Anyway".` : ""}
+After installation, verify it works by running: xyzen --version`.trim();
+}
+
+function PromptCopyButton({ platform }: { platform: PlatformInfo }) {
+  const { t } = useTranslation();
+  const [copied, setCopied] = useState(false);
+
+  const handleCopy = useCallback(async () => {
+    const prompt = buildInstallPrompt(platform);
+    await navigator.clipboard.writeText(prompt);
+    setCopied(true);
+    setTimeout(() => setCopied(false), 2000);
+  }, [platform]);
+
+  return (
+    <Tooltip>
+      <TooltipTrigger asChild>
+        <button
+          onClick={handleCopy}
+          className="flex items-center gap-1.5 border border-[#30363d] bg-[#161b22] px-2.5 py-1.5 font-mono text-[11px] text-[#bc8cff] transition-colors hover:border-[#bc8cff] hover:text-[#d2a8ff]"
+        >
+          {copied ? (
+            <CheckIcon className="h-3 w-3 text-[#3fb950]" />
+          ) : (
+            <SparklesIcon className="h-3 w-3" />
+          )}
+          {copied
+            ? t("capsule.sandbox.runner.copied")
+            : t("capsule.sandbox.runner.aiPrompt")}
+        </button>
+      </TooltipTrigger>
+      <TooltipContent side="top">
+        {t("capsule.sandbox.runner.aiPromptHint")}
+      </TooltipContent>
+    </Tooltip>
+  );
+}
+
 function InstallGuide({ onConnect }: { onConnect: () => void }) {
   const { t } = useTranslation();
   const detected = useMemo(detectPlatform, []);
@@ -481,6 +533,9 @@ function InstallGuide({ onConnect }: { onConnect: () => void }) {
             </p>
           </div>
         )}
+
+        {/* AI prompt copy button */}
+        <PromptCopyButton platform={selectedPlatform} />
       </div>
 
       {/* Divider */}

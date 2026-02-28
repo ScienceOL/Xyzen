@@ -27,6 +27,8 @@ export interface UserSubscriptionRead {
   role_id: string;
   expires_at: string | null;
   last_credits_claimed_at: string | null;
+  purchased_sandbox_slots: number;
+  full_model_access_expires_at: string | null;
   created_at: string;
   updated_at: string;
 }
@@ -35,6 +37,7 @@ export interface SubscriptionResponse {
   subscription: UserSubscriptionRead;
   role: SubscriptionRoleRead;
   can_claim_credits: boolean;
+  effective_max_model_tier: string;
 }
 
 export interface ClaimCreditsResponse {
@@ -139,11 +142,20 @@ export interface SandboxAddonRateResponse {
   min_plan: string;
 }
 
+export interface FullAccessPassRateResponse {
+  currency: string;
+  amount: number;
+  display_price: string;
+  duration_days: number;
+  display_rate: string;
+}
+
 export interface PlanCatalogResponse {
   region: string;
   plans: PlanResponse[];
   topup_rates: TopUpRateResponse[];
   sandbox_addon_rates: SandboxAddonRateResponse[];
+  full_access_pass_rates: FullAccessPassRateResponse[];
   paypal_client_id: string;
 }
 

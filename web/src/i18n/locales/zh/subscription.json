@@ -24,7 +24,8 @@
     "scheduledTask": "{{count}} 定时任务",
     "terminal": "{{count}} 终端",
     "scheduledTaskNone": "—",
-    "firstMonth": "首月 {{price}}"
+    "firstMonth": "首月 {{price}}",
+    "bestValue": "最划算"
   },
 
   "feature": {
@@ -51,7 +52,9 @@
     "rateIntl": "500 积分 = $1",
     "rateChina": "100 积分 = ¥1",
     "methodsIntl": "PayPal / 信用卡",
-    "methodsChina": "支付宝 / 微信"
+    "methodsChina": "支付宝 / 微信",
+    "buy": "购买积分",
+    "credits": "{{amount}} 积分"
   },
 
   "sandboxAddon": {
@@ -59,7 +62,23 @@
     "subtitle": "额外沙盒实例，独立计费",
     "rateIntl": "+1 沙盒 / 月",
     "rateChina": "+1 沙盒 / 月",
-    "requirement": "需标准版及以上"
+    "requirement": "需标准版及以上",
+    "buy": "购买沙盒",
+    "slots": "{{count}} 个",
+    "slots_plural": "{{count}} 个",
+    "requiresPlan": "需标准版+"
+  },
+
+  "fullAccess": {
+    "title": "模型开放订阅包",
+    "subtitle": "解锁所有模型 30 天",
+    "rateIntl": "$6.80 / 30 天",
+    "rateChina": "¥48 / 30 天",
+    "buy": "立即购买",
+    "renew": "续期",
+    "duration": "30 天全部模型",
+    "active": "生效中",
+    "remaining": "剩余 {{days}} 天"
   },
 
   "sub": {

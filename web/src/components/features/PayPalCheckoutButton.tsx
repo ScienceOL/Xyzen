@@ -10,6 +10,7 @@ import type { ReactNode } from "react";
 import { useCallback, useRef, useState } from "react";
 import { useTranslation } from "react-i18next";
 import { useQueryClient } from "@tanstack/react-query";
+import { useCelebration } from "@/hooks/useCelebration";
 
 // ---------- Provider (mount once around plan cards) ----------
 
@@ -49,33 +50,40 @@ export function PayPalProvider({ clientId, children }: PayPalProviderProps) {
 // ---------- Checkout button (per plan card) ----------
 
 interface PayPalCheckoutButtonProps {
-  planKey: string;
+  label?: string;
   disabled?: boolean;
+  className?: string;
+  onCreateOrder: () => Promise<{ order_id: string; provider_order_id: string }>;
 }
 
 export function PayPalCheckoutButton({
-  planKey,
+  label,
   disabled,
+  className,
+  onCreateOrder,
 }: PayPalCheckoutButtonProps) {
   const { t } = useTranslation();
   const queryClient = useQueryClient();
+  const celebrate = useCelebration();
   const [expanded, setExpanded] = useState(false);
   const [error, setError] = useState<string | null>(null);
   const orderIdRef = useRef<string>("");
 
   const createOrder = useCallback(async () => {
     setError(null);
-    const result = await paymentService.createCheckout(planKey, "paypal");
+    const result = await onCreateOrder();
     orderIdRef.current = result.order_id;
     return result.provider_order_id;
-  }, [planKey]);
+  }, [onCreateOrder]);
 
   const onApprove = useCallback(async () => {
     if (!orderIdRef.current) return;
     await paymentService.captureOrder(orderIdRef.current);
     queryClient.invalidateQueries({ queryKey: ["subscription"] });
+    queryClient.invalidateQueries({ queryKey: ["subscription-usage"] });
     setExpanded(false);
-  }, [queryClient]);
+    celebrate();
+  }, [queryClient, celebrate]);
 
   const onError = useCallback(() => {
     setError(t("subscription.payment.failed"));
@@ -92,36 +100,41 @@ export function PayPalCheckoutButton({
   } as const;
 
   return (
-    <div className="mt-auto w-full">
-      <button
-        disabled={disabled}
-        onClick={() => setExpanded((v) => !v)}
-        className={cn(
-          "w-full rounded-lg py-2 text-xs font-semibold transition-colors",
-          "bg-indigo-500 text-white hover:bg-indigo-600 dark:hover:bg-indigo-400",
-          disabled && "cursor-not-allowed opacity-50",
-        )}
-      >
-        {t("subscription.subscribe")}
-      </button>
-
-      <AnimatePresence>
-        {expanded && (
+    <div className={cn("min-w-0", className)}>
+      <AnimatePresence mode="wait">
+        {!expanded ? (
+          <motion.button
+            key="trigger"
+            initial={{ opacity: 0, scale: 0.95 }}
+            animate={{ opacity: 1, scale: 1 }}
+            exit={{ opacity: 0, scale: 0.95 }}
+            transition={{ duration: 0.2, ease: "easeOut" }}
+            disabled={disabled}
+            onClick={() => setExpanded(true)}
+            className={cn(
+              "w-full rounded-lg py-2 text-xs font-semibold transition-colors",
+              "bg-indigo-500 text-white hover:bg-indigo-600 dark:hover:bg-indigo-400",
+              disabled && "cursor-not-allowed opacity-50",
+            )}
+          >
+            {label ?? t("subscription.subscribe")}
+          </motion.button>
+        ) : (
           <motion.div
-            initial={{ height: 0, opacity: 0 }}
-            animate={{ height: "auto", opacity: 1 }}
-            exit={{ height: 0, opacity: 0 }}
-            transition={{ duration: 0.25, ease: "easeInOut" }}
+            key="paypal"
+            initial={{ opacity: 0, height: 0 }}
+            animate={{ opacity: 1, height: "auto" }}
+            exit={{ opacity: 0, height: 0 }}
+            transition={{ duration: 0.3, ease: [0.25, 0.1, 0.25, 1] }}
             className="overflow-hidden"
           >
-            <div className="pt-2">
-              {/* PayPal — popup supports card payments too */}
+            <div className="pt-1">
               <div className="overflow-hidden rounded-[5px] [&_.paypal-buttons]:!block">
                 <PayPalButtons
                   {...sharedProps}
                   fundingSource={FUNDING.PAYPAL}
                   style={{
-                    layout: "horizontal",
+                    layout: "vertical",
                     color: "gold",
                     shape: "rect",
                     label: "pay",
@@ -132,7 +145,7 @@ export function PayPalCheckoutButton({
               </div>
 
               {error && (
-                <p className="text-center text-xs text-red-500">{error}</p>
+                <p className="mt-1 text-center text-xs text-red-500">{error}</p>
               )}
             </div>
           </motion.div>

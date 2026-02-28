@@ -129,6 +129,7 @@
     "@xyflow/react": "^12.10.0",
     "@zumer/snapdom": "^2.0.0",
     "ai": "5.0.28",
+    "canvas-confetti": "^1.9.4",
     "class-variance-authority": "^0.7.1",
     "clsx": "^2.1.1",
     "cmdk": "^1.1.1",
@@ -161,6 +162,7 @@
     "platejs": "^52.0.15",
     "qrcode.react": "^4.2.0",
     "radix-ui": "^1.4.3",
+    "react-aria-components": "^1.15.1",
     "react-day-picker": "^9.13.0",
     "react-dnd": "^16.0.1",
     "react-dnd-html5-backend": "^16.0.1",
@@ -196,6 +198,7 @@
   },
   "devDependencies": {
     "@eslint/js": "^9.30.1",
+    "@types/canvas-confetti": "^1.9.0",
     "@types/jsdom": "^27",
     "@types/lodash": "^4",
     "@types/node": "^24.10.0",

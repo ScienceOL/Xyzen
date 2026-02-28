@@ -68,6 +68,8 @@
       "generateToken": "Generate Token",
       "connectRunner": "Connect Runner",
       "reconnectHint": "Run xyzen connect on this machine to reconnect.",
+      "aiPrompt": "AI Prompt",
+      "aiPromptHint": "Copy a prompt for AI assistants to install the SDK",
       "online": "Online",
       "offline": "Offline",
       "disabled": "Disabled",

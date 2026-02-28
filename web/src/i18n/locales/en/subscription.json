@@ -24,7 +24,8 @@
     "scheduledTask": "{{count}} task",
     "terminal": "{{count}} terminal",
     "scheduledTaskNone": "—",
-    "firstMonth": "First month {{price}}"
+    "firstMonth": "First month {{price}}",
+    "bestValue": "Best Value"
   },
 
   "feature": {
@@ -51,7 +52,9 @@
     "rateIntl": "500 credits = $1",
     "rateChina": "100 credits = ¥1",
     "methodsIntl": "PayPal / Credit Cards",
-    "methodsChina": "Alipay / WeChat"
+    "methodsChina": "Alipay / WeChat",
+    "buy": "Buy Credits",
+    "credits": "{{amount}} credits"
   },
 
   "sandboxAddon": {
@@ -59,7 +62,23 @@
     "subtitle": "Extra sandbox instances",
     "rateIntl": "+1 sandbox / mo",
     "rateChina": "+1 sandbox / mo",
-    "requirement": "Standard plan or above"
+    "requirement": "Standard plan or above",
+    "buy": "Buy Sandbox",
+    "slots": "{{count}} slot",
+    "slots_plural": "{{count}} slots",
+    "requiresPlan": "Requires Standard+"
+  },
+
+  "fullAccess": {
+    "title": "Model Open Pack",
+    "subtitle": "All models unlocked for 30 days",
+    "rateIntl": "$6.80 / 30 days",
+    "rateChina": "¥48 / 30 days",
+    "buy": "Buy Now",
+    "renew": "Renew",
+    "duration": "30 days all models",
+    "active": "Active",
+    "remaining": "{{days}} days left"
   },
 
   "sub": {

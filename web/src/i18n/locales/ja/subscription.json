@@ -24,7 +24,8 @@
     "scheduledTask": "{{count}} タスク",
     "terminal": "{{count}} ターミナル",
     "scheduledTaskNone": "—",
-    "firstMonth": "初月 {{price}}"
+    "firstMonth": "初月 {{price}}",
+    "bestValue": "最もお得"
   },
 
   "feature": {
@@ -51,7 +52,9 @@
     "rateIntl": "500 クレジット = $1",
     "rateChina": "100 クレジット = ¥1",
     "methodsIntl": "PayPal / クレジットカード",
-    "methodsChina": "Alipay / WeChat Pay"
+    "methodsChina": "Alipay / WeChat Pay",
+    "buy": "クレジット購入",
+    "credits": "{{amount}} クレジット"
   },
 
   "sandboxAddon": {
@@ -59,7 +62,23 @@
     "subtitle": "追加サンドボックスインスタンス",
     "rateIntl": "+1 サンドボックス / 月",
     "rateChina": "+1 サンドボックス / 月",
-    "requirement": "スタンダードプラン以上"
+    "requirement": "スタンダードプラン以上",
+    "buy": "サンドボックス購入",
+    "slots": "{{count}} スロット",
+    "slots_plural": "{{count}} スロット",
+    "requiresPlan": "スタンダード以上必要"
+  },
+
+  "fullAccess": {
+    "title": "モデル開放パック",
+    "subtitle": "全モデル30日間アンロック",
+    "rateIntl": "$6.80 / 30日",
+    "rateChina": "¥48 / 30日",
+    "buy": "今すぐ購入",
+    "renew": "更新",
+    "duration": "30日間全モデル",
+    "active": "有効中",
+    "remaining": "残り {{days}} 日"
   },
 
   "sub": {
