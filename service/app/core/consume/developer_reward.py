@@ -36,8 +36,14 @@ class DeveloperRewardService:
         topic_id: UUID | None = None,
         message_id: UUID | None = None,
         total_consumed: int,
+        fork_mode: str | None = None,
     ) -> DeveloperEarning | None:
         """Calculate and record developer reward for a settlement event.
+
+        Args:
+            fork_mode: fork_mode inferred at fork time from the agent's config fields.
+                       Falls back to the listing's current fork_mode when not provided
+                       (backward-compat for old forks / non-fork scenarios).
 
         Returns the DeveloperEarning record if reward was granted, None otherwise.
         """
@@ -49,7 +55,7 @@ class DeveloperRewardService:
         if total_consumed <= 0:
             return None
 
-        # Look up marketplace listing to get current fork_mode
+        # Look up marketplace listing for publish-status check
         listing = await self.marketplace_repo.get_by_id(marketplace_id)
         if not listing or not listing.is_published:
             logger.debug("Skipping reward: listing %s not found or unpublished", marketplace_id)
@@ -59,8 +65,14 @@ class DeveloperRewardService:
         if listing.user_id is None:
             return None
 
-        fork_mode = listing.fork_mode.value if hasattr(listing.fork_mode, "value") else str(listing.fork_mode)
-        rate = REWARD_RATES.get(fork_mode, 0.0)
+        # fork_mode: prefer the snapshot passed in; fall back to listing's current value
+        effective_fork_mode = fork_mode
+        if not effective_fork_mode:
+            effective_fork_mode = (
+                listing.fork_mode.value if hasattr(listing.fork_mode, "value") else str(listing.fork_mode)
+            )
+
+        rate = REWARD_RATES.get(effective_fork_mode, 0.0)
         if rate <= 0:
             return None
 
@@ -76,7 +88,7 @@ class DeveloperRewardService:
             session_id=session_id,
             topic_id=topic_id,
             message_id=message_id,
-            fork_mode=fork_mode,
+            fork_mode=effective_fork_mode,
             rate=rate,
             amount=reward_amount,
             total_consumed=total_consumed,
@@ -91,7 +103,7 @@ class DeveloperRewardService:
             "Developer reward: developer=%s marketplace=%s fork_mode=%s rate=%.2f consumed=%d reward=%d",
             developer_user_id,
             marketplace_id,
-            fork_mode,
+            effective_fork_mode,
             rate,
             total_consumed,
             reward_amount,

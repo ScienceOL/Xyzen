@@ -157,7 +157,7 @@ async def _generate_image_with_langchain(
     response = await llm.ainvoke([message])
 
     # Record LLM token usage for image generation
-    from app.core.consume.tracking import record_response_usage_from_context
+    from app.core.consume.consume_service import record_response_usage_from_context
 
     await record_response_usage_from_context(
         response, source="tool:generate_image", model_name=image_cfg.Model, provider=image_cfg.Provider
@@ -594,7 +594,7 @@ async def _analyze_image_with_vision_model(image_bytes: bytes, content_type: str
     response = await llm.ainvoke([message])
 
     # Record LLM token usage for image analysis
-    from app.core.consume.tracking import record_response_usage_from_context
+    from app.core.consume.consume_service import record_response_usage_from_context
 
     await record_response_usage_from_context(
         response, source="tool:read_image", model_name=image_cfg.VisionModel, provider=image_cfg.VisionProvider

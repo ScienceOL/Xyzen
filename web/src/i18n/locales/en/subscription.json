@@ -93,12 +93,11 @@
 
   "creatorTab": {
     "walletTitle": "Developer Wallet",
-    "available": "Available",
-    "totalEarned": "Total Earned",
-    "totalWithdrawn": "Withdrawn",
-    "withdraw": "Withdraw",
-    "withdrawing": "Withdrawing...",
-    "withdrawSuccess": "Withdrawn {{amount}} credits",
+    "pending": "Pending",
+    "totalEarned": "Confirmed",
+    "confirm": "Confirm",
+    "confirming": "Confirming...",
+    "withdrawSuccess": "Confirmed {{amount}} credits",
     "insufficientBalance": "Insufficient balance",
     "rewardRates": "Reward Rates",
     "editableRate": "Editable fork: {{rate}}%",

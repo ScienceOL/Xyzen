@@ -113,9 +113,12 @@ def process_chat_message(
     auth_provider: str,
     message_text: str,
     context: dict[str, Any] | None,
-    pre_deducted_amount: float,
     access_token: str | None = None,
     stream_id: str | None = None,
+    agent_id_for_attribution: str | None = None,
+    marketplace_id: str | None = None,
+    developer_user_id: str | None = None,
+    developer_fork_mode: str | None = None,
 ) -> None:
     """
     Celery task wrapper to run the async chat processing loop.
@@ -132,9 +135,12 @@ def process_chat_message(
                 auth_provider,
                 message_text,
                 context,
-                pre_deducted_amount,
                 access_token,
                 stream_id,
+                agent_id_for_attribution,
+                marketplace_id,
+                developer_user_id,
+                developer_fork_mode,
             )
         )
     finally:
@@ -168,9 +174,12 @@ async def _process_chat_message_async(
     auth_provider: str,
     message_text: str,
     context: dict[str, Any] | None,
-    pre_deducted_amount: float,
     access_token: str | None,
     stream_id: str | None = None,
+    agent_id_for_attribution: str | None = None,
+    marketplace_id: str | None = None,
+    developer_user_id: str | None = None,
+    developer_fork_mode: str | None = None,
 ) -> None:
     session_id = UUID(session_id_str)
     topic_id = UUID(topic_id_str)
@@ -212,7 +221,13 @@ async def _process_chat_message_async(
     set_session_factory(TaskSessionLocal)
 
     # Set tracking context for consumption recording in tool implementations
-    from app.core.consume.context import TrackingContext, clear_tracking_context, set_tracking_context
+
+    from app.core.consume.consume_service import (
+        TrackingContext,
+        clear_tracking_context,
+        get_tracking_context,
+        set_tracking_context,
+    )
 
     set_tracking_context(
         TrackingContext(
@@ -226,29 +241,39 @@ async def _process_chat_message_async(
         )
     )
 
-    # Agent run tracking - declared outside db context for error handling access
-    agent_run_id: UUID | None = None
-    agent_run_start_time: float | None = None
-
-    # Message tracking - declared outside db context for error handling access
-    ai_message_id: UUID | None = None
-    ai_message_full_content: str = ""
-    ai_message_thinking_content: str = ""
-    ai_message_active_stream_id: str | None = None
-
     # Record task start time for scoping exception-path settlement queries
     task_start_time = datetime.now(timezone.utc)
 
-    # Developer reward attribution — synced from ctx for exception-path settlement
-    ctx_marketplace_id: UUID | None = None
-    ctx_developer_user_id: str | None = None
+    # Create ctx before try so exception handler can read accumulated state directly
+    ctx = ChatTaskContext(
+        publisher=publisher,
+        topic_id=topic_id,
+        session_id=session_id,
+        user_id=user_id,
+        auth_provider=auth_provider,
+        stream_id=stream_id,
+        agent_id_for_attribution=UUID(agent_id_for_attribution) if agent_id_for_attribution else None,
+        marketplace_id=UUID(marketplace_id) if marketplace_id else None,
+        developer_user_id=developer_user_id,
+        developer_fork_mode=developer_fork_mode,
+    )
+
+    # Backfill TrackingContext with developer attribution from WS handler
+    if agent_id_for_attribution or marketplace_id or developer_user_id:
+        tracking_ctx = get_tracking_context()
+        if tracking_ctx is not None:
+            tracking_ctx.agent_id = ctx.agent_id_for_attribution
+            tracking_ctx.marketplace_id = ctx.marketplace_id
+            tracking_ctx.developer_user_id = ctx.developer_user_id
 
     try:
         async with TaskSessionLocal() as db:
-            topic_repo = TopicRepository(db)
-            message_repo = MessageRepository(db)
+            # Inject db-dependent fields
+            ctx.db = db
+            ctx.message_repo = MessageRepository(db)
+            ctx.topic_repo = TopicRepository(db)
 
-            topic = await topic_repo.get_topic_with_details(topic_id)
+            topic = await ctx.topic_repo.get_topic_with_details(topic_id)
             if not topic:
                 logger.error(f"Topic {topic_id} not found in worker")
                 topic_error_data: dict[str, Any] = {"error": "Chat topic not found"}
@@ -256,40 +281,6 @@ async def _process_chat_message_async(
                     topic_error_data["stream_id"] = stream_id
                 await publisher.publish(json.dumps({"type": ChatEventType.ERROR, "data": topic_error_data}))
                 return
-
-            # Build context
-            ctx = ChatTaskContext(
-                publisher=publisher,
-                db=db,
-                topic_id=topic_id,
-                session_id=session_id,
-                user_id=user_id,
-                auth_provider=auth_provider,
-                stream_id=stream_id,
-                message_repo=message_repo,
-                topic_repo=topic_repo,
-            )
-
-            # Resolve developer reward attribution from agent → marketplace listing
-            try:
-                from app.repos.agent import AgentRepository
-                from app.repos.agent_marketplace import AgentMarketplaceRepository
-                from app.repos.session import SessionRepository as _SessionRepo
-
-                _session_repo = _SessionRepo(db)
-                _session = await _session_repo.get_session_by_id(session_id)
-                if _session and _session.agent_id:
-                    _agent_repo = AgentRepository(db)
-                    _agent = await _agent_repo.get_agent_by_id(_session.agent_id)
-                    if _agent and _agent.original_source_id:
-                        ctx.agent_id_for_attribution = _agent.id
-                        ctx.marketplace_id = _agent.original_source_id
-                        _marketplace_repo = AgentMarketplaceRepository(db)
-                        _listing = await _marketplace_repo.get_by_id(_agent.original_source_id)
-                        if _listing and _listing.user_id:
-                            ctx.developer_user_id = _listing.user_id
-            except Exception as attr_err:
-                logger.debug("Failed to resolve developer attribution (non-fatal): %s", attr_err)
 
             # Abort checking configuration - use time-based throttling for efficiency
             ABORT_CHECK_INTERVAL_SEC = 0.5  # Check every N seconds (responsive but not too frequent)
@@ -317,33 +308,13 @@ async def _process_chat_message_async(
                 else:
                     await publisher.publish(json.dumps(stream_event))
 
-                # Continuously sync tracking vars for outer exception handler
-                agent_run_id = ctx.agent_run_id
-                agent_run_start_time = ctx.agent_run_start_time
-                if ctx.ai_message_obj:
-                    ai_message_id = ctx.ai_message_obj.id
-                ai_message_full_content = ctx.full_content
-                ai_message_thinking_content = ctx.full_thinking_content
-                ai_message_active_stream_id = ctx.active_stream_id
-
                 # Check if handler requested loop break
                 if ctx.should_break:
                     break
 
-            # Sync final state (handles cases where loop ends normally after last event)
-            agent_run_id = ctx.agent_run_id
-            agent_run_start_time = ctx.agent_run_start_time
-            if ctx.ai_message_obj:
-                ai_message_id = ctx.ai_message_obj.id
-            ai_message_full_content = ctx.full_content
-            ai_message_thinking_content = ctx.full_thinking_content
-            ai_message_active_stream_id = ctx.active_stream_id
-            ctx_marketplace_id = ctx.marketplace_id
-            ctx_developer_user_id = ctx.developer_user_id
-
             # --- Handle Abort ---
             if ctx.is_aborted:
-                await handle_abort(ctx, pre_deducted_amount, access_token)
+                await handle_abort(ctx, access_token)
                 return
 
             # --- Skip if error was already handled (committed + message_saved sent) ---
@@ -351,7 +322,7 @@ async def _process_chat_message_async(
                 return
 
             # --- Normal Finalization (DB Updates & Settlement) ---
-            await handle_normal_finalization(ctx, pre_deducted_amount, access_token)
+            await handle_normal_finalization(ctx, access_token)
 
     except Exception as e:
         from app.common.code.chat_error_code import classify_exception
@@ -385,48 +356,48 @@ async def _process_chat_message_async(
         )
         # Finalize AgentRun with failed status on unhandled exceptions
         # Use a fresh db session since the original may be in a bad state
-        if agent_run_id:
+        if ctx.agent_run_id:
             try:
                 async with TaskSessionLocal() as error_db:
                     agent_run_repo = AgentRunRepository(error_db)
                     await agent_run_repo.finalize(
-                        agent_run_id=agent_run_id,
+                        agent_run_id=ctx.agent_run_id,
                         status="failed",
                         ended_at=time.time(),
-                        duration_ms=int((time.time() - (agent_run_start_time or time.time())) * 1000),
+                        duration_ms=int((time.time() - (ctx.agent_run_start_time or time.time())) * 1000),
                     )
                     await error_db.commit()
-                    logger.debug(f"Marked AgentRun {agent_run_id} as failed due to unhandled error")
+                    logger.debug(f"Marked AgentRun {ctx.agent_run_id} as failed due to unhandled error")
             except Exception as finalize_error:
                 logger.warning(f"Failed to finalize AgentRun on error: {finalize_error}")
 
         # Persist accumulated message content so it survives a page refresh.
         # Use a fresh db session since the original may be in a bad state.
-        if ai_message_id:
+        if ctx.ai_message_obj:
             try:
                 async with TaskSessionLocal() as msg_db:
-                    msg = await msg_db.get(MessageModel, ai_message_id)
+                    msg = await msg_db.get(MessageModel, ctx.ai_message_obj.id)
                     if msg:
-                        msg.content = ai_message_full_content or ""
-                        if ai_message_thinking_content:
-                            msg.thinking_content = ai_message_thinking_content
+                        msg.content = ctx.full_content or ""
+                        if ctx.full_thinking_content:
+                            msg.thinking_content = ctx.full_thinking_content
                         msg.error_code = classified.code.value
                         msg.error_category = classified.code.category
                         msg_db.add(msg)
                         await msg_db.commit()
                         logger.debug(
-                            f"Saved partial message content ({len(ai_message_full_content)} chars) on unhandled error"
+                            f"Saved partial message content ({len(ctx.full_content)} chars) on unhandled error"
                         )
 
                     # Send message_saved so frontend can reconcile the stream message with the DB record
-                    if msg and ai_message_active_stream_id:
+                    if msg and ctx.active_stream_id:
                         await publisher.publish(
                             json.dumps(
                                 {
                                     "type": ChatEventType.MESSAGE_SAVED,
                                     "data": {
-                                        "stream_id": ai_message_active_stream_id,
-                                        "db_id": str(ai_message_id),
+                                        "stream_id": ctx.active_stream_id,
+                                        "db_id": str(ctx.ai_message_obj.id),
                                         "created_at": msg.created_at.isoformat() if msg.created_at else None,
                                     },
                                 }
@@ -438,8 +409,7 @@ async def _process_chat_message_async(
         # Exception-path settlement: individual ConsumeRecords were already
         # created during streaming. Query pending records and settle.
         try:
-            from app.core.consume.pricing import calculate_settlement_total
-            from app.core.consume.service import settle_chat_records
+            from app.core.consume.settlement_service import settle_chat_records
             from app.repos.consume import ConsumeRepository
 
             async with TaskSessionLocal() as settle_db:
@@ -457,21 +427,21 @@ async def _process_chat_message_async(
                     record_amounts_sum = sum(r.amount for r in records)
 
                     # Total = sum of record amounts
-                    total_cost = calculate_settlement_total(record_amounts_sum, 1.0)
-                    remaining = total_cost - pre_deducted_amount
+                    total_cost = record_amounts_sum
 
-                    if remaining > 0:
+                    if total_cost > 0:
                         await settle_chat_records(
                             db=settle_db,
                             user_id=user_id,
                             auth_provider=auth_provider,
                             record_ids=record_ids,
-                            total_amount=int(remaining),
-                            marketplace_id=ctx_marketplace_id,
-                            developer_user_id=ctx_developer_user_id,
+                            total_amount=int(total_cost),
+                            marketplace_id=ctx.marketplace_id,
+                            developer_user_id=ctx.developer_user_id,
+                            developer_fork_mode=ctx.developer_fork_mode,
                             session_id=session_id,
                             topic_id=topic_id,
-                            message_id=ai_message_id,
+                            message_id=ctx.ai_message_obj.id if ctx.ai_message_obj else None,
                         )
                     elif record_ids:
                         # No billing but still mark as success

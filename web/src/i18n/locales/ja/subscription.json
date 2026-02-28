@@ -93,12 +93,11 @@
 
   "creatorTab": {
     "walletTitle": "開発者ウォレット",
-    "available": "引出可能",
-    "totalEarned": "累計収益",
-    "totalWithdrawn": "引出済",
-    "withdraw": "引出",
-    "withdrawing": "引出中...",
-    "withdrawSuccess": "{{amount}} クレジットを引き出しました",
+    "pending": "確認待ち",
+    "totalEarned": "累計確認済",
+    "confirm": "確認",
+    "confirming": "確認中...",
+    "withdrawSuccess": "{{amount}} クレジットを確認しました",
     "insufficientBalance": "残高不足",
     "rewardRates": "報酬レート",
     "editableRate": "編集可能 Fork：{{rate}}%",

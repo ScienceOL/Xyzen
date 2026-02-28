@@ -689,15 +689,27 @@ class ConsumeRepository:
     # Admin aggregated heatmap / ranking queries
     # ------------------------------------------------------------------
 
+    async def get_distinct_model_names(self) -> list[str]:
+        """Return all distinct model names from consume records."""
+        stmt = (
+            sa_select(func.distinct(ConsumeRecord.model_name))
+            .where(col(ConsumeRecord.model_name).isnot(None))
+            .order_by(ConsumeRecord.model_name)
+        )
+        rows = (await self.db.exec(cast(Any, stmt))).scalars().all()
+        return [str(m) for m in rows if m]
+
     async def get_admin_filter_options(
         self,
         year: int,
         tz: str = "UTC",
         provider: str | None = None,
-    ) -> dict[str, list[str]]:
-        """Return distinct provider and model_name values for a given year."""
+    ) -> dict[str, Any]:
+        """Return distinct provider, model_name, model_tier, and tool_name values for a given year."""
         from datetime import datetime
         from datetime import timezone as tz_module
+
+        from app.repos.provider import ProviderRepository
 
         zone = ZoneInfo(tz)
         start_utc = datetime(year, 1, 1, tzinfo=zone).astimezone(tz_module.utc)
@@ -715,8 +727,48 @@ class ConsumeRepository:
             .where(col(ConsumeRecord.provider).isnot(None))
             .order_by(ConsumeRecord.provider)
         )
-        prov_rows = (await self.db.exec(cast(Any, prov_stmt))).all()
-        providers = [str(p) for p in prov_rows if p]
+        prov_rows = (await self.db.exec(cast(Any, prov_stmt))).scalars().all()
+        raw_providers = [str(p) for p in prov_rows if p]
+
+        # Resolve provider values to {value, label} pairs
+        # Separate UUIDs from legacy enum strings
+        LEGACY_PROVIDER_NAMES: dict[str, str] = {
+            "openai": "OpenAI",
+            "azure_openai": "AzureOpenAI",
+            "google": "Google",
+            "google_vertex": "GoogleVertex",
+            "gpugeek": "GPUGeek",
+            "qwen": "Qwen",
+        }
+
+        uuid_values: list[UUID] = []
+        provider_options: list[dict[str, str]] = []
+
+        for val in raw_providers:
+            try:
+                uuid_values.append(UUID(val))
+            except ValueError:
+                # Legacy enum string
+                provider_options.append(
+                    {
+                        "value": val,
+                        "label": LEGACY_PROVIDER_NAMES.get(val, val),
+                    }
+                )
+
+        # Batch-lookup UUID providers
+        if uuid_values:
+            provider_repo = ProviderRepository(self.db)
+            provider_objs = await provider_repo.get_providers_by_ids(uuid_values)
+            name_map = {str(p.id): p.name for p in provider_objs}
+            for uid in uuid_values:
+                uid_str = str(uid)
+                provider_options.append(
+                    {
+                        "value": uid_str,
+                        "label": name_map.get(uid_str, uid_str),
+                    }
+                )
 
         # Distinct models (optionally filtered by provider)
         model_stmt = (
@@ -725,12 +777,36 @@ class ConsumeRepository:
             .where(col(ConsumeRecord.model_name).isnot(None))
         )
         if provider:
-            model_stmt = model_stmt.where(col(ConsumeRecord.provider) == provider)
+            if "," in provider:
+                model_stmt = model_stmt.where(col(ConsumeRecord.provider).in_(provider.split(",")))
+            else:
+                model_stmt = model_stmt.where(col(ConsumeRecord.provider) == provider)
         model_stmt = model_stmt.order_by(ConsumeRecord.model_name)
-        model_rows = (await self.db.exec(cast(Any, model_stmt))).all()
+        model_rows = (await self.db.exec(cast(Any, model_stmt))).scalars().all()
         models = [str(m) for m in model_rows if m]
 
-        return {"providers": providers, "models": models}
+        # Distinct model tiers
+        tier_stmt = (
+            sa_select(func.distinct(ConsumeRecord.model_tier))
+            .where(*base_filter)
+            .where(col(ConsumeRecord.model_tier).isnot(None))
+            .order_by(ConsumeRecord.model_tier)
+        )
+        tier_rows = (await self.db.exec(cast(Any, tier_stmt))).scalars().all()
+        tiers = [str(t) for t in tier_rows if t]
+
+        # Distinct tool names (only from tool_call records)
+        tool_stmt = (
+            sa_select(func.distinct(ConsumeRecord.tool_name))
+            .where(*base_filter)
+            .where(col(ConsumeRecord.tool_name).isnot(None))
+            .where(col(ConsumeRecord.record_type) == "tool_call")
+            .order_by(ConsumeRecord.tool_name)
+        )
+        tool_rows = (await self.db.exec(cast(Any, tool_stmt))).scalars().all()
+        tools = [str(t) for t in tool_rows if t]
+
+        return {"providers": provider_options, "models": models, "tiers": tiers, "tools": tools}
 
     async def get_admin_consumption_heatmap(
         self,
@@ -739,6 +815,7 @@ class ConsumeRepository:
         model_tier: str | None = None,
         model_name: str | None = None,
         provider: str | None = None,
+        tool_name: str | None = None,
     ) -> list[dict[str, Any]]:
         """Daily aggregated consumption for an entire year (admin heatmap), enriched with by-tier breakdown."""
         from datetime import datetime
@@ -760,9 +837,14 @@ class ConsumeRepository:
         if model_tier:
             base_filter.append(col(ConsumeRecord.model_tier) == model_tier)
         if model_name:
-            base_filter.append(col(ConsumeRecord.model_name).ilike(f"%{model_name}%"))
+            base_filter.append(col(ConsumeRecord.model_name) == model_name)
         if provider:
-            base_filter.append(col(ConsumeRecord.provider) == provider)
+            if "," in provider:
+                base_filter.append(col(ConsumeRecord.provider).in_(provider.split(",")))
+            else:
+                base_filter.append(col(ConsumeRecord.provider) == provider)
+        if tool_name:
+            base_filter.append(col(ConsumeRecord.tool_name) == tool_name)
 
         stmt = (
             sa_select(
@@ -841,6 +923,7 @@ class ConsumeRepository:
         model_tier: str | None = None,
         model_name: str | None = None,
         provider: str | None = None,
+        tool_name: str | None = None,
     ) -> list[dict[str, Any]]:
         """Daily user-centric consumption stats (admin heatmap)."""
         from datetime import datetime
@@ -869,9 +952,14 @@ class ConsumeRepository:
         if model_tier:
             stmt = stmt.where(col(ConsumeRecord.model_tier) == model_tier)
         if model_name:
-            stmt = stmt.where(col(ConsumeRecord.model_name).ilike(f"%{model_name}%"))
+            stmt = stmt.where(col(ConsumeRecord.model_name) == model_name)
         if provider:
-            stmt = stmt.where(col(ConsumeRecord.provider) == provider)
+            if "," in provider:
+                stmt = stmt.where(col(ConsumeRecord.provider).in_(provider.split(",")))
+            else:
+                stmt = stmt.where(col(ConsumeRecord.provider) == provider)
+        if tool_name:
+            stmt = stmt.where(col(ConsumeRecord.tool_name) == tool_name)
 
         stmt = stmt.group_by(date_expr).order_by(date_expr)
         rows = (await self.db.exec(cast(Any, stmt))).all()
@@ -899,6 +987,7 @@ class ConsumeRepository:
         search: str | None = None,
         provider: str | None = None,
         include_tiers: bool = False,
+        tool_name: str | None = None,
     ) -> list[dict[str, Any]]:
         """Per-user aggregated consumption, optionally filtered to a single date."""
         from datetime import datetime
@@ -921,11 +1010,16 @@ class ConsumeRepository:
         if model_tier:
             base_filter.append(col(ConsumeRecord.model_tier) == model_tier)
         if model_name:
-            base_filter.append(col(ConsumeRecord.model_name).ilike(f"%{model_name}%"))
+            base_filter.append(col(ConsumeRecord.model_name) == model_name)
         if search:
             base_filter.append(col(ConsumeRecord.user_id).ilike(f"%{search}%"))
         if provider:
-            base_filter.append(col(ConsumeRecord.provider) == provider)
+            if "," in provider:
+                base_filter.append(col(ConsumeRecord.provider).in_(provider.split(",")))
+            else:
+                base_filter.append(col(ConsumeRecord.provider) == provider)
+        if tool_name:
+            base_filter.append(col(ConsumeRecord.tool_name) == tool_name)
 
         stmt = sa_select(
             col(ConsumeRecord.user_id),

@@ -25,15 +25,6 @@ export const TIER_COLORS: Record<string, string> = {
   ultra: "bg-amber-100 dark:bg-amber-900/30 text-amber-800 dark:text-amber-200",
 };
 
-export const PROVIDER_OPTIONS = [
-  "openai",
-  "azure_openai",
-  "google",
-  "google_vertex",
-  "gpugeek",
-  "qwen",
-];
-
 export function formatCompact(n: number): string {
   if (n >= 1_000_000) return `${(n / 1_000_000).toFixed(1)}M`;
   if (n >= 1_000) return `${(n / 1_000).toFixed(1)}K`;

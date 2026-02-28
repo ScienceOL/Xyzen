@@ -283,7 +283,7 @@ async def _delegate_to_agent_impl(
 
         # 5. Execute with timeout (outside db session)
         result = await asyncio.wait_for(
-            _run_delegated_agent(compiled_graph, task),
+            _run_delegated_agent(compiled_graph, task, provider_id=use_provider),
             timeout=DELEGATION_TIMEOUT_SECONDS,
         )
 
@@ -303,6 +303,7 @@ async def _delegate_to_agent_impl(
 async def _run_delegated_agent(
     graph: Any,
     task: str,
+    provider_id: str | None = None,
 ) -> str:
     """Run a delegated agent graph and collect the final text output.
     Also records LLM token usage from the delegated agent's messages."""
@@ -320,9 +321,9 @@ async def _run_delegated_agent(
         messages = list(raw) if isinstance(raw, list) else []
 
     # Extract and record token usage
-    from app.core.consume.tracking import record_messages_usage_from_context
+    from app.core.consume.consume_service import record_messages_usage_from_context
 
-    await record_messages_usage_from_context(messages, source="delegation")
+    await record_messages_usage_from_context(messages, source="delegation", provider=provider_id)
 
     for msg in reversed(messages):
         if isinstance(msg, AIMessage) and not getattr(msg, "tool_calls", None):

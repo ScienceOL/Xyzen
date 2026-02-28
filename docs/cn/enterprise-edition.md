@@ -72,7 +72,7 @@ web/src/
 
 | 场景 | 模式 | 示例 |
 |------|------|------|
-| 复杂 CE/EE 行为分叉 | **Strategy**（`ChatLifecycle`） | `chat.py` 的 connect / limit / pre_deduct / disconnect |
+| 复杂 CE/EE 行为分叉 | **Strategy**（`ChatLifecycle`） | `chat.py` 的 connect / limit / check_balance / disconnect |
 | 简单的"EE 才执行" | **`ee_only(fn, *args)`** | 未来远程 EE API 调用场景 |
 
 ### ChatLifecycle — Strategy 模式
@@ -84,14 +84,14 @@ WebSocket 聊天处理器通过 `ChatLifecycle` 协议解耦计费/限额逻辑�
 class ChatLifecycle(Protocol):
     async def on_connect(self, connection_id: str) -> None: ...
     async def check_before_message(self, connection_id: str) -> dict | None: ...
-    async def pre_deduct(self, db, user_id, auth_provider, amount, ...) -> float: ...
+    async def check_balance(self, db, user_id, auth_provider, ...) -> None: ...
     async def on_disconnect(self, connection_id: str) -> None: ...
 
-class DefaultChatLifecycle:  # 默认：包装 LimitsEnforcer + create_consume_for_chat
-class NoopChatLifecycle:     # 预留：全部 no-op，pre_deduct 返回 0.0（未来 CE 自托管场景）
+class DefaultChatLifecycle:  # 默认：包装 LimitsEnforcer + settle_chat_records
+class NoopChatLifecycle:     # 预留：全部 no-op，check_balance 不执行检查（未来 CE 自托管场景）
 ```
 
-调用方（`chat.py`）不直接依赖 `LimitsEnforcer` 或 `create_consume_for_chat`：
+调用方（`chat.py`）不直接依赖 `LimitsEnforcer` 或 `settle_chat_records`：
 
 ```python
 lifecycle = get_chat_lifecycle(user, db)  # 当前始终返回 DefaultChatLifecycle

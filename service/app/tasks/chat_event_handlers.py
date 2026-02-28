@@ -17,23 +17,17 @@ from sqlmodel.ext.asyncio.session import AsyncSession
 
 from app.common.code.error_code import ErrCode, ErrCodeError
 from app.core.chat.token_usage import normalize_token_usage
-from app.core.consume.pricing import (
-    TIER_MODEL_CONSUMPTION_RATE,
-    calculate_llm_cost_usd,
-    calculate_llm_credits,
-    calculate_settlement_total,
-    calculate_tool_cost,
-)
-from app.core.consume.service import settle_chat_records
-from app.core.consume.tracking import ConsumptionTrackingService
+from app.core.consume.pricing import calculate_tool_cost
+from app.core.consume.consume_service import ConsumptionTrackingService, get_tracking_context
+from app.core.consume.settlement_service import settle_chat_records
 from app.models.agent_run import AgentRunCreate
 from app.models.citation import CitationCreate
 from app.models.message import Message, MessageCreate
 from app.repos import AgentRunRepository, CitationRepository, FileRepository, MessageRepository, TopicRepository
 from app.repos.consume import ConsumeRepository
-from app.repos.session import SessionRepository
 from app.schemas.chat_event_payloads import CitationData
 from app.schemas.chat_event_types import ChatEventType
+from app.schemas.model_tier import ModelTier
 
 logger = logging.getLogger(__name__)
 
@@ -51,14 +45,14 @@ class ChatTaskContext:
     """Mutable state bag for a single chat task execution."""
 
     publisher: Any  # RedisPublisher - use Any to avoid circular import
-    db: AsyncSession
     topic_id: UUID
     session_id: UUID
     user_id: str
     auth_provider: str
     stream_id: str | None
-    message_repo: MessageRepository
-    topic_repo: TopicRepository
+    db: AsyncSession | None = None
+    message_repo: MessageRepository | None = None
+    topic_repo: TopicRepository | None = None
 
     # Message tracking
     ai_message_obj: Message | None = None
@@ -98,6 +92,21 @@ class ChatTaskContext:
     agent_id_for_attribution: UUID | None = None
     marketplace_id: UUID | None = None
     developer_user_id: str | None = None
+    developer_fork_mode: str | None = None
+
+    # -- typed accessors (db/repos are always set before handlers run) --
+
+    def get_db(self) -> AsyncSession:
+        assert self.db is not None
+        return self.db
+
+    def get_message_repo(self) -> MessageRepository:
+        assert self.message_repo is not None
+        return self.message_repo
+
+    def get_topic_repo(self) -> TopicRepository:
+        assert self.topic_repo is not None
+        return self.topic_repo
 
 
 # ---------------------------------------------------------------------------
@@ -145,45 +154,12 @@ async def send_message_saved(ctx: ChatTaskContext) -> None:
 
 
 # ---------------------------------------------------------------------------
-# Helper: _ensure_session_info (cached session query)
-# ---------------------------------------------------------------------------
-
-
-async def _ensure_session_info(ctx: ChatTaskContext) -> None:
-    """Load session info once and cache on *ctx*."""
-    if ctx.session_info_loaded:
-        return
-
-    session_repo = SessionRepository(ctx.db)
-    session = await session_repo.get_session_by_id(ctx.session_id)
-
-    if session and not session.model_tier:
-        from app.core.session.service import SessionService
-
-        svc = SessionService(ctx.db)
-        await svc.clamp_session_model_tier(session, ctx.user_id)
-
-    ctx.cached_model_tier = session.model_tier if session else None
-    ctx.cached_model_name = session.model if session else None
-    ctx.cached_provider_id = str(session.provider_id) if session and session.provider_id else None
-    ctx.session_info_loaded = True
-
-    # Propagate model_tier to TrackingContext for auxiliary recording
-    from app.core.consume.context import get_tracking_context
-
-    tracking_ctx = get_tracking_context()
-    if tracking_ctx is not None:
-        tracking_ctx.model_tier = ctx.cached_model_tier.value if ctx.cached_model_tier else None
-
-
-# ---------------------------------------------------------------------------
 # Helper: finalize_and_settle
 # ---------------------------------------------------------------------------
 
 
 async def finalize_and_settle(
     ctx: ChatTaskContext,
-    pre_deducted_amount: float,
     access_token: str | None,
     description_suffix: str = "settlement",
 ) -> None:
@@ -195,7 +171,7 @@ async def finalize_and_settle(
 
     try:
         # Query all pending records for this message
-        repo = ConsumeRepository(ctx.db)
+        repo = ConsumeRepository(ctx.get_db())
         records = await repo.list_records_for_settlement(ctx.session_id, ctx.topic_id, ctx.ai_message_obj.id)
         if not records:
             return
@@ -204,22 +180,21 @@ async def finalize_and_settle(
         record_amounts_sum = sum(r.amount for r in records)
 
         # Total = sum of individual record amounts
-        total_cost = calculate_settlement_total(record_amounts_sum, 1.0)
+        total_cost = record_amounts_sum
 
-        remaining_amount = total_cost - pre_deducted_amount
-
-        if remaining_amount > 0:
+        if total_cost > 0:
             await settle_chat_records(
-                db=ctx.db,
+                db=ctx.get_db(),
                 user_id=ctx.user_id,
                 auth_provider=ctx.auth_provider,
                 record_ids=record_ids,
-                total_amount=int(remaining_amount),
+                total_amount=total_cost,
                 marketplace_id=ctx.marketplace_id,
                 developer_user_id=ctx.developer_user_id,
+                developer_fork_mode=ctx.developer_fork_mode,
                 session_id=ctx.session_id,
                 topic_id=ctx.topic_id,
-                message_id=ctx.ai_message_obj.id if ctx.ai_message_obj else None,
+                message_id=ctx.ai_message_obj.id,
             )
         elif record_ids:
             # No billing needed but still mark records as success
@@ -240,11 +215,9 @@ async def handle_streaming_start(ctx: ChatTaskContext, stream_event: dict[str, A
     ctx.agent_run_start_time = time.time()
     if not ctx.ai_message_obj:
         ai_message_create = MessageCreate(role="assistant", content="", topic_id=ctx.topic_id)
-        ctx.ai_message_obj = await ctx.message_repo.create_message(ai_message_create)
+        ctx.ai_message_obj = await ctx.get_message_repo().create_message(ai_message_create)
 
         # Update tracking context with the message_id for tool/subagent usage recording
-        from app.core.consume.context import get_tracking_context
-
         tracking_ctx = get_tracking_context()
         if tracking_ctx is not None:
             tracking_ctx.message_id = ctx.ai_message_obj.id
@@ -266,8 +239,8 @@ async def handle_streaming_chunk(ctx: ChatTaskContext, stream_event: dict[str, A
     current_time = time.time()
     if ctx.ai_message_obj and (current_time - ctx.last_save_time) >= INCREMENTAL_SAVE_INTERVAL:
         ctx.ai_message_obj.content = ctx.full_content
-        ctx.db.add(ctx.ai_message_obj)
-        await ctx.db.commit()
+        ctx.get_db().add(ctx.ai_message_obj)
+        await ctx.get_db().commit()
         ctx.last_save_time = current_time
         logger.debug(f"Incremental save: {len(ctx.full_content)} chars")
 
@@ -298,7 +271,7 @@ async def handle_streaming_end(ctx: ChatTaskContext, stream_event: dict[str, Any
         # Save AgentRun record (agent_metadata is now stored in AgentRun table)
         try:
             agent_run_end_time = time.time()
-            agent_run_repo = AgentRunRepository(ctx.db)
+            agent_run_repo = AgentRunRepository(ctx.get_db())
             agent_run_create = AgentRunCreate(
                 message_id=ctx.ai_message_obj.id,
                 execution_id=agent_state_data.get("execution_id", ctx.active_stream_id or ""),
@@ -324,12 +297,13 @@ async def handle_streaming_end(ctx: ChatTaskContext, stream_event: dict[str, Any
     elif agent_state_data and ctx.ai_message_obj and ctx.agent_run_id:
         # AgentRun was already created via AGENT_START, update with final node_outputs
         try:
-            agent_run_repo = AgentRunRepository(ctx.db)
+            agent_run_repo = AgentRunRepository(ctx.get_db())
+            now = time.time()
             await agent_run_repo.finalize(
                 agent_run_id=ctx.agent_run_id,
                 status="completed",
-                ended_at=time.time(),
-                duration_ms=int((time.time() - (ctx.agent_run_start_time or time.time())) * 1000),
+                ended_at=now,
+                duration_ms=int((now - (ctx.agent_run_start_time or now)) * 1000),
                 final_node_data={
                     "timeline": agent_state_data.get("timeline", []),
                     "node_outputs": agent_state_data.get("node_outputs", {}),
@@ -358,30 +332,34 @@ async def handle_token_usage(ctx: ChatTaskContext, stream_event: dict[str, Any])
 
     # Persist LLM usage as ConsumeRecord(record_type="llm")
     try:
-        await _ensure_session_info(ctx)
-        model_tier = ctx.cached_model_tier
-        model_tier_value = model_tier.value if model_tier else None
-        model_name = ctx.cached_model_name or "unknown"
-        provider_id = ctx.cached_provider_id
+        model_tier_value = token_data.get("model_tier")
+        model_name = token_data.get("model_name") or "unknown"
+        provider_id = token_data.get("provider_id")
+
+        # First time we receive model metadata: backfill ctx cache + TrackingContext
+        if not ctx.session_info_loaded and model_tier_value:
+            try:
+                ctx.cached_model_tier = ModelTier(model_tier_value)
+            except ValueError:
+                ctx.cached_model_tier = None
+            ctx.cached_model_name = model_name
+            ctx.cached_provider_id = provider_id
+            ctx.session_info_loaded = True
+
+            tracking_ctx = get_tracking_context()
+            if tracking_ctx is not None:
+                tracking_ctx.model_tier = model_tier_value
+
+        # Use cached values when available
+        provider_id = ctx.cached_provider_id or provider_id
+        model_name = ctx.cached_model_name or model_name
 
         cache_creation = token_data.get("cache_creation_input_tokens", 0)
         cache_read = token_data.get("cache_read_input_tokens", 0)
 
-        # Calculate amount and cost_usd via pricing functions
-        tier_rate = TIER_MODEL_CONSUMPTION_RATE.get(model_tier, 1.0) if model_tier else 1.0
-        amount = calculate_llm_credits(
-            ctx.input_tokens, ctx.output_tokens, tier_rate, cache_read_input_tokens=cache_read
-        )
-        cost_usd = await calculate_llm_cost_usd(
-            model_name or "unknown",
-            ctx.input_tokens,
-            ctx.output_tokens,
-            cache_read_input_tokens=cache_read,
-            provider=provider_id,
-        )
-
-        tracking = ConsumptionTrackingService(ctx.db)
-        await tracking.record_llm_usage(
+        # Calculate amount and cost_usd via pricing functions, then persist
+        tracking = ConsumptionTrackingService(ctx.get_db())
+        await tracking.record_llm_usage_with_pricing(
             user_id=ctx.user_id,
             auth_provider=ctx.auth_provider,
             model_name=model_name or "unknown",
@@ -390,8 +368,6 @@ async def handle_token_usage(ctx: ChatTaskContext, stream_event: dict[str, Any])
             input_tokens=ctx.input_tokens,
             output_tokens=ctx.output_tokens,
             total_tokens=ctx.total_tokens,
-            amount=amount,
-            cost_usd=cost_usd,
             source="chat",
             session_id=ctx.session_id,
             topic_id=ctx.topic_id,
@@ -423,12 +399,19 @@ async def handle_tool_call_request(ctx: ChatTaskContext, stream_event: dict[str,
                 parsed_args = {}
         else:
             parsed_args = raw_args or {}
-        ctx.tool_call_data[tool_call_id] = {"name": tool_name, "args": parsed_args}
 
         # Accumulate tool call for agent_metadata persistence
         node_key = ctx.active_node_id or "response"
         if node_key not in ctx.tool_calls_by_node:
             ctx.tool_calls_by_node[node_key] = []
+
+        ctx.tool_call_data[tool_call_id] = {
+            "name": tool_name,
+            "args": parsed_args,
+            "node_key": node_key,
+            "node_index": len(ctx.tool_calls_by_node[node_key]),
+        }
+
         ctx.tool_calls_by_node[node_key].append(
             {
                 "id": req.get("id"),
@@ -476,10 +459,23 @@ async def handle_tool_call_response(ctx: ChatTaskContext, stream_event: dict[str
 
         # Write ConsumeRecord to DB immediately (flush, no commit)
         try:
-            await _ensure_session_info(ctx)
+            event_model_tier = resp.get("model_tier")
+            if not ctx.session_info_loaded and event_model_tier:
+                try:
+                    ctx.cached_model_tier = ModelTier(event_model_tier)
+                except ValueError:
+                    ctx.cached_model_tier = None
+                ctx.cached_model_name = resp.get("model_name")
+                ctx.cached_provider_id = resp.get("provider_id")
+                ctx.session_info_loaded = True
+
+                tracking_ctx = get_tracking_context()
+                if tracking_ctx is not None:
+                    tracking_ctx.model_tier = event_model_tier
+
             model_tier_value = ctx.cached_model_tier.value if ctx.cached_model_tier else None
 
-            tracking = ConsumptionTrackingService(ctx.db)
+            tracking = ConsumptionTrackingService(ctx.get_db())
             await tracking.record_tool_call(
                 user_id=ctx.user_id,
                 auth_provider=ctx.auth_provider,
@@ -494,20 +490,25 @@ async def handle_tool_call_response(ctx: ChatTaskContext, stream_event: dict[str
                 agent_id=ctx.agent_id_for_attribution,
                 marketplace_id=ctx.marketplace_id,
                 developer_user_id=ctx.developer_user_id,
+                source="chat",
             )
         except Exception as e:
             logger.warning(f"Failed to record tool call to DB (non-fatal): {e}")
 
     # Update tool call record in tool_calls_by_node with result/status
-    if tool_call_id:
-        for node_calls in ctx.tool_calls_by_node.values():
-            for tc in node_calls:
-                if tc["id"] == tool_call_id:
-                    tc["status"] = resp.get("status", "completed")
-                    tc["result"] = resp.get("result")
-                    if resp.get("error"):
-                        tc["error"] = resp.get("error")
-                    break
+    if tool_call_id and tool_call_id in ctx.tool_call_data:
+        stored = ctx.tool_call_data[tool_call_id]
+        node_key = stored.get("node_key")
+        node_index = stored.get("node_index")
+        if node_key and node_index is not None:
+            try:
+                tc = ctx.tool_calls_by_node[node_key][node_index]
+                tc["status"] = resp.get("status", "completed")
+                tc["result"] = resp.get("result")
+                if resp.get("error"):
+                    tc["error"] = resp.get("error")
+            except (KeyError, IndexError):
+                pass  # fallback: stale index
 
     await ctx.publisher.publish(json.dumps(stream_event))
 
@@ -523,10 +524,10 @@ async def handle_message_event(ctx: ChatTaskContext, stream_event: dict[str, Any
     ctx.full_content = stream_event["data"]["content"]
     if not ctx.ai_message_obj:
         ai_message_create = MessageCreate(role="assistant", content=ctx.full_content, topic_id=ctx.topic_id)
-        ctx.ai_message_obj = await ctx.message_repo.create_message(ai_message_create)
+        ctx.ai_message_obj = await ctx.get_message_repo().create_message(ai_message_create)
     else:
         ctx.ai_message_obj.content = ctx.full_content
-        ctx.db.add(ctx.ai_message_obj)
+        ctx.get_db().add(ctx.ai_message_obj)
     await ctx.publisher.publish(json.dumps(stream_event))
 
 
@@ -544,11 +545,11 @@ async def handle_generated_files(ctx: ChatTaskContext, stream_event: dict[str, A
 
     if not ctx.ai_message_obj:
         ai_message_create = MessageCreate(role="assistant", content="", topic_id=ctx.topic_id)
-        ctx.ai_message_obj = await ctx.message_repo.create_message(ai_message_create)
+        ctx.ai_message_obj = await ctx.get_message_repo().create_message(ai_message_create)
 
     if file_ids:
         try:
-            file_repo = FileRepository(ctx.db)
+            file_repo = FileRepository(ctx.get_db())
             file_uuids = [UUID(fid) for fid in file_ids]
             await file_repo.update_files_message_id(file_uuids, ctx.ai_message_obj.id, ctx.user_id)
         except Exception as e:
@@ -562,15 +563,15 @@ async def handle_error(ctx: ChatTaskContext, stream_event: dict[str, Any]) -> No
     error_data: dict[str, Any] = dict(stream_event.get("data", {}))
     if not ctx.ai_message_obj:
         ai_message_create = MessageCreate(role="assistant", content="", topic_id=ctx.topic_id)
-        ctx.ai_message_obj = await ctx.message_repo.create_message(ai_message_create)
+        ctx.ai_message_obj = await ctx.get_message_repo().create_message(ai_message_create)
         ctx.active_stream_id = str(ctx.ai_message_obj.id)  # fallback: use db id when no streaming_start received
     ctx.ai_message_obj.error_code = error_data.get("error_code")
     ctx.ai_message_obj.error_category = error_data.get("error_category")
     ctx.ai_message_obj.error_detail = error_data.get("detail")
     # Keep any partial content that was streamed before the error
     ctx.ai_message_obj.content = ctx.full_content or ""
-    ctx.db.add(ctx.ai_message_obj)
-    await ctx.db.commit()
+    ctx.get_db().add(ctx.ai_message_obj)
+    await ctx.get_db().commit()
 
     await ctx.publisher.publish(json.dumps(stream_event))
 
@@ -585,7 +586,7 @@ async def handle_thinking_start(ctx: ChatTaskContext, stream_event: dict[str, An
     # Create message object if not exists
     if not ctx.ai_message_obj:
         ai_message_create = MessageCreate(role="assistant", content="", topic_id=ctx.topic_id)
-        ctx.ai_message_obj = await ctx.message_repo.create_message(ai_message_create)
+        ctx.ai_message_obj = await ctx.get_message_repo().create_message(ai_message_create)
     await ctx.publisher.publish(json.dumps(stream_event))
 
 
@@ -615,12 +616,12 @@ async def handle_agent_start(ctx: ChatTaskContext, stream_event: dict[str, Any])
     # Ensure we have a message object to link to
     if not ctx.ai_message_obj:
         ai_message_create = MessageCreate(role="assistant", content="", topic_id=ctx.topic_id)
-        ctx.ai_message_obj = await ctx.message_repo.create_message(ai_message_create)
+        ctx.ai_message_obj = await ctx.get_message_repo().create_message(ai_message_create)
 
     # Create AgentRun record with status="running"
     # Include agent_start as the first timeline entry
     try:
-        agent_run_repo = AgentRunRepository(ctx.db)
+        agent_run_repo = AgentRunRepository(ctx.get_db())
         initial_timeline = [
             {
                 "event_type": "agent_start",
@@ -659,7 +660,7 @@ async def handle_agent_start(ctx: ChatTaskContext, stream_event: dict[str, Any])
 async def handle_agent_end(ctx: ChatTaskContext, stream_event: dict[str, Any]) -> None:
     if ctx.agent_run_id:
         try:
-            agent_run_repo = AgentRunRepository(ctx.db)
+            agent_run_repo = AgentRunRepository(ctx.get_db())
             end_data = stream_event["data"]
             status = end_data.get("status", "completed")
 
@@ -691,7 +692,7 @@ async def handle_node_start(ctx: ChatTaskContext, stream_event: dict[str, Any]) 
     logger.info(f"[NODE_START] Received node_start event, agent_run_id={ctx.agent_run_id}")
     if ctx.agent_run_id:
         try:
-            agent_run_repo = AgentRunRepository(ctx.db)
+            agent_run_repo = AgentRunRepository(ctx.get_db())
             node_data = stream_event["data"]
             timeline_entry: dict[str, Any] = {
                 "event_type": "node_start",
@@ -719,7 +720,7 @@ async def handle_node_end(ctx: ChatTaskContext, stream_event: dict[str, Any]) ->
     ctx.active_node_id = None
     if ctx.agent_run_id:
         try:
-            agent_run_repo = AgentRunRepository(ctx.db)
+            agent_run_repo = AgentRunRepository(ctx.get_db())
             node_data = stream_event["data"]
             timeline_entry: dict[str, Any] = {
                 "event_type": "node_end",
@@ -773,7 +774,6 @@ EVENT_HANDLERS: dict[str, Any] = {
 
 async def handle_abort(
     ctx: ChatTaskContext,
-    pre_deducted_amount: float,
     access_token: str | None,
 ) -> None:
     """Handle the abort path after the streaming loop breaks due to abort signal."""
@@ -783,29 +783,30 @@ async def handle_abort(
     # Ensure we have a message object to save the abort state
     if not ctx.ai_message_obj:
         ai_message_create = MessageCreate(role="assistant", content="", topic_id=ctx.topic_id)
-        ctx.ai_message_obj = await ctx.message_repo.create_message(ai_message_create)
+        ctx.ai_message_obj = await ctx.get_message_repo().create_message(ai_message_create)
         ctx.active_stream_id = str(ctx.ai_message_obj.id)  # fallback: use db id when no streaming_start received
         logger.info(f"Created message {ctx.active_stream_id} for abort state")
 
     # Save partial content
     ctx.ai_message_obj.content = ctx.full_content
-    ctx.db.add(ctx.ai_message_obj)
+    ctx.get_db().add(ctx.ai_message_obj)
 
     # Save thinking content if any
     if ctx.full_thinking_content:
         ctx.ai_message_obj.thinking_content = ctx.full_thinking_content
-        ctx.db.add(ctx.ai_message_obj)
+        ctx.get_db().add(ctx.ai_message_obj)
 
     # Handle AgentRun - create if not exists, or update existing
     if ctx.agent_run_id:
         # Update existing AgentRun to cancelled
         try:
-            agent_run_repo = AgentRunRepository(ctx.db)
+            agent_run_repo = AgentRunRepository(ctx.get_db())
+            now = time.time()
             await agent_run_repo.finalize(
                 agent_run_id=ctx.agent_run_id,
                 status="cancelled",
-                ended_at=time.time(),
-                duration_ms=int((time.time() - (ctx.agent_run_start_time or time.time())) * 1000),
+                ended_at=now,
+                duration_ms=int((now - (ctx.agent_run_start_time or now)) * 1000),
             )
             logger.debug(f"Marked AgentRun {ctx.agent_run_id} as cancelled")
         except Exception as e:
@@ -813,7 +814,7 @@ async def handle_abort(
     else:
         # Create a new AgentRun with cancelled status so the abort indicator shows on refresh
         try:
-            agent_run_repo = AgentRunRepository(ctx.db)
+            agent_run_repo = AgentRunRepository(ctx.get_db())
             abort_time = time.time()
             agent_run_create = AgentRunCreate(
                 message_id=ctx.ai_message_obj.id,
@@ -850,11 +851,11 @@ async def handle_abort(
 
     # Partial settlement - only charge for tokens actually consumed
     try:
-        await finalize_and_settle(ctx, pre_deducted_amount, access_token, "aborted settlement")
+        await finalize_and_settle(ctx, access_token, "aborted settlement")
     except Exception as e:
         logger.error(f"Partial settlement failed on abort: {e}")
 
-    await ctx.db.commit()
+    await ctx.get_db().commit()
 
     # Send message_saved event to update frontend with real DB ID
     await send_message_saved(ctx)
@@ -887,7 +888,6 @@ async def handle_abort(
 
 async def handle_normal_finalization(
     ctx: ChatTaskContext,
-    pre_deducted_amount: float,
     access_token: str | None,
 ) -> None:
     """Handle the normal finalization path (DB updates and settlement)."""
@@ -897,17 +897,17 @@ async def handle_normal_finalization(
     # Update content
     if ctx.full_content and ctx.ai_message_obj.content != ctx.full_content:
         ctx.ai_message_obj.content = ctx.full_content
-        ctx.db.add(ctx.ai_message_obj)
+        ctx.get_db().add(ctx.ai_message_obj)
 
     # Update thinking content
     if ctx.full_thinking_content:
         ctx.ai_message_obj.thinking_content = ctx.full_thinking_content
-        ctx.db.add(ctx.ai_message_obj)
+        ctx.get_db().add(ctx.ai_message_obj)
 
     # Save citations
     if ctx.citations_data:
         try:
-            citation_repo = CitationRepository(ctx.db)
+            citation_repo = CitationRepository(ctx.get_db())
             citation_creates: list[CitationCreate] = []
             for citation in ctx.citations_data:
                 citation_create = CitationCreate(
@@ -925,17 +925,17 @@ async def handle_normal_finalization(
             logger.error(f"Failed to save citations: {e}")
 
     # Update timestamp
-    await ctx.topic_repo.update_topic_timestamp(ctx.topic_id)
+    await ctx.get_topic_repo().update_topic_timestamp(ctx.topic_id)
 
     # Settlement
     try:
-        await finalize_and_settle(ctx, pre_deducted_amount, access_token, "settlement")
+        await finalize_and_settle(ctx, access_token, "settlement")
     except ErrCodeError as e:
         if e.code == ErrCode.INSUFFICIENT_BALANCE:
             # Persist billing error on the message
             ctx.ai_message_obj.error_code = "billing.insufficient_balance"
             ctx.ai_message_obj.error_category = "billing"
-            ctx.db.add(ctx.ai_message_obj)
+            ctx.get_db().add(ctx.ai_message_obj)
 
             insufficient_balance_data: dict[str, Any] = {
                 "error_code": "billing.insufficient_balance",
@@ -956,7 +956,7 @@ async def handle_normal_finalization(
         logger.error(f"Settlement failed: {e}")
 
     # Commit all changes before sending confirmation
-    await ctx.db.commit()
+    await ctx.get_db().commit()
 
     # Send final saved confirmation
     await send_message_saved(ctx)
@@ -994,7 +994,7 @@ async def handle_normal_finalization(
             )
 
             # Build a concise push body: "TopicName｜short preview…"
-            _topic = await ctx.topic_repo.get_topic_by_id(ctx.topic_id)
+            _topic = await ctx.get_topic_repo().get_topic_by_id(ctx.topic_id)
             _topic_name = _topic.name if _topic and _topic.name else ""
             _preview = strip_markdown(ctx.full_content, max_len=15)
             if _topic_name:

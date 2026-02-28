@@ -93,12 +93,11 @@
 
   "creatorTab": {
     "walletTitle": "开发者钱包",
-    "available": "可提现",
+    "pending": "待确认",
     "totalEarned": "累计收益",
-    "totalWithdrawn": "已提现",
-    "withdraw": "提现",
-    "withdrawing": "提现中...",
-    "withdrawSuccess": "已提现 {{amount}} 积分",
+    "confirm": "确认",
+    "confirming": "确认中...",
+    "withdrawSuccess": "已确认 {{amount}} 积分",
     "insufficientBalance": "余额不足",
     "rewardRates": "收益费率",
     "editableRate": "可编辑 Fork：{{rate}}%",

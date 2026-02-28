@@ -143,6 +143,13 @@ class ProviderRepository:
         await self.db.refresh(provider)
         return provider
 
+    async def get_providers_by_ids(self, provider_ids: list[UUID]) -> list[Provider]:
+        if not provider_ids:
+            return []
+        statement = select(Provider).where(Provider.id.in_(provider_ids))
+        result = await self.db.exec(statement)
+        return list(result.all())
+
     async def delete_provider(self, provider_id: UUID) -> bool:
         """
         Deletes a provider by its ID.
