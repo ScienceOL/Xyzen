@@ -220,6 +220,28 @@ class StreamAbortedData(TypedDict):
     stream_id: str
 
 
+class QuestionOptionData(TypedDict):
+    """Single option in an ask_user_question event."""
+
+    id: str
+    label: str
+    description: NotRequired[str]
+    markdown: NotRequired[str]
+
+
+class AskUserQuestionData(TypedDict):
+    """Data payload for ASK_USER_QUESTION event."""
+
+    question_id: str
+    question: str
+    options: NotRequired[list[QuestionOptionData]]
+    multi_select: NotRequired[bool]
+    allow_text_input: bool
+    timeout_seconds: int
+    stream_id: str
+    thread_id: str
+
+
 # =============================================================================
 # Full Event Structures (type + data)
 # =============================================================================
@@ -351,6 +373,13 @@ class StreamAbortedEvent(TypedDict):
     data: StreamAbortedData
 
 
+class AskUserQuestionEvent(TypedDict):
+    """Full event structure for ask user question."""
+
+    type: Literal[ChatEventType.ASK_USER_QUESTION]
+    data: AskUserQuestionData
+
+
 class AgentStartEvent(TypedDict):
     """Full event structure for agent start."""
 
@@ -431,6 +460,7 @@ StreamingEvent = (
     | ThinkingChunkEvent
     | ThinkingEndEvent
     | StreamAbortedEvent
+    | AskUserQuestionEvent
     | AgentStartEvent
     | AgentEndEvent
     | AgentErrorEvent
@@ -476,6 +506,8 @@ __all__ = [
     "ThinkingChunkData",
     "ThinkingEndData",
     "StreamAbortedData",
+    "QuestionOptionData",
+    "AskUserQuestionData",
     # Event types
     "StreamingStartEvent",
     "StreamingChunkEvent",
@@ -495,6 +527,7 @@ __all__ = [
     "ThinkingChunkEvent",
     "ThinkingEndEvent",
     "StreamAbortedEvent",
+    "AskUserQuestionEvent",
     "AgentStartData",
     "AgentEndData",
     "AgentErrorData",

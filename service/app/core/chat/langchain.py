@@ -13,6 +13,7 @@ import logging
 from typing import TYPE_CHECKING, Any, AsyncGenerator
 
 from langgraph.graph.state import CompiledStateGraph
+from langchain_core.runnables import RunnableConfig
 from sqlmodel.ext.asyncio.session import AsyncSession
 
 from app.tools.mcp import format_tool_result_structured
@@ -87,7 +88,7 @@ async def get_ai_response_stream_langchain_legacy(
     agent = await _resolve_agent(db, agent, topic)
 
     # Determine provider and model
-    provider_id, model_name, model_tier = await _resolve_provider_and_model(
+    provider_id, model_name, model_tier = await resolve_provider_and_model(
         db=db,
         agent=agent,
         topic=topic,
@@ -117,9 +118,10 @@ async def get_ai_response_stream_langchain_legacy(
     # Emit processing status
     yield StreamingEventHandler.create_processing_event(stream_id=stream_id)
 
+    checkpointer = None
     try:
         # Create LangChain agent
-        langchain_agent, event_ctx = await _create_langchain_agent(
+        langchain_agent, event_ctx, checkpointer = await create_langchain_agent(
             db=db,
             agent=agent,
             topic=topic,
@@ -135,6 +137,8 @@ async def get_ai_response_stream_langchain_legacy(
             db=db,
             user_id=user_id,
             event_ctx=event_ctx,
+            session_id=str(topic.session_id),
+            topic_id=str(topic.id),
             model_tier=model_tier,
             provider_id=provider_id,
             model_name=model_name,
@@ -153,6 +157,8 @@ async def get_ai_response_stream_langchain_legacy(
 
     except Exception as e:
         yield _handle_streaming_error(e, user_id, stream_id=stream_id)
+    finally:
+        await close_checkpointer(checkpointer)
 
 
 async def _resolve_agent(db: AsyncSession, agent: "Agent | None", topic: TopicModel) -> "Agent | None":
@@ -173,7 +179,7 @@ async def _resolve_agent(db: AsyncSession, agent: "Agent | None", topic: TopicMo
     return None
 
 
-async def _resolve_provider_and_model(
+async def resolve_provider_and_model(
     db: AsyncSession,
     agent: "Agent | None",
     topic: TopicModel,
@@ -331,7 +337,7 @@ async def _resolve_provider_and_model(
     return provider_id, model_name, resolved_model_tier
 
 
-async def _create_langchain_agent(
+async def create_langchain_agent(
     db: AsyncSession,
     agent: "Agent | None",
     topic: TopicModel,
@@ -339,14 +345,22 @@ async def _create_langchain_agent(
     provider_id: str | None,
     model_name: str | None,
     system_prompt: str,
-) -> tuple[CompiledStateGraph[Any, None, Any, Any], AgentEventContext]:
-    """Create and configure the LangChain agent using the agent factory."""
+) -> tuple[CompiledStateGraph[Any, None, Any, Any], AgentEventContext, Any]:
+    """Create and configure the LangChain agent using the agent factory.
+
+    Returns:
+        (graph, event_ctx, checkpointer) — caller must close checkpointer
+        via ``close_checkpointer()`` when done.
+    """
     from app.agents.factory import create_chat_agent
     from app.core.memory import get_or_initialize_memory_service
 
     # Ensure memory service is available (lazy init for Celery workers)
     memory_svc = await get_or_initialize_memory_service()
     store = memory_svc.store if memory_svc else None
+
+    # Create checkpointer for interrupt/resume support (ask_user_question)
+    checkpointer = await create_checkpointer()
 
     graph, event_ctx = await create_chat_agent(
         db=db,
@@ -357,8 +371,121 @@ async def _create_langchain_agent(
         model_name=model_name,
         system_prompt=system_prompt,
         store=store,
+        checkpointer=checkpointer,
     )
-    return graph, event_ctx
+    return graph, event_ctx, checkpointer
+
+
+async def close_checkpointer(checkpointer: Any) -> None:
+    """Close the checkpointer's connection pool if present."""
+    if checkpointer is None:
+        return
+    try:
+        pool = getattr(checkpointer, "conn", None) or getattr(checkpointer, "pool", None)
+        if pool and hasattr(pool, "close"):
+            await pool.close()
+    except Exception:
+        logger.debug("Failed to close checkpointer pool", exc_info=True)
+
+
+def setup_checkpoint_tables() -> None:
+    """Create / migrate LangGraph checkpoint tables using a sync connection.
+
+    This must be called once at application startup (e.g. FastAPI lifespan)
+    **before** any Celery worker tries to use the checkpointer.
+
+    AsyncPostgresSaver.setup() hangs inside Celery workers (and even in plain
+    asyncio.run in the container) because its migration SQL includes
+    CREATE INDEX CONCURRENTLY which interacts badly with the psycopg async
+    driver in this environment.  Running the identical DDL through the *sync*
+    PostgresSaver avoids the issue entirely.
+    """
+    from app.configs import configs
+
+    if configs.Database.Engine != "postgres":
+        return
+
+    try:
+        import psycopg
+        from psycopg.rows import dict_row
+        from langgraph.checkpoint.postgres import PostgresSaver
+
+        conn_string = (
+            f"postgresql://{configs.Database.Postgres.User}:{configs.Database.Postgres.Password}@"
+            f"{configs.Database.Postgres.Host}:{configs.Database.Postgres.Port}/{configs.Database.Postgres.DBName}"
+        )
+
+        conn = psycopg.connect(conn_string, autocommit=True, row_factory=dict_row)  # type: ignore[call-overload]
+        try:
+            saver = PostgresSaver(conn)  # type: ignore[arg-type]
+            saver.setup()
+            logger.info("Checkpoint tables setup completed")
+        finally:
+            conn.close()
+    except Exception:
+        logger.warning("Failed to setup checkpoint tables", exc_info=True)
+
+
+async def create_checkpointer():
+    """Create an AsyncPostgresSaver checkpointer for interrupt/resume support.
+
+    Table creation / migration is handled at startup by setup_checkpoint_tables()
+    (sync, runs in FastAPI lifespan).  This function only creates the async pool
+    and wraps it in AsyncPostgresSaver — no setup() call.
+    """
+    from app.configs import configs
+
+    if configs.Database.Engine != "postgres":
+        logger.debug("Checkpointer requires PostgreSQL — skipping")
+        return None
+
+    try:
+        from psycopg_pool import AsyncConnectionPool
+
+        from langgraph.checkpoint.postgres.aio import AsyncPostgresSaver
+
+        conn_string = (
+            f"postgresql://{configs.Database.Postgres.User}:{configs.Database.Postgres.Password}@"
+            f"{configs.Database.Postgres.Host}:{configs.Database.Postgres.Port}/{configs.Database.Postgres.DBName}"
+        )
+
+        pool: AsyncConnectionPool = AsyncConnectionPool(
+            conninfo=conn_string,
+            open=False,
+            min_size=1,
+            max_size=3,
+        )
+        await pool.open()
+
+        checkpointer = AsyncPostgresSaver(pool)  # type: ignore[arg-type]
+        return checkpointer
+    except Exception:
+        logger.warning("Failed to create checkpointer — interrupt/resume disabled", exc_info=True)
+        return None
+
+
+def _detect_interrupt(data: dict[str, Any], ctx: StreamContext, thread_id: str) -> StreamingEvent | None:
+    """Check updates-mode data for a LangGraph interrupt and return the event if found."""
+    if "__interrupt__" not in data:
+        return None
+    interrupts = data["__interrupt__"]
+    if not interrupts:
+        return None
+
+    interrupt_info = interrupts[0]
+    payload = interrupt_info.value if hasattr(interrupt_info, "value") else interrupt_info
+
+    from app.schemas.chat_event_types import ChatEventType
+
+    ctx.interrupted = True
+    return {  # type: ignore[return-value]
+        "type": ChatEventType.ASK_USER_QUESTION,
+        "data": {
+            **payload,
+            "stream_id": ctx.stream_id,
+            "thread_id": thread_id,
+        },
+    }
 
 
 async def _process_agent_stream(
@@ -421,14 +548,21 @@ async def _process_agent_stream(
     messages_count = 0
     agent_error: Exception | None = None
 
+    # Build thread_id for checkpointer (if session/topic available)
+    thread_id = f"xyzen:{ctx.session_id}:{ctx.topic_id}" if ctx.session_id and ctx.topic_id else None
+    configurable: dict[str, Any] = {"user_id": ctx.user_id}
+    if thread_id:
+        configurable["thread_id"] = thread_id
+    config: RunnableConfig = {
+        "recursion_limit": 500,
+        "configurable": configurable,
+    }
+
     try:
         async for chunk in agent.astream(
             {"messages": history_messages},
             stream_mode=["updates", "messages"],
-            config={
-                "recursion_limit": 500,
-                "configurable": {"user_id": ctx.user_id},
-            },
+            config=config,
         ):
             chunk_count += 1
             try:
@@ -441,6 +575,13 @@ async def _process_agent_stream(
                 updates_count += 1
                 if isinstance(data, dict):
                     logger.info(f"[Updates] step_names={list(data.keys())}")
+
+                    # Detect LangGraph interrupt (from ask_user_question tool)
+                    interrupt_event = _detect_interrupt(data, ctx, thread_id or "")
+                    if interrupt_event:
+                        yield interrupt_event
+                        break
+
                 async for event in _handle_updates_mode(data, ctx, tracer):
                     yield event
             elif mode == "messages":
@@ -456,12 +597,18 @@ async def _process_agent_stream(
 
     # Finalization (always runs, even after error)
     logger.info(
-        "Stream finished: %d chunks (updates=%d, messages=%d), is_streaming=%s",
+        "Stream finished: %d chunks (updates=%d, messages=%d), is_streaming=%s, interrupted=%s",
         chunk_count,
         updates_count,
         messages_count,
         ctx.is_streaming,
+        ctx.interrupted,
     )
+
+    # If interrupted by ask_user_question, skip normal finalization —
+    # the task handler will save partial state and exit.
+    if ctx.interrupted:
+        return
 
     # Emit node_end for the last node via tracer
     current_node_id = tracer.get_current_node_id()
@@ -487,6 +634,105 @@ async def _process_agent_stream(
             yield agent_end_event
 
     # If there was an error, re-raise it AFTER finalization events are yielded
+    if agent_error:
+        raise agent_error
+
+
+async def resume_agent_from_interrupt(
+    agent: CompiledStateGraph[Any, None, Any, Any],
+    user_response: dict[str, Any],
+    thread_id: str,
+    ctx: StreamContext,
+) -> AsyncGenerator[StreamingEvent, None]:
+    """Resume agent execution after an ask_user_question interrupt.
+
+    Uses LangGraph Command(resume=value) to feed the user's response back
+    into the interrupted graph. The checkpointer restores state from the
+    thread_id — no need to re-pass message history.
+
+    Args:
+        agent: The compiled graph (must use the same checkpointer DB)
+        user_response: User's answer dict from the frontend
+        thread_id: Checkpointer thread identifier (xyzen:{session}:{topic})
+        ctx: StreamContext for event emission
+    """
+    from langgraph.types import Command
+
+    logger.info("Resuming agent from interrupt: thread_id=%s", thread_id)
+
+    config: RunnableConfig = {
+        "recursion_limit": 500,
+        "configurable": {
+            "thread_id": thread_id,
+            "user_id": ctx.user_id,
+        },
+    }
+
+    tracer = LangGraphTracer(
+        stream_id=ctx.stream_id,
+        event_ctx=ctx.event_ctx,
+        db=ctx.db,
+    )
+
+    # Skip agent_start on resume — the original AgentRun already exists
+    # for this message. We just need the tracer initialized for node tracking.
+
+    agent_error: Exception | None = None
+
+    try:
+        async for chunk in agent.astream(
+            Command(resume=user_response),
+            stream_mode=["updates", "messages"],
+            config=config,
+        ):
+            try:
+                mode, data = chunk
+            except Exception:
+                logger.warning("Received malformed chunk from resume astream: %r", chunk)
+                continue
+
+            if mode == "updates":
+                if isinstance(data, dict):
+                    # Detect follow-up interrupt (sequential questions)
+                    interrupt_event = _detect_interrupt(data, ctx, thread_id)
+                    if interrupt_event:
+                        yield interrupt_event
+                        break
+
+                async for event in _handle_updates_mode(data, ctx, tracer):
+                    yield event
+            elif mode == "messages":
+                async for event in _handle_messages_mode(data, ctx, tracer):
+                    yield event
+
+    except Exception as e:
+        agent_error = e
+        logger.error(f"Error during resume agent stream: {e}", exc_info=True)
+
+    # Skip normal finalization if interrupted again
+    if ctx.interrupted:
+        return
+
+    # Emit node_end for the last node
+    current_node_id = tracer.get_current_node_id()
+    if current_node_id:
+        final_output = "".join(ctx.assistant_buffer) if ctx.assistant_buffer else None
+        status = "failed" if agent_error else "completed"
+        node_end_event = tracer.on_node_end(current_node_id, status, output=final_output)
+        if node_end_event:
+            yield node_end_event
+
+    # Finalize streaming
+    async for event in _finalize_streaming(ctx, tracer):
+        yield event
+
+    # Emit agent_end
+    if ctx.event_ctx and ctx.agent_started:
+        status = "failed" if agent_error else "completed"
+        agent_end_event = tracer.on_agent_end(status)
+        if agent_end_event:
+            yield agent_end_event
+
     if agent_error:
         raise agent_error
 

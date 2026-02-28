@@ -200,7 +200,10 @@ class RedemptionService:
             # Auto-claim monthly credits for the new subscription
             if role.monthly_credits > 0:
                 await self.repo.credit_wallet_typed(
-                    user_id, role.monthly_credits, "paid", "subscription_monthly",
+                    user_id,
+                    role.monthly_credits,
+                    "paid",
+                    "subscription_monthly",
                     reference_id=str(redemption_code.id),
                 )
                 await sub_service.repo.update_last_credits_claimed(user_id)
@@ -222,7 +225,10 @@ class RedemptionService:
         else:
             # Credits code: credit to paid balance
             wallet = await self.repo.credit_wallet_typed(
-                user_id, redemption_code.amount, "paid", "redemption_code",
+                user_id,
+                redemption_code.amount,
+                "paid",
+                "redemption_code",
                 reference_id=str(redemption_code.id),
             )
             logger.info(f"Credited {redemption_code.amount} to user {user_id}, new balance: {wallet.virtual_balance}")

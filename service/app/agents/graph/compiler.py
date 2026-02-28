@@ -40,6 +40,7 @@ from app.schemas.graph_config import (
 
 if TYPE_CHECKING:
     from langchain_core.tools import BaseTool
+    from langgraph.checkpoint.base import BaseCheckpointSaver
     from langgraph.store.base import BaseStore
 
 
@@ -60,6 +61,7 @@ class GraphCompiler:
         llm_factory: LLMFactory,
         tool_registry: dict[str, "BaseTool"],
         store: "BaseStore | None" = None,
+        checkpointer: "BaseCheckpointSaver | None" = None,
     ) -> None:
         canonical = canonicalize_graph_config(config)
         ensure_valid_graph_config(canonical)
@@ -70,6 +72,7 @@ class GraphCompiler:
             llm_factory=llm_factory,
             tool_registry=tool_registry,
             store=store,
+            checkpointer=checkpointer,
         )
 
     async def build(self) -> DynamicCompiledGraph:

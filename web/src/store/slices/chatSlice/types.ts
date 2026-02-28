@@ -70,6 +70,17 @@ export interface ChatSlice {
   // Abort/interrupt generation
   abortGeneration: (channelId: string) => void;
 
+  // Respond to ask_user_question interrupt
+  respondToQuestion: (
+    channelId: string,
+    questionId: string,
+    response: {
+      selectedOptions?: string[];
+      text?: string;
+      timedOut?: boolean;
+    },
+  ) => void;
+
   // Knowledge Context
   setKnowledgeContext: (
     channelId: string,

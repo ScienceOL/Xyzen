@@ -84,6 +84,11 @@ class StreamContext:
     # Cache token tracking
     total_cache_creation_tokens: int = 0
     total_cache_read_tokens: int = 0
+    # Session/topic IDs for checkpointer thread_id
+    session_id: str | None = None
+    topic_id: str | None = None
+    # Interrupt state
+    interrupted: bool = False
     # Model metadata (resolved once, injected into events)
     model_tier: str | None = None
     provider_id: str | None = None

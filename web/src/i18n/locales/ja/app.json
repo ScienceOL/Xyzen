@@ -604,5 +604,13 @@
       "multiAgent": "複数エージェントを並行実行。",
       "dailyCheckIn": "毎日チェックインでボーナス！"
     }
+  },
+  "question": {
+    "submit": "送信",
+    "timedOut": "タイムアウト",
+    "remaining": "残り {{time}}",
+    "answered": "回答済み",
+    "typeAnswer": "回答を入力...",
+    "other": "その他"
   }
 }

@@ -28,6 +28,7 @@ import MessageAttachments from "./MessageAttachments";
 import MessageContent from "./MessageContent";
 import { SearchCitations } from "./SearchCitations";
 import ToolCallPill from "./ToolCallPill";
+import UserQuestionBubble from "./UserQuestionBubble";
 
 interface ChatBubbleProps {
   message: Message;
@@ -278,8 +279,10 @@ function ChatBubble({ message }: ChatBubbleProps) {
     await deleteMessage(message.id);
   };
 
-  // Updated time format to include seconds
-  const formattedTime = new Date(created_at).toLocaleTimeString([], {
+  // Format date + time
+  const formattedTime = new Date(created_at).toLocaleString([], {
+    month: "short",
+    day: "numeric",
     hour: "2-digit",
     minute: "2-digit",
     second: "2-digit",
@@ -469,6 +472,16 @@ function ChatBubble({ message }: ChatBubbleProps) {
                 isLoading={isMessageLoading}
                 isCancelled={status === "cancelled"}
               />
+
+              {/* User Question Bubble - shown when agent asks a question */}
+              {!isUserMessage && message.userQuestion && (
+                <div className="mt-3">
+                  <UserQuestionBubble
+                    userQuestion={message.userQuestion}
+                    messageId={message.id}
+                  />
+                </div>
+              )}
 
               {/* File Attachments - shown after text for assistant messages */}
               {!isUserMessage && attachments && attachments.length > 0 && (

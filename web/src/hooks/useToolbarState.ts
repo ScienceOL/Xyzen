@@ -3,6 +3,10 @@
 import { useActiveChannelStatus } from "@/hooks/useChannelSelectors";
 import { useSubscriptionInfo } from "@/hooks/ee";
 import { useIsMobile } from "@/hooks/useMediaQuery";
+import {
+  selectCurrentToolbarAgent,
+  selectCurrentToolbarMcpInfo,
+} from "@/hooks/toolbarSelectors";
 import { useXyzen } from "@/store";
 import type { ModelTier } from "@/components/layouts/components/TierSelector";
 import { useCallback, useMemo, useState } from "react";
@@ -26,7 +30,6 @@ export function useToolbarState() {
   );
 
   const agents = useXyzen((s) => s.agents);
-  const resolveAgent = useXyzen((s) => s.resolveAgent);
   const mcpServers = useXyzen((s) => s.mcpServers);
   const uploadedFiles = useXyzen((s) => s.uploadedFiles);
   const isUploading = useXyzen((s) => s.isUploading);
@@ -40,28 +43,23 @@ export function useToolbarState() {
   const channelStatus = useActiveChannelStatus();
   const activeChatChannel = channelStatus.channelId;
 
-  // Get current channel and associated MCP tools
-  const currentMcpInfo = useMemo(() => {
-    if (!activeChatChannel) return null;
-
-    const agent = resolveAgent(channelStatus.agentId);
-    if (!agent?.mcp_servers?.length) return null;
-
-    const connectedServers = mcpServers.filter((server) =>
-      agent.mcp_servers?.some((mcpRef) => mcpRef.id === server.id),
-    );
-
-    return {
-      agent,
-      servers: connectedServers,
-    };
-  }, [activeChatChannel, channelStatus.agentId, resolveAgent, mcpServers]);
-
   // Get current agent
   const currentAgent = useMemo(() => {
-    if (!activeChatChannel) return null;
-    return resolveAgent(channelStatus.agentId);
-  }, [activeChatChannel, channelStatus.agentId, resolveAgent]);
+    return selectCurrentToolbarAgent(
+      agents,
+      activeChatChannel,
+      channelStatus.agentId,
+    );
+  }, [agents, activeChatChannel, channelStatus.agentId]);
+
+  // Get current channel and associated MCP tools
+  const currentMcpInfo = useMemo(() => {
+    return selectCurrentToolbarMcpInfo(
+      activeChatChannel,
+      currentAgent,
+      mcpServers,
+    );
+  }, [activeChatChannel, currentAgent, mcpServers]);
 
   // Get current channel status for tier/knowledge
   const currentSessionTier = channelStatus.model_tier;

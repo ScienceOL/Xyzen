@@ -16,6 +16,7 @@ class FakeWebSocket:
         self._events = list(received_events)
         self.accepted = False
         self.closed: tuple[int | None, str | None] | None = None
+        self.query_params: dict[str, str] = {}
 
     async def accept(self) -> None:
         self.accepted = True
@@ -51,7 +52,6 @@ class DummySessionContext:
 class WsDeps(TypedDict):
     session_id: UUID
     topic_id: UUID
-    auth_ctx: AuthContext
 
 
 @pytest.fixture
@@ -59,6 +59,15 @@ def patch_ws_dependencies(monkeypatch: pytest.MonkeyPatch) -> WsDeps:
     session_id = uuid4()
     topic_id = uuid4()
     user_id = "test-user-id"
+
+    auth_ctx = AuthContext(
+        user_id=user_id,
+        auth_provider="bohr_test",
+        access_token="test-token",
+    )
+
+    async def fake_ws_authenticate_context(_websocket: object, _token: str | None = None) -> AuthContext:
+        return auth_ctx
 
     def fake_session_local() -> DummySessionContext:
         return DummySessionContext()
@@ -75,7 +84,7 @@ def patch_ws_dependencies(monkeypatch: pytest.MonkeyPatch) -> WsDeps:
             pass
 
         async def get_session_by_id(self, _session_id: UUID) -> object:
-            return SimpleNamespace(user_id=user_id)
+            return SimpleNamespace(user_id=user_id, agent_id=None)
 
     async def fake_redis_listener(_websocket: object, _connection_id: str) -> None:
         return
@@ -115,6 +124,7 @@ def patch_ws_dependencies(monkeypatch: pytest.MonkeyPatch) -> WsDeps:
     def fake_redis_from_url(*_args: object, **_kwargs: object) -> FakePresenceRedis:
         return FakePresenceRedis()
 
+    monkeypatch.setattr(chat_ws, "ws_authenticate_context", fake_ws_authenticate_context)
     monkeypatch.setattr(chat_ws, "AsyncSessionLocal", fake_session_local)
     monkeypatch.setattr(chat_ws, "TopicRepository", DummyTopicRepository)
     monkeypatch.setattr(chat_ws, "SessionRepository", DummySessionRepository)
@@ -126,11 +136,6 @@ def patch_ws_dependencies(monkeypatch: pytest.MonkeyPatch) -> WsDeps:
     return {
         "session_id": session_id,
         "topic_id": topic_id,
-        "auth_ctx": AuthContext(
-            user_id=user_id,
-            auth_provider="bohr_test",
-            access_token="test-token",
-        ),
     }
 
 
@@ -145,13 +150,12 @@ async def test_chat_websocket_abort_event_sets_abort_signal(
     websocket = FakeWebSocket([{"type": "abort"}, WebSocketDisconnect()])
     session_id = patch_ws_dependencies["session_id"]
     topic_id = patch_ws_dependencies["topic_id"]
-    auth_ctx = patch_ws_dependencies["auth_ctx"]
 
     await chat_ws.chat_websocket(
         websocket=cast(WebSocket, websocket),
         session_id=session_id,
         topic_id=topic_id,
-        auth_ctx=auth_ctx,
+        token="test-token",
     )
 
     assert websocket.accepted is True
@@ -169,13 +173,12 @@ async def test_chat_websocket_disconnect_does_not_set_abort_signal(
     websocket = FakeWebSocket([WebSocketDisconnect()])
     session_id = patch_ws_dependencies["session_id"]
     topic_id = patch_ws_dependencies["topic_id"]
-    auth_ctx = patch_ws_dependencies["auth_ctx"]
 
     await chat_ws.chat_websocket(
         websocket=cast(WebSocket, websocket),
         session_id=session_id,
         topic_id=topic_id,
-        auth_ctx=auth_ctx,
+        token="test-token",
     )
 
     assert websocket.accepted is True

@@ -12,6 +12,7 @@ import type {
   ToolCall,
   ToolCallResult,
   AgentMetadata,
+  UserQuestion,
 } from "@/store/types";
 import type { AgentExecutionState, PhaseExecution } from "@/types/agentEvents";
 
@@ -130,6 +131,53 @@ function cloneMessage(message: Message): Message {
     );
     if (reconstructed) {
       cloned.agentExecution = reconstructed;
+    }
+  }
+
+  // Reconstruct userQuestion from backend user_question_data if available
+  const backendQuestionData = (
+    message as Message & { user_question_data?: Record<string, unknown> }
+  ).user_question_data;
+  if (backendQuestionData && !cloned.userQuestion) {
+    const options = backendQuestionData.options as
+      | Array<{
+          id: string;
+          label: string;
+          description?: string;
+          markdown?: string;
+        }>
+      | undefined;
+
+    // Backward compat: normalize selected_option (string) → selectedOptions (string[])
+    let selectedOptions: string[] | undefined;
+    const rawSelectedOptions = backendQuestionData.selected_options;
+    const rawSelectedOption = backendQuestionData.selected_option;
+    if (Array.isArray(rawSelectedOptions)) {
+      selectedOptions = rawSelectedOptions as string[];
+    } else if (typeof rawSelectedOption === "string") {
+      selectedOptions = [rawSelectedOption];
+    }
+
+    cloned.userQuestion = {
+      questionId: backendQuestionData.question_id as string,
+      question: backendQuestionData.question as string,
+      options: options?.map((o) => ({
+        id: o.id,
+        label: o.label,
+        description: o.description,
+        markdown: o.markdown,
+      })),
+      multiSelect: (backendQuestionData.multi_select as boolean) ?? false,
+      allowTextInput: backendQuestionData.allow_text_input as boolean,
+      timeoutSeconds: backendQuestionData.timeout_seconds as number,
+      threadId: backendQuestionData.thread_id as string,
+      status: backendQuestionData.status as UserQuestion["status"],
+      selectedOptions,
+      userText: backendQuestionData.user_text as string | undefined,
+      askedAt: (backendQuestionData.asked_at as number) * 1000, // backend stores seconds, frontend uses ms
+    } satisfies UserQuestion;
+    if (cloned.userQuestion.status === "pending") {
+      cloned.status = "waiting_for_user";
     }
   }
 

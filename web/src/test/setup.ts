@@ -6,6 +6,12 @@
 
 import { vi, beforeEach } from "vitest";
 
+// Enable React's act() environment checks for hook/component tests.
+Object.defineProperty(globalThis, "IS_REACT_ACT_ENVIRONMENT", {
+  value: true,
+  writable: true,
+});
+
 // Mock localStorage
 const localStorageMock = {
   store: {} as Record<string, string>,

@@ -687,6 +687,8 @@ async def get_listing_earnings(
     earning_repo = DeveloperEarningRepository(db)
     stats = await earning_repo.get_listing_earnings_stats(marketplace_id)
     return stats
+
+
 async def publish_version(
     marketplace_id: UUID,
     request: PublishVersionRequest,

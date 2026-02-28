@@ -104,13 +104,13 @@ async def test_create_subagent_tool_requires_session_factory_context() -> None:
 @pytest.mark.asyncio
 async def test_spawn_subagent_timeout_returns_structured_failure(monkeypatch: pytest.MonkeyPatch) -> None:
     monkeypatch.setattr(subagent_context, "get_session_factory", lambda: _fake_session_factory)
-    monkeypatch.setattr(subagent_tools, "SUBAGENT_TIMEOUT_SECONDS", 0)
+    monkeypatch.setattr(subagent_tools, "SUBAGENT_TIMEOUT_SECONDS", 0.001)
 
     async def _build_graph_stub(**_kwargs: Any) -> object:
         return object()
 
-    async def _run_subagent_stub(_graph: object, _task: str) -> str:
-        await asyncio.sleep(0.01)
+    async def _run_subagent_stub(_graph: object, _task: str, provider_id: str | None = None) -> str:
+        await asyncio.sleep(1)
         return "never reached"
 
     monkeypatch.setattr(subagent_tools, "_build_subagent_graph", _build_graph_stub)
@@ -145,7 +145,7 @@ async def test_spawn_subagent_recursion_limit_returns_structured_failure(
     async def _build_graph_stub(**_kwargs: Any) -> object:
         return object()
 
-    async def _run_subagent_stub(_graph: object, _task: str) -> str:
+    async def _run_subagent_stub(_graph: object, _task: str, provider_id: str | None = None) -> str:
         raise RuntimeError("recursion limit reached")
 
     monkeypatch.setattr(subagent_tools, "_build_subagent_graph", _build_graph_stub)
@@ -178,7 +178,7 @@ async def test_spawn_subagent_success_returns_structured_success(monkeypatch: py
     async def _build_graph_stub(**_kwargs: Any) -> object:
         return object()
 
-    async def _run_subagent_stub(_graph: object, _task: str) -> str:
+    async def _run_subagent_stub(_graph: object, _task: str, provider_id: str | None = None) -> str:
         return "final answer"
 
     monkeypatch.setattr(subagent_tools, "_build_subagent_graph", _build_graph_stub)

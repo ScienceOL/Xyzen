@@ -115,8 +115,12 @@ class UserWalletBase(SQLModel):
 
     user_id: str = Field(unique=True, index=True, description="User ID")
     virtual_balance: int = Field(default=0, sa_type=BigInteger, description="Current virtual balance")
-    free_balance: int = Field(default=0, sa_type=BigInteger, description="Free credits (check-in, welcome bonus, events)")
-    paid_balance: int = Field(default=0, sa_type=BigInteger, description="Paid credits (subscription, top-up, redemption)")
+    free_balance: int = Field(
+        default=0, sa_type=BigInteger, description="Free credits (check-in, welcome bonus, events)"
+    )
+    paid_balance: int = Field(
+        default=0, sa_type=BigInteger, description="Paid credits (subscription, top-up, redemption)"
+    )
     earned_balance: int = Field(default=0, sa_type=BigInteger, description="Earned credits (community earnings)")
     total_credited: int = Field(default=0, sa_type=BigInteger, description="Total amount credited (audit trail)")
     total_consumed: int = Field(default=0, sa_type=BigInteger, description="Total amount consumed from virtual balance")  # noqa: E501

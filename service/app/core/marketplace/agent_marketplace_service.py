@@ -109,12 +109,14 @@ class AgentMarketplaceService:
             for sid in skill_ids_override:
                 skill = await self.skill_repo.get_skill_by_id(sid)
                 if skill:
-                    skill_configs.append({
-                        "id": str(skill.id),
-                        "name": skill.name,
-                        "description": skill.description,
-                        "scope": skill.scope,
-                    })
+                    skill_configs.append(
+                        {
+                            "id": str(skill.id),
+                            "name": skill.name,
+                            "description": skill.description,
+                            "scope": skill.scope,
+                        }
+                    )
         else:
             # Default: query skills attached to the agent
             skills = await self.skill_repo.get_skills_for_agent(agent.id)

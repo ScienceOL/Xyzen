@@ -74,6 +74,9 @@ class ChatEventType(StrEnum):
     # Abort/Interrupt events
     STREAM_ABORTED = "stream_aborted"
 
+    # User question (interrupt-based)
+    ASK_USER_QUESTION = "ask_user_question"
+
 
 class ChatClientEventType(StrEnum):
     """Client -> Server event types (messages coming from the frontend)."""
@@ -90,6 +93,9 @@ class ChatClientEventType(StrEnum):
 
     # Abort/interrupt streaming generation
     ABORT = "abort"
+
+    # User question response (answer to ASK_USER_QUESTION)
+    USER_QUESTION_RESPONSE = "user_question_response"
 
 
 class ToolCallStatus(StrEnum):

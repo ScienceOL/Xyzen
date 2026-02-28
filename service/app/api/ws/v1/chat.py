@@ -19,7 +19,7 @@ from app.repos import FileRepository, MessageRepository, SessionRepository, Topi
 from app.schemas.chat_event_types import ChatClientEventType, ChatEventType
 
 # from app.core.celery_app import celery_app # Not needed directly if we import the task
-from app.tasks.chat import process_chat_message
+from app.tasks.chat import process_chat_message, resume_chat_from_interrupt
 
 logger = logging.getLogger(__name__)
 
@@ -227,6 +227,84 @@ async def chat_websocket(
                 if message_type == ChatClientEventType.ABORT:
                     logger.info(f"Received abort request for {connection_id}")
                     await set_abort_signal(connection_id)
+                    continue
+
+                # Handle user question response (answer to ask_user_question)
+                if message_type == ChatClientEventType.USER_QUESTION_RESPONSE:
+                    response_data = data.get("data", {})
+                    question_id = response_data.get("question_id", "")
+                    if not question_id:
+                        logger.warning(f"Missing question_id in user question response on {connection_id}")
+                        continue
+                    selected_options = response_data.get("selected_options")
+                    text = response_data.get("text", "")
+                    timed_out = response_data.get("timed_out", False)
+
+                    # Look up thread_id from Redis
+                    r = None
+                    try:
+                        r = redis.from_url(configs.Redis.REDIS_URL, decode_responses=True)
+                        thread_id = await r.get(f"question_thread:{connection_id}")
+                        if not thread_id:
+                            logger.warning(f"No thread_id found for question response on {connection_id}")
+                            continue
+
+                        # Validate question_id matches the active question
+                        active_qid = await r.get(f"question_active:{connection_id}")
+                        if active_qid and active_qid != question_id:
+                            logger.warning(
+                                f"question_id mismatch on {connection_id}: active={active_qid}, received={question_id}"
+                            )
+                            continue
+
+                        # Check timeout
+                        timeout_key = f"question_timeout:{connection_id}:{question_id}"
+                        still_valid = await r.get(timeout_key)
+                        if not still_valid and not timed_out:
+                            logger.warning(f"Question {question_id} has timed out on {connection_id}")
+                            timed_out = True
+
+                        # Clean up Redis keys
+                        await r.delete(f"question_active:{connection_id}")
+                        await r.delete(timeout_key)
+                        await r.delete(f"question_thread:{connection_id}")
+                    except Exception as e:
+                        logger.error(f"Failed to look up question state from Redis: {e}")
+                        continue
+                    finally:
+                        if r:
+                            await r.aclose()
+
+                    user_response = {
+                        "question_id": question_id,
+                        "selected_options": selected_options,
+                        "text": text,
+                        "timed_out": timed_out,
+                    }
+
+                    # Generate new stream_id for the resumed response
+                    resume_stream_id = f"stream_{int(time.time() * 1000)}_{uuid4().hex[:8]}"
+
+                    # Emit loading event
+                    loading_event = {
+                        "type": ChatEventType.LOADING,
+                        "data": {"message": "AI is thinking...", "stream_id": resume_stream_id},
+                    }
+                    await websocket.send_text(json.dumps(loading_event))
+
+                    # Dispatch resume task
+                    resume_chat_from_interrupt.delay(
+                        session_id_str=str(session_id),
+                        topic_id_str=str(topic_id),
+                        user_id_str=str(user),
+                        auth_provider=auth_ctx.auth_provider,
+                        question_id=question_id,
+                        user_response=user_response,
+                        thread_id=thread_id,
+                        stream_id=resume_stream_id,
+                    )
+
+                    logger.info(f"Resume from interrupt dispatched for {connection_id}, question_id={question_id}")
                     continue
 
                 # Handle regeneration request (after message edit)

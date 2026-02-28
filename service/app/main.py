@@ -42,6 +42,12 @@ async def lifespan(app: FastAPI) -> AsyncGenerator[None, None]:
 
     await initialize_memory_service()
 
+    # Create / migrate LangGraph checkpoint tables (sync DDL).
+    # Must run before Celery workers attempt to use the checkpointer.
+    from app.core.chat.langchain import setup_checkpoint_tables
+
+    setup_checkpoint_tables()
+
     # Initialize system provider from environment config
     from app.core.providers import initialize_providers_on_startup
     from app.infra.redis import run_once

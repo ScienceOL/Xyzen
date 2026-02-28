@@ -81,6 +81,7 @@ export type MessageStatus =
   | "streaming" // Content streaming in progress (was isStreaming)
   | "completed" // Normal completion
   | "failed" // Error occurred
+  | "waiting_for_user" // Agent asked a question, awaiting user response
   | "cancelled"; // User interrupted
 
 export interface Message {
@@ -121,6 +122,30 @@ export interface Message {
   agent_metadata?: AgentMetadata;
   // Structured error for error messages
   error?: MessageError;
+  // User question state for ask_user_question interrupt/resume
+  userQuestion?: UserQuestion;
+}
+
+/** State for an ask_user_question interrupt */
+export interface UserQuestion {
+  questionId: string;
+  question: string;
+  options?: UserQuestionOption[];
+  multiSelect?: boolean;
+  allowTextInput: boolean;
+  timeoutSeconds: number;
+  threadId: string;
+  status: "pending" | "answered" | "timed_out";
+  selectedOptions?: string[];
+  userText?: string;
+  askedAt: number; // Unix timestamp ms
+}
+
+export interface UserQuestionOption {
+  id: string;
+  label: string;
+  description?: string;
+  markdown?: string;
 }
 
 /**

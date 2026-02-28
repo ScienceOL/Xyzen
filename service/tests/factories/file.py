@@ -23,3 +23,4 @@ class FileCreateFactory(ModelFactory[FileCreate]):
     parent_id = None
     metainfo = None
     file_hash = None
+    skill_id = None
