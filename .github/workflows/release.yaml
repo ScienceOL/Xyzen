@@ -369,3 +369,21 @@ jobs:
           commit_date: ${{ needs.release.outputs.commit_date }}
           service_image: '${{ env.REGISTRY }}/${{ env.IMAGE_NAMESPACE }}/xyzen-service:${{ needs.release.outputs.new_release_version }}'
           web_image: '${{ env.REGISTRY }}/${{ env.IMAGE_NAMESPACE }}/xyzen-web:${{ needs.release.outputs.new_release_version }}'
+
+  # Recreate test branch from main after release
+  # (GitHub auto-deletes test after PR merge; this recreates it for the next dev cycle)
+  recreate-test:
+    name: Recreate Test Branch
+    needs: [release, deploy]
+    if: needs.release.outputs.new_release_published == 'true'
+    runs-on: ubuntu-latest
+    steps:
+      - name: Checkout main
+        uses: actions/checkout@v4
+        with:
+          ref: main
+          fetch-depth: 1
+          token: ${{ secrets.SCIENCEOL_GITHUB_TOKEN }}
+
+      - name: Create test branch from main
+        run: git push origin HEAD:refs/heads/test
