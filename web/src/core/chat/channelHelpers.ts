@@ -145,7 +145,11 @@ export function clearMessageTransientState(message: Message): void {
   delete message.isLoading;
   delete message.isStreaming;
   message.isThinking = false;
-  if (message.status !== "failed" && message.status !== "cancelled") {
+  if (
+    message.status !== "failed" &&
+    message.status !== "cancelled" &&
+    message.status !== "waiting_for_user"
+  ) {
     message.status = "completed";
   }
 }
@@ -239,7 +243,18 @@ export function syncChannelResponding(channel: ChatChannel): void {
   if (
     latestAssistant.status === "pending" ||
     latestAssistant.status === "streaming" ||
-    latestAssistant.status === "thinking"
+    latestAssistant.status === "thinking" ||
+    latestAssistant.status === "waiting_for_user"
+  ) {
+    channel.responding = true;
+    return;
+  }
+
+  // A pending user question means the agent is interrupted and waiting
+  // for the user's answer — keep input disabled even if status is "completed".
+  if (
+    latestAssistant.userQuestion &&
+    latestAssistant.userQuestion.status === "pending"
   ) {
     channel.responding = true;
     return;

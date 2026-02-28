@@ -163,4 +163,16 @@ export type ChatEvent =
   | { type: "node_end"; data: NodeEndData }
   | { type: "subagent_start"; data: SubagentStartData }
   | { type: "subagent_end"; data: SubagentEndData }
-  | { type: "progress_update"; data: ProgressUpdateData };
+  | { type: "progress_update"; data: ProgressUpdateData }
+  | {
+      type: "ask_user_question";
+      data: {
+        question_id: string;
+        question: string;
+        options?: Array<{ id: string; label: string; description?: string }>;
+        allow_text_input: boolean;
+        timeout_seconds: number;
+        stream_id: string;
+        thread_id: string;
+      };
+    };

@@ -4,6 +4,7 @@ import {
   handleAgentEnd,
   handleAgentError,
   handleAgentStart,
+  handleAskUserQuestion,
   handleError,
   handleGeneratedFiles,
   handleInsufficientBalance,
@@ -262,6 +263,11 @@ export function createConnectionActions(
 
             case "progress_update": {
               handleProgressUpdate(channel, event.data);
+              break;
+            }
+
+            case "ask_user_question": {
+              handleAskUserQuestion(channel, event.data);
               break;
             }
 
@@ -623,6 +629,46 @@ export function createConnectionActions(
 
       // Track the timeout ID for cleanup
       abortTimeoutIds.set(channelId, timeoutId);
+    },
+
+    respondToQuestion: (
+      channelId: string,
+      questionId: string,
+      response: {
+        selectedOption?: string;
+        text?: string;
+        timedOut?: boolean;
+      },
+    ) => {
+      // Send response to backend via WebSocket
+      xyzenService.sendStructuredMessage({
+        type: "user_question_response",
+        data: {
+          question_id: questionId,
+          selected_option: response.selectedOption,
+          text: response.text || "",
+          timed_out: response.timedOut || false,
+        },
+      });
+
+      // Update local state
+      set((state: ChatSlice) => {
+        const channel = state.channels[channelId];
+        if (!channel) return;
+
+        const msg = channel.messages.find(
+          (m) => m.userQuestion?.questionId === questionId,
+        );
+        if (msg?.userQuestion) {
+          msg.userQuestion.status = response.timedOut
+            ? "timed_out"
+            : "answered";
+          msg.userQuestion.selectedOption = response.selectedOption;
+          msg.userQuestion.userText = response.text;
+          msg.status = "pending";
+        }
+      });
+      updateDerivedStatus();
     },
 
     confirmToolCall: (channelId: string, toolCallId: string) => {
