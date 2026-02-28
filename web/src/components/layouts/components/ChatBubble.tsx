@@ -279,8 +279,10 @@ function ChatBubble({ message }: ChatBubbleProps) {
     await deleteMessage(message.id);
   };
 
-  // Updated time format to include seconds
-  const formattedTime = new Date(created_at).toLocaleTimeString([], {
+  // Format date + time
+  const formattedTime = new Date(created_at).toLocaleString([], {
+    month: "short",
+    day: "numeric",
     hour: "2-digit",
     minute: "2-digit",
     second: "2-digit",
