@@ -192,5 +192,10 @@
     "github": "Star on GitHub",
     "start": "Let Knowledge Create Value",
     "license": "Open Source / Community Driven"
+  },
+  "footer": {
+    "copyright": "\u00a9 2024-2026 Miracle Story (Shanghai) Intelligent Technology Co., Ltd. All rights reserved.",
+    "terms": "Terms of Service",
+    "privacy": "Privacy Policy"
   }
 }

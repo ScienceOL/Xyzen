@@ -192,5 +192,10 @@
     "github": "Star on GitHub",
     "start": "知識で収益を生む",
     "license": "オープンソース / コミュニティ駆動"
+  },
+  "footer": {
+    "copyright": "\u00a9 2024-2026 Miracle Story (Shanghai) Intelligent Technology Co., Ltd. All rights reserved.",
+    "terms": "利用規約",
+    "privacy": "プライバシーポリシー"
   }
 }

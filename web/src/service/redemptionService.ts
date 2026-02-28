@@ -146,9 +146,16 @@ export interface NewUsersHeatmapEntry {
   new_users: number;
 }
 
+export interface ProviderOption {
+  value: string;
+  label: string;
+}
+
 export interface FilterOptionsResponse {
-  providers: string[];
+  providers: ProviderOption[];
   models: string[];
+  tiers: string[];
+  tools: string[];
 }
 
 export interface ModelOptionsResponse {
@@ -326,6 +333,7 @@ class RedemptionService {
     modelTier?: string,
     modelName?: string,
     provider?: string,
+    toolName?: string,
   ): Promise<ConsumptionHeatmapEntry[]> {
     return http.get(
       "/xyzen/api/v1/redemption/admin/stats/consumption-heatmap",
@@ -338,6 +346,7 @@ class RedemptionService {
           model_tier: modelTier,
           model_name: modelName,
           provider,
+          tool_name: toolName,
         },
       },
     );
@@ -350,6 +359,7 @@ class RedemptionService {
     modelTier?: string,
     modelName?: string,
     provider?: string,
+    toolName?: string,
   ): Promise<UserConsumptionHeatmapEntry[]> {
     return http.get(
       "/xyzen/api/v1/redemption/admin/stats/user-consumption-heatmap",
@@ -362,6 +372,7 @@ class RedemptionService {
           model_tier: modelTier,
           model_name: modelName,
           provider,
+          tool_name: toolName,
         },
       },
     );
@@ -378,6 +389,7 @@ class RedemptionService {
     search?: string,
     provider?: string,
     includeTiers?: boolean,
+    toolName?: string,
   ): Promise<ConsumptionTopUserEntry[]> {
     return http.get(
       "/xyzen/api/v1/redemption/admin/stats/consumption-top-users",
@@ -394,6 +406,7 @@ class RedemptionService {
           search,
           provider,
           include_tiers: includeTiers || undefined,
+          tool_name: toolName,
         },
       },
     );

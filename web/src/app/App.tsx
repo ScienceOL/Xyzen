@@ -30,6 +30,14 @@ const SecretCodePage = React.lazy(() =>
   })),
 );
 
+const TermsPage = React.lazy(() =>
+  import("@/app/legal/TermsPage").then((m) => ({ default: m.TermsPage })),
+);
+
+const PrivacyPage = React.lazy(() =>
+  import("@/app/legal/PrivacyPage").then((m) => ({ default: m.PrivacyPage })),
+);
+
 // Handle relink callback in popup - check at module level
 handleRelinkCallback();
 
@@ -430,6 +438,22 @@ export function Xyzen({
   const isMobile = viewportWidth < MOBILE_BREAKPOINT;
 
   if (!mounted) return null;
+
+  // Legal pages — no auth required
+  if (currentHash === "#/terms") {
+    return (
+      <Suspense>
+        <TermsPage />
+      </Suspense>
+    );
+  }
+  if (currentHash === "#/privacy") {
+    return (
+      <Suspense>
+        <PrivacyPage />
+      </Suspense>
+    );
+  }
 
   // Shared chat page — no auth required, highest priority
   if (sharedChatToken) {

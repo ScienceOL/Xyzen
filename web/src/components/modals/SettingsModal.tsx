@@ -4,6 +4,7 @@ import { useShallow } from "zustand/react/shallow";
 import {
   AdjustmentsHorizontalIcon,
   ArrowLeftIcon,
+  ChatBubbleLeftRightIcon,
   ChevronRightIcon,
   GiftIcon,
   GlobeAltIcon,
@@ -18,6 +19,7 @@ import { useTranslation } from "react-i18next";
 import {
   AboutSettings,
   AccountSettings,
+  FeedbackSettings,
   LanguageSettings,
   RedemptionSettings,
   RegionSettings,
@@ -93,6 +95,11 @@ export function SettingsModal() {
       id: "region",
       label: t("settings.categories.region"),
       icon: GlobeAltIcon,
+    },
+    {
+      id: "feedback",
+      label: t("settings.categories.feedback"),
+      icon: ChatBubbleLeftRightIcon,
     },
     {
       id: "about",
@@ -244,6 +251,8 @@ export function SettingsModal() {
                   <RedemptionSettings />
                 </div>
               )}
+
+              {activeSettingsCategory === "feedback" && <FeedbackSettings />}
 
               {activeSettingsCategory === "about" && (
                 <div className="h-full overflow-y-auto p-4 md:p-6">

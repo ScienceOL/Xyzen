@@ -89,19 +89,26 @@ class StreamContext:
     topic_id: str | None = None
     # Interrupt state
     interrupted: bool = False
+    # Model metadata (resolved once, injected into events)
+    model_tier: str | None = None
+    provider_id: str | None = None
+    model_name: str | None = None
 
 
 class ToolEventHandler:
     """Handle tool call request and response events."""
 
     @staticmethod
-    def create_tool_request_event(tool_call: dict[str, Any], stream_id: str) -> StreamingEvent:
+    def create_tool_request_event(
+        tool_call: dict[str, Any], stream_id: str, model_tier: str | None = None
+    ) -> StreamingEvent:
         """
         Create a tool call request event.
 
         Args:
             tool_call: Tool call dict from LangChain agent
             stream_id: Stream ID for frontend message correlation
+            model_tier: Optional model tier for downstream billing
 
         Returns:
             StreamingEvent for tool call request
@@ -115,6 +122,8 @@ class ToolEventHandler:
             "timestamp": time.time(),
             "stream_id": stream_id,
         }
+        if model_tier:
+            data["model_tier"] = model_tier
         return {"type": ChatEventType.TOOL_CALL_REQUEST, "data": data}
 
     @staticmethod
@@ -125,6 +134,7 @@ class ToolEventHandler:
         raw_result: str | dict | list | None = None,
         error: str | None = None,
         stream_id: str = "",
+        model_tier: str | None = None,
     ) -> StreamingEvent:
         """
         Create a tool call response event.
@@ -150,6 +160,8 @@ class ToolEventHandler:
             data["raw_result"] = raw_result
         if error:
             data["error"] = error
+        if model_tier:
+            data["model_tier"] = model_tier
         return {"type": ChatEventType.TOOL_CALL_RESPONSE, "data": data}
 
 
@@ -197,6 +209,9 @@ class StreamingEventHandler:
         stream_id: str,
         cache_creation_input_tokens: int = 0,
         cache_read_input_tokens: int = 0,
+        model_tier: str | None = None,
+        provider_id: str | None = None,
+        model_name: str | None = None,
     ) -> StreamingEvent:
         """Create token usage event."""
         data: TokenUsageData = {
@@ -209,6 +224,12 @@ class StreamingEventHandler:
             data["cache_creation_input_tokens"] = cache_creation_input_tokens
         if cache_read_input_tokens:
             data["cache_read_input_tokens"] = cache_read_input_tokens
+        if model_tier:
+            data["model_tier"] = model_tier
+        if provider_id:
+            data["provider_id"] = provider_id
+        if model_name:
+            data["model_name"] = model_name
         return {"type": ChatEventType.TOKEN_USAGE, "data": data}
 
     @staticmethod

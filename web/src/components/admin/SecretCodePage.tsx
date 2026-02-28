@@ -8,7 +8,7 @@ import {
 import { http } from "@/service/http/client";
 import { redemptionService, type AdminCode } from "@/service/redemptionService";
 import { XMarkIcon } from "@heroicons/react/24/outline";
-import { useState } from "react";
+import { useEffect, useState } from "react";
 import { AdminAuthForm } from "./AdminAuthForm";
 import { AgentMarketplaceTab } from "./AgentMarketplaceTab";
 import { ConsumptionAnalyticsTab } from "./ConsumptionAnalyticsTab";
@@ -17,11 +17,14 @@ import { RevenueAnalyticsTab } from "./RevenueAnalyticsTab";
 import { SubscriptionManagementTab } from "./SubscriptionManagementTab";
 import { UserAnalyticsTab } from "./UserAnalyticsTab";
 
+const ADMIN_SECRET_KEY = "xyzen_admin_secret";
+
 export function SecretCodePage() {
-  const [adminSecret, setAdminSecret] = useState<string | null>(null);
+  const savedSecret = sessionStorage.getItem(ADMIN_SECRET_KEY);
+  const [adminSecret, setAdminSecret] = useState<string | null>(savedSecret);
   const [isAuthenticated, setIsAuthenticated] = useState(false);
   const [authError, setAuthError] = useState<string | null>(null);
-  const [isVerifying, setIsVerifying] = useState(false);
+  const [isVerifying, setIsVerifying] = useState(!!savedSecret);
   const [newCode, setNewCode] = useState<AdminCode | undefined>(undefined);
   const [newCodeKey, setNewCodeKey] = useState(0);
 
@@ -33,9 +36,11 @@ export function SecretCodePage() {
       // Try to fetch codes list to verify the secret key
       await redemptionService.adminListCodes(secretKey, 1);
       // Secret key is valid
+      sessionStorage.setItem(ADMIN_SECRET_KEY, secretKey);
       setAdminSecret(secretKey);
       setIsAuthenticated(true);
     } catch (error) {
+      sessionStorage.removeItem(ADMIN_SECRET_KEY);
       if (
         error instanceof Error &&
         "status" in error &&
@@ -59,7 +64,20 @@ export function SecretCodePage() {
     setNewCodeKey((k) => k + 1);
   };
 
+  useEffect(() => {
+    if (savedSecret) {
+      verifySecretKey(savedSecret);
+    }
+  }, []);
+
   if (!isAuthenticated) {
+    if (isVerifying && !authError) {
+      return (
+        <div className="fixed inset-0 bg-neutral-950 flex items-center justify-center">
+          <p className="text-neutral-400 text-sm">Verifying...</p>
+        </div>
+      );
+    }
     return (
       <div className="fixed inset-0 bg-neutral-950 flex items-center justify-center p-4">
         <div className="w-full max-w-md">

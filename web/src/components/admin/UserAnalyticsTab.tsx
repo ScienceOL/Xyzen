@@ -2,6 +2,7 @@ import { DEFAULT_TIMEZONE } from "@/configs/common";
 import {
   redemptionService,
   type ConsumptionTopUserEntry,
+  type ProviderOption,
   type UserConsumptionHeatmapEntry,
 } from "@/service/redemptionService";
 import { Fragment, useCallback, useEffect, useMemo, useState } from "react";
@@ -9,7 +10,6 @@ import { AdminFilterBar } from "./shared/AdminFilterBar";
 import { AdminHeatmap } from "./shared/AdminHeatmap";
 import {
   formatCompact,
-  PROVIDER_OPTIONS,
   TIER_BADGE_COLORS,
   TIER_DISPLAY_NAMES,
 } from "./shared/constants";
@@ -23,12 +23,16 @@ export function UserAnalyticsTab({ adminSecret }: UserAnalyticsTabProps) {
   const [selectedTier, setSelectedTier] = useState("");
   const [selectedModel, setSelectedModel] = useState("");
   const [selectedProvider, setSelectedProvider] = useState("");
+  const [selectedTool, setSelectedTool] = useState("");
   const [selectedDate, setSelectedDate] = useState<string | null>(null);
   const [topN, setTopN] = useState(20);
   const [searchQuery, setSearchQuery] = useState("");
   const [debouncedSearch, setDebouncedSearch] = useState("");
   const [expandedUser, setExpandedUser] = useState<string | null>(null);
   const [modelOptions, setModelOptions] = useState<string[]>([]);
+  const [providerOptions, setProviderOptions] = useState<ProviderOption[]>([]);
+  const [tierOptions, setTierOptions] = useState<string[]>([]);
+  const [toolOptions, setToolOptions] = useState<string[]>([]);
   const [heatmapData, setHeatmapData] = useState<UserConsumptionHeatmapEntry[]>(
     [],
   );
@@ -43,13 +47,23 @@ export function UserAnalyticsTab({ adminSecret }: UserAnalyticsTabProps) {
     return () => clearTimeout(t);
   }, [searchQuery]);
 
-  // Fetch model options from backend
+  // Fetch filter options from backend
   useEffect(() => {
     redemptionService
-      .getModelOptions(adminSecret)
-      .then((res) => setModelOptions(res.models))
+      .getFilterOptions(
+        adminSecret,
+        year,
+        DEFAULT_TIMEZONE,
+        selectedProvider || undefined,
+      )
+      .then((res) => {
+        setModelOptions(res.models);
+        setProviderOptions(res.providers);
+        setTierOptions(res.tiers);
+        setToolOptions(res.tools);
+      })
       .catch(() => {});
-  }, [adminSecret]);
+  }, [adminSecret, year, selectedProvider]);
 
   const fetchHeatmap = useCallback(
     async (signal?: AbortSignal) => {
@@ -63,6 +77,7 @@ export function UserAnalyticsTab({ adminSecret }: UserAnalyticsTabProps) {
           selectedTier || undefined,
           selectedModel || undefined,
           selectedProvider || undefined,
+          selectedTool || undefined,
         );
         if (!signal?.aborted) setHeatmapData(data);
       } catch (err) {
@@ -72,7 +87,14 @@ export function UserAnalyticsTab({ adminSecret }: UserAnalyticsTabProps) {
         if (!signal?.aborted) setLoading(false);
       }
     },
-    [adminSecret, year, selectedTier, selectedModel, selectedProvider],
+    [
+      adminSecret,
+      year,
+      selectedTier,
+      selectedModel,
+      selectedProvider,
+      selectedTool,
+    ],
   );
 
   const fetchTopUsers = useCallback(
@@ -90,6 +112,7 @@ export function UserAnalyticsTab({ adminSecret }: UserAnalyticsTabProps) {
           debouncedSearch || undefined,
           selectedProvider || undefined,
           true,
+          selectedTool || undefined,
         );
         if (!signal?.aborted) setTopUsers(data);
       } catch (err) {
@@ -110,6 +133,7 @@ export function UserAnalyticsTab({ adminSecret }: UserAnalyticsTabProps) {
       topN,
       debouncedSearch,
       selectedProvider,
+      selectedTool,
     ],
   );
 
@@ -169,11 +193,16 @@ export function UserAnalyticsTab({ adminSecret }: UserAnalyticsTabProps) {
         onModelChange={setSelectedModel}
         selectedProvider={selectedProvider}
         onProviderChange={handleProviderChange}
-        providerOptions={PROVIDER_OPTIONS}
+        providerOptions={providerOptions}
         modelOptions={modelOptions}
+        tierOptions={tierOptions}
+        selectedTool={selectedTool}
+        onToolChange={setSelectedTool}
+        toolOptions={toolOptions}
         showTierFilter
         showModelFilter
         showProviderFilter
+        showToolFilter
       />
 
       {/* Heatmap */}

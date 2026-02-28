@@ -1,25 +1,90 @@
-"""ConsumptionTrackingService — records LLM usage and tool calls to DB.
+"""ConsumeRecord service — tracking and queries.
+
+Merges the former ``service.py`` (ConsumeService) and
+``tracking.py`` (ConsumptionTrackingService + ContextVar helpers + convenience
+record_*_from_context functions) into a single module.
+
+Settlement logic has been moved to ``settlement_service.py``.
 
 Each LLM API call and tool invocation is immediately persisted as a
 ConsumeRecord so that consumption data survives crashes and can be audited.
+
+Also contains the ContextVar-based TrackingContext that is set once at the
+start of a Celery chat task, then read by tool implementations (image,
+subagent, delegation, topic_generator, model_selector) to obtain the
+user/session/topic/message_id and a DB session factory without explicit
+parameter passing.
 """
 
 from __future__ import annotations
 
 import logging
+from contextvars import ContextVar
+from dataclasses import dataclass
 from typing import Any
 from uuid import UUID
 
 from sqlmodel.ext.asyncio.session import AsyncSession
 
-from app.models.consume import ConsumeRecord
-
-from .context import get_tracking_context
-from .pricing import TIER_MODEL_CONSUMPTION_RATE, calculate_llm_cost_usd, calculate_llm_credits
+from app.models.consume import ConsumeRecord, UserConsumeSummary
+from app.repos.consume import ConsumeRepository
+from app.repos.redemption import RedemptionRepository
 
 from app.schemas.model_tier import ModelTier
 
+from .pricing import TIER_MODEL_CONSUMPTION_RATE, calculate_llm_cost_usd, calculate_llm_credits
+
 logger = logging.getLogger(__name__)
+
+
+# ---------------------------------------------------------------------------
+# TrackingContext dataclass + ContextVar helpers
+# ---------------------------------------------------------------------------
+
+
+@dataclass
+class TrackingContext:
+    """Tracking context for the current chat task.
+
+    Most fields are set once at task start, but ``message_id`` is mutable —
+    it is set to ``None`` initially and updated after the AI message is created.
+    """
+
+    user_id: str
+    auth_provider: str
+    session_id: UUID | None
+    topic_id: UUID | None
+    message_id: UUID | None
+    model_tier: str | None
+    db_session_factory: Any  # async_sessionmaker
+    agent_id: UUID | None = None
+    marketplace_id: UUID | None = None
+    developer_user_id: str | None = None
+    model_name: str | None = None
+    model_provider: str | None = None
+
+
+_tracking_ctx: ContextVar[TrackingContext | None] = ContextVar("tracking_ctx", default=None)
+
+
+def set_tracking_context(ctx: TrackingContext) -> None:
+    """Set the tracking context for the current task."""
+    _tracking_ctx.set(ctx)
+
+
+def get_tracking_context() -> TrackingContext | None:
+    """Get the tracking context, or None if not in a tracked task."""
+    return _tracking_ctx.get()
+
+
+def clear_tracking_context() -> None:
+    """Clear the tracking context."""
+    _tracking_ctx.set(None)
+
+
+# ---------------------------------------------------------------------------
+# ConsumptionTrackingService
+# ---------------------------------------------------------------------------
 
 
 class ConsumptionTrackingService:
@@ -32,7 +97,7 @@ class ConsumptionTrackingService:
     # LLM usage
     # ------------------------------------------------------------------
 
-    async def record_llm_usage(
+    async def record_llm_usage_with_pricing(
         self,
         user_id: str,
         auth_provider: str,
@@ -42,8 +107,6 @@ class ConsumptionTrackingService:
         input_tokens: int,
         output_tokens: int,
         total_tokens: int,
-        amount: int = 0,
-        cost_usd: float = 0.0,
         source: str = "chat",
         session_id: UUID | None = None,
         topic_id: UUID | None = None,
@@ -54,7 +117,31 @@ class ConsumptionTrackingService:
         marketplace_id: UUID | None = None,
         developer_user_id: str | None = None,
     ) -> ConsumeRecord:
-        """Record one LLM API call as a ConsumeRecord. Writes immediately (flush, no commit)."""
+        """Calculate pricing and persist LLM usage as a ConsumeRecord.
+
+        Computes *amount* (credits) and *cost_usd* from token counts and tier,
+        then writes immediately (flush, no commit).
+        """
+        tier_enum: ModelTier | None = None
+        if model_tier:
+            try:
+                tier_enum = ModelTier(model_tier)
+            except ValueError:
+                pass
+        tier_rate = TIER_MODEL_CONSUMPTION_RATE.get(tier_enum, 1.0) if tier_enum else 1.0
+        amount = calculate_llm_credits(
+            input_tokens,
+            output_tokens,
+            tier_rate,
+            cache_read_input_tokens=cache_read_input_tokens,
+        )
+        cost_usd = await calculate_llm_cost_usd(
+            model_name,
+            input_tokens,
+            output_tokens,
+            cache_read_input_tokens=cache_read_input_tokens,
+            provider=provider,
+        )
         record = ConsumeRecord(
             record_type="llm",
             user_id=user_id,
@@ -81,7 +168,7 @@ class ConsumptionTrackingService:
         self.db.add(record)
         await self.db.flush()
         logger.info(
-            "Recorded LLM usage: user=%s model=%s source=%s tokens=%d/%d/%d amount=%d",
+            "Recorded LLM usage: user=%s model=%s source=%s tokens=%d/%d/%d amount=%d cost_usd=%.6f",
             user_id,
             model_name,
             source,
@@ -89,6 +176,7 @@ class ConsumptionTrackingService:
             output_tokens,
             total_tokens,
             amount,
+            cost_usd,
         )
         return record
 
@@ -112,6 +200,7 @@ class ConsumptionTrackingService:
         agent_id: UUID | None = None,
         marketplace_id: UUID | None = None,
         developer_user_id: str | None = None,
+        source: str = "chat",
     ) -> ConsumeRecord:
         """Record one tool invocation as a ConsumeRecord. Writes immediately (flush, no commit)."""
         record = ConsumeRecord(
@@ -131,6 +220,7 @@ class ConsumptionTrackingService:
             agent_id=agent_id,
             marketplace_id=marketplace_id,
             developer_user_id=developer_user_id,
+            source=source,
         )
         self.db.add(record)
         await self.db.flush()
@@ -155,7 +245,44 @@ class ConsumptionTrackingService:
 
 
 # ---------------------------------------------------------------------------
-# Convenience: record LLM usage from tracking context (for tools/subagents)
+# ConsumeService
+# ---------------------------------------------------------------------------
+
+
+class ConsumeService:
+    """Core business logic layer for consumption service"""
+
+    def __init__(self, db: AsyncSession):
+        self.db = db
+        self.consume_repo = ConsumeRepository(db)
+        self.redemption_repo = RedemptionRepository(db)
+
+    async def get_consume_record_by_id(self, record_id: UUID) -> ConsumeRecord | None:
+        """Get consumption record"""
+        return await self.consume_repo.get_consume_record_by_id(record_id)
+
+    async def get_user_consume_summary(self, user_id: str) -> UserConsumeSummary | None:
+        """Get user consumption summary"""
+        return await self.consume_repo.get_user_consume_summary(user_id)
+
+    async def list_user_consume_records(self, user_id: str, limit: int = 100, offset: int = 0) -> list[ConsumeRecord]:
+        """Get user consumption record list"""
+        return await self.consume_repo.list_consume_records_by_user(user_id, limit, offset)
+
+
+# ---------------------------------------------------------------------------
+# Convenience: record LLM usage from tracking context
+#
+# The main streaming loop (chat.py → handle_token_usage) only captures
+# TOKEN_USAGE events from the *parent* agent's LLM calls.  Several tools
+# make **independent** LLM invocations that bypass the stream entirely:
+#
+#   • subagent   – graph.ainvoke()   → record_messages_usage_from_context
+#   • delegation – graph.ainvoke()   → record_messages_usage_from_context
+#   • image gen  – llm.ainvoke()     → record_response_usage_from_context
+#   • read_image – llm.ainvoke()     → record_response_usage_from_context
+#
+# These helpers are the *only* mechanism that captures those costs.
 # ---------------------------------------------------------------------------
 
 
@@ -182,40 +309,26 @@ async def record_llm_usage_from_context(
         return None
 
     try:
-        tier_rate = TIER_MODEL_CONSUMPTION_RATE.get(ModelTier(ctx.model_tier), 1.0) if ctx.model_tier else 1.0
-        amount = calculate_llm_credits(
-            input_tokens,
-            output_tokens,
-            tier_rate,
-            cache_read_input_tokens=cache_read_input_tokens,
-        )
-        cost_usd_val = await calculate_llm_cost_usd(
-            model_name,
-            input_tokens,
-            output_tokens,
-            cache_read_input_tokens=cache_read_input_tokens,
-            provider=provider,
-        )
-
         async with ctx.db_session_factory() as db:
             service = ConsumptionTrackingService(db)
-            record = await service.record_llm_usage(
+            record = await service.record_llm_usage_with_pricing(
                 user_id=ctx.user_id,
                 auth_provider=ctx.auth_provider,
-                model_name=model_name,
+                model_name=model_name if model_name != "unknown" else (ctx.model_name or model_name),
                 model_tier=ctx.model_tier,
-                provider=provider,
+                provider=provider or ctx.model_provider,
                 input_tokens=input_tokens,
                 output_tokens=output_tokens,
                 total_tokens=total_tokens,
-                amount=amount,
-                cost_usd=cost_usd_val,
                 source=source,
                 session_id=ctx.session_id,
                 topic_id=ctx.topic_id,
                 message_id=ctx.message_id,
                 cache_creation_input_tokens=cache_creation_input_tokens,
                 cache_read_input_tokens=cache_read_input_tokens,
+                agent_id=ctx.agent_id,
+                marketplace_id=ctx.marketplace_id,
+                developer_user_id=ctx.developer_user_id,
             )
             await db.commit()
             return record
@@ -227,6 +340,7 @@ async def record_llm_usage_from_context(
 async def record_messages_usage_from_context(
     messages: list[Any],
     source: str,
+    provider: str | None = None,
 ) -> ConsumeRecord | None:
     """Sum usage_metadata across LangChain messages and record as a single entry."""
     total_input = 0
@@ -254,9 +368,15 @@ async def record_messages_usage_from_context(
     if total_input == 0 and total_output == 0:
         return None
 
+    ctx = get_tracking_context()
+    if model_name == "unknown" and ctx and ctx.model_name:
+        model_name = ctx.model_name
+    if provider is None and ctx and ctx.model_provider:
+        provider = ctx.model_provider
+
     return await record_llm_usage_from_context(
         model_name=model_name,
-        provider=None,
+        provider=provider,
         input_tokens=total_input,
         output_tokens=total_output,
         total_tokens=total_total if total_total else total_input + total_output,

@@ -24,6 +24,7 @@ interface FeatureItem {
 interface RegionCardProps {
   title: string;
   subtitle: string;
+  hint?: string;
   isActive: boolean;
   siteUrl: string;
   features: FeatureItem[];
@@ -35,6 +36,7 @@ interface RegionCardProps {
 function RegionCard({
   title,
   subtitle,
+  hint,
   isActive,
   siteUrl,
   features,
@@ -74,6 +76,11 @@ function RegionCard({
         <p className="mt-1 text-sm text-neutral-500 dark:text-neutral-400">
           {subtitle}
         </p>
+        {hint && (
+          <p className="mt-2 text-xs text-neutral-400 dark:text-neutral-500">
+            {hint}
+          </p>
+        )}
       </div>
 
       {/* Features List */}
@@ -247,6 +254,7 @@ export function RegionSettings() {
         <RegionCard
           title={t("settings.region.international.title")}
           subtitle={t("settings.region.international.subtitle")}
+          hint={t("settings.region.international.hint")}
           isActive={!isChina}
           siteUrl="https://xyzen.ai"
           features={internationalFeatures}

@@ -20,8 +20,7 @@ const useSubscriptionInfoMock = vi.fn();
 const useIsMobileMock = vi.fn();
 
 vi.mock("@/store", () => ({
-  useXyzen: (selector?: (state: unknown) => unknown) =>
-    useXyzenMock(selector),
+  useXyzen: (selector?: (state: unknown) => unknown) => useXyzenMock(selector),
 }));
 
 vi.mock("@/hooks/useChannelSelectors", () => ({
@@ -148,13 +147,17 @@ describe("useToolbarState", () => {
     storeState.agents = [initialAgent];
 
     renderHarness();
-    expect(latest?.currentAgent?.graph_config).toEqual(initialAgent.graph_config);
+    expect(latest?.currentAgent?.graph_config).toEqual(
+      initialAgent.graph_config,
+    );
 
     storeState.agents = [updatedAgent];
     renderHarness();
 
     expect(latest?.currentAgent).toBe(updatedAgent);
-    expect(latest?.currentAgent?.graph_config).toEqual(updatedAgent.graph_config);
+    expect(latest?.currentAgent?.graph_config).toEqual(
+      updatedAgent.graph_config,
+    );
   });
 
   it("reflects rollback when agent update is reverted in store", () => {
@@ -163,22 +166,30 @@ describe("useToolbarState", () => {
     });
     const optimisticAgent = makeAgent({
       graph_config: {
-        graph: { nodes: [{ id: "agent", kind: "llm", config: { optimistic: true } }] },
+        graph: {
+          nodes: [{ id: "agent", kind: "llm", config: { optimistic: true } }],
+        },
       },
     });
 
     storeState.agents = [previousAgent];
     renderHarness();
-    expect(latest?.currentAgent?.graph_config).toEqual(previousAgent.graph_config);
+    expect(latest?.currentAgent?.graph_config).toEqual(
+      previousAgent.graph_config,
+    );
 
     storeState.agents = [optimisticAgent];
     renderHarness();
-    expect(latest?.currentAgent?.graph_config).toEqual(optimisticAgent.graph_config);
+    expect(latest?.currentAgent?.graph_config).toEqual(
+      optimisticAgent.graph_config,
+    );
 
     storeState.agents = [previousAgent];
     renderHarness();
     expect(latest?.currentAgent).toBe(previousAgent);
-    expect(latest?.currentAgent?.graph_config).toEqual(previousAgent.graph_config);
+    expect(latest?.currentAgent?.graph_config).toEqual(
+      previousAgent.graph_config,
+    );
   });
 
   it("uses mcp_server_ids precedence for currentMcpInfo inside hook", () => {
@@ -189,7 +200,10 @@ describe("useToolbarState", () => {
     });
 
     storeState.agents = [legacyAgent];
-    storeState.mcpServers = [makeMcpServer("mcp-legacy"), makeMcpServer("mcp-2")];
+    storeState.mcpServers = [
+      makeMcpServer("mcp-legacy"),
+      makeMcpServer("mcp-2"),
+    ];
     renderHarness();
 
     expect(latest?.currentMcpInfo?.servers.map((s) => s.id)).toEqual([

@@ -1,7 +1,7 @@
 import { motion, useInView } from "motion/react";
 import { useTranslation } from "react-i18next";
 import { useRef } from "react";
-import { Github, ArrowRight, ChevronDown } from "lucide-react";
+import { Github, ArrowRight, ChevronDown, Scale, Shield } from "lucide-react";
 
 const GITHUB_REPO_URL = "https://github.com/ScienceOL/Xyzen";
 
@@ -944,6 +944,50 @@ export function LandingPage({ onGetStarted }: LandingPageProps) {
           </p>
         </div>
       </Section>
+
+      {/* ============================================================ */}
+      {/*  FOOTER                                                      */}
+      {/* ============================================================ */}
+      <footer className="relative border-t border-neutral-200/40 px-6 py-10 dark:border-white/[0.06]">
+        <div className="mx-auto flex max-w-5xl flex-col items-center gap-4">
+          <div className="flex flex-wrap items-center justify-center gap-x-5 gap-y-2 text-[13px] text-neutral-500 dark:text-neutral-400">
+            <a
+              href="#/terms"
+              className="inline-flex items-center gap-1 transition-colors hover:text-neutral-800 dark:hover:text-neutral-200"
+            >
+              <Scale className="h-3.5 w-3.5" />
+              {t("landing.footer.terms")}
+            </a>
+            <a
+              href="#/privacy"
+              className="inline-flex items-center gap-1 transition-colors hover:text-neutral-800 dark:hover:text-neutral-200"
+            >
+              <Shield className="h-3.5 w-3.5" />
+              {t("landing.footer.privacy")}
+            </a>
+            <a
+              href={GITHUB_REPO_URL}
+              target="_blank"
+              rel="noopener noreferrer"
+              className="inline-flex items-center gap-1 transition-colors hover:text-neutral-800 dark:hover:text-neutral-200"
+            >
+              <Github className="h-3.5 w-3.5" />
+              GitHub
+            </a>
+            <a
+              href={`${GITHUB_REPO_URL}/blob/main/LICENSE`}
+              target="_blank"
+              rel="noopener noreferrer"
+              className="transition-colors hover:text-neutral-800 dark:hover:text-neutral-200"
+            >
+              License
+            </a>
+          </div>
+          <p className="text-center text-xs text-neutral-400 dark:text-neutral-500">
+            {t("landing.footer.copyright")}
+          </p>
+        </div>
+      </footer>
     </div>
   );
 }
