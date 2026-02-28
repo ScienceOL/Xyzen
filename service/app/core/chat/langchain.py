@@ -95,6 +95,17 @@ async def get_ai_response_stream_langchain_legacy(
         user_provider_manager=user_provider_manager,
     )
 
+    # Immediately backfill TrackingContext so all tools (subagent, delegation,
+    # image gen, read_image) executed during this chat turn have complete
+    # model metadata available before the first TOKEN_USAGE event arrives.
+    from app.core.consume.consume_service import get_tracking_context
+
+    tracking_ctx = get_tracking_context()
+    if tracking_ctx is not None:
+        tracking_ctx.model_tier = model_tier
+        tracking_ctx.model_name = model_name
+        tracking_ctx.model_provider = provider_id
+
     if not all([model_tier, provider_id, model_name]):
         logger.warning(f"Incomplete model metadata: tier={model_tier}, provider={provider_id}, model={model_name}")
 

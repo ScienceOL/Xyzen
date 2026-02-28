@@ -25,6 +25,7 @@ from app.core.consume.developer_reward import DeveloperRewardService, REWARD_RAT
 
 # pricing.py
 from app.core.consume.pricing import (
+    FALLBACK_MODEL_COST_RATES,
     TIER_MODEL_CONSUMPTION_RATE,
     TOKEN_CREDIT_RATES,
     TOOL_CREDIT_COSTS,
@@ -32,6 +33,7 @@ from app.core.consume.pricing import (
     calculate_llm_credits,
     calculate_tool_cost,
     get_model_cost,
+    validate_model_pricing_coverage,
 )
 
 __all__ = [
@@ -52,6 +54,7 @@ __all__ = [
     "record_response_usage_from_context",
     "set_tracking_context",
     # pricing
+    "FALLBACK_MODEL_COST_RATES",
     "TIER_MODEL_CONSUMPTION_RATE",
     "TOKEN_CREDIT_RATES",
     "TOOL_CREDIT_COSTS",
@@ -59,4 +62,5 @@ __all__ = [
     "calculate_llm_credits",
     "calculate_tool_cost",
     "get_model_cost",
+    "validate_model_pricing_coverage",
 ]
