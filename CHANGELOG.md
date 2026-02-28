@@ -2,6 +2,12 @@
 
 All notable changes to Xyzen will be documented in this file.
 
+## [1.6.8](https://github.com/ScienceOL/Xyzen/compare/v1.6.7...v1.6.8) (2026-02-28)
+
+### 🐛 Bug Fixes
+
+* ask_user_question multi-select, markdown preview & agent management tools ([#283](https://github.com/ScienceOL/Xyzen/issues/283)) ([e4cd11e](https://github.com/ScienceOL/Xyzen/commit/e4cd11e48838b0c4a062fdafa3672fe5b432ed51))
+
 ## [1.6.7](https://github.com/ScienceOL/Xyzen/compare/v1.6.6...v1.6.7) (2026-02-28)
 
 ### 🐛 Bug Fixes
