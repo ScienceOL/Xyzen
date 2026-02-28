@@ -2,6 +2,12 @@
 
 All notable changes to Xyzen will be documented in this file.
 
+## [1.6.7](https://github.com/ScienceOL/Xyzen/compare/v1.6.6...v1.6.7) (2026-02-28)
+
+### 🐛 Bug Fixes
+
+* add Terms of Service page. ([#281](https://github.com/ScienceOL/Xyzen/issues/281)) ([3d8ae89](https://github.com/ScienceOL/Xyzen/commit/3d8ae8979aff4748d7c2db491a363b9500a9ba69)), closes [#278](https://github.com/ScienceOL/Xyzen/issues/278) [#280](https://github.com/ScienceOL/Xyzen/issues/280)
+
 ## [1.6.6](https://github.com/ScienceOL/Xyzen/compare/v1.6.5...v1.6.6) (2026-02-27)
 
 ### 🐛 Bug Fixes
