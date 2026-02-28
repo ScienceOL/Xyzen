@@ -450,7 +450,10 @@ async def create_checkpointer():
         )
 
         pool: AsyncConnectionPool = AsyncConnectionPool(
-            conninfo=conn_string, open=False, min_size=1, max_size=3,
+            conninfo=conn_string,
+            open=False,
+            min_size=1,
+            max_size=3,
         )
         await pool.open()
 
@@ -483,6 +486,7 @@ def _detect_interrupt(data: dict[str, Any], ctx: StreamContext, thread_id: str) 
             "thread_id": thread_id,
         },
     }
+
 
 async def _process_agent_stream(
     agent: CompiledStateGraph[Any, None, Any, Any],

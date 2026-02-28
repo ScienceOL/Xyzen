@@ -253,8 +253,7 @@ async def chat_websocket(
                         active_qid = await r.get(f"question_active:{connection_id}")
                         if active_qid and active_qid != question_id:
                             logger.warning(
-                                f"question_id mismatch on {connection_id}: "
-                                f"active={active_qid}, received={question_id}"
+                                f"question_id mismatch on {connection_id}: active={active_qid}, received={question_id}"
                             )
                             continue
 

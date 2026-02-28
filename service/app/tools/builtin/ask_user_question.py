@@ -30,8 +30,7 @@ class QuestionOption(BaseModel):
     markdown: str | None = Field(
         default=None,
         description=(
-            "Optional markdown content to preview when this option is focused"
-            " (e.g., code snippet, formatted text)"
+            "Optional markdown content to preview when this option is focused (e.g., code snippet, formatted text)"
         ),
     )
 
