@@ -87,6 +87,7 @@ class ChatTaskContext:
     is_aborted: bool = False
     error_handled: bool = False
     should_break: bool = False
+    interrupted: bool = False  # Set when ask_user_question interrupt is detected
 
     # Cached session info (loaded once, reused by handle_token_usage & finalize_and_settle)
     session_info_loaded: bool = False
@@ -741,6 +742,78 @@ async def handle_node_end(ctx: ChatTaskContext, stream_event: dict[str, Any]) ->
     await ctx.publisher.publish(json.dumps(stream_event))
 
 
+async def handle_ask_user_question(ctx: ChatTaskContext, stream_event: dict[str, Any]) -> None:
+    """Handle ASK_USER_QUESTION event — store state in Redis and interrupt the task."""
+    import redis.asyncio as aioredis
+
+    from app.configs import configs
+
+    event_data = stream_event["data"]
+    question_id = event_data.get("question_id", "")
+    timeout_seconds = event_data.get("timeout_seconds", 300)
+    thread_id = event_data.get("thread_id", "")
+    connection_id = ctx.publisher.connection_id
+
+    # Ensure message object exists for persisting question state
+    if not ctx.ai_message_obj:
+        ai_message_create = MessageCreate(role="assistant", content="", topic_id=ctx.topic_id)
+        ctx.ai_message_obj = await ctx.message_repo.create_message(ai_message_create)
+
+    # Sequential question: if the message already has an answered question,
+    # finalize the current message and create a new one for this question.
+    existing_qd = ctx.ai_message_obj.user_question_data
+    if existing_qd and existing_qd.get("status") != "pending":
+        # Save accumulated content on the current message
+        ctx.ai_message_obj.content = ctx.full_content or ""
+        ctx.db.add(ctx.ai_message_obj)
+
+        # Create a fresh assistant message for the follow-up question
+        ai_message_create = MessageCreate(role="assistant", content="", topic_id=ctx.topic_id)
+        ctx.ai_message_obj = await ctx.message_repo.create_message(ai_message_create)
+        ctx.full_content = ""
+
+    # Persist question data on the message for reconnect recovery
+    ctx.ai_message_obj.user_question_data = {
+        "question_id": question_id,
+        "question": event_data.get("question", ""),
+        "options": event_data.get("options"),
+        "allow_text_input": event_data.get("allow_text_input", True),
+        "timeout_seconds": timeout_seconds,
+        "thread_id": thread_id,
+        "status": "pending",
+        "asked_at": time.time(),
+    }
+    ctx.ai_message_obj.content = ctx.full_content or ""
+    ctx.db.add(ctx.ai_message_obj)
+    await ctx.db.commit()
+
+    # Store interrupt metadata in Redis for the resume handler
+    r = None
+    try:
+        r = aioredis.from_url(configs.Redis.REDIS_URL, decode_responses=True)
+        # Thread ID for resume
+        await r.setex(f"question_thread:{connection_id}", timeout_seconds + 60, thread_id)
+        # Active question ID for validation
+        await r.setex(f"question_active:{connection_id}", timeout_seconds + 60, question_id)
+        # Timeout key
+        await r.setex(f"question_timeout:{connection_id}:{question_id}", timeout_seconds, "1")
+    except Exception as e:
+        logger.error(f"Failed to store question state in Redis: {e}")
+    finally:
+        if r:
+            await r.aclose()
+
+    # Publish the event to the frontend
+    await ctx.publisher.publish(json.dumps(stream_event))
+
+    # Send message_saved so frontend gets the DB ID
+    await send_message_saved(ctx)
+
+    # Signal the task loop to exit
+    ctx.interrupted = True
+    ctx.should_break = True
+
+
 # ---------------------------------------------------------------------------
 # Event handler registry
 # ---------------------------------------------------------------------------
@@ -763,6 +836,7 @@ EVENT_HANDLERS: dict[str, Any] = {
     ChatEventType.AGENT_END: handle_agent_end,
     ChatEventType.NODE_START: handle_node_start,
     ChatEventType.NODE_END: handle_node_end,
+    ChatEventType.ASK_USER_QUESTION: handle_ask_user_question,
 }
 
 
