@@ -2,6 +2,12 @@
 
 All notable changes to Xyzen will be documented in this file.
 
+## [1.6.9](https://github.com/ScienceOL/Xyzen/compare/v1.6.8...v1.6.9) (2026-02-28)
+
+### 🐛 Bug Fixes
+
+* add top-up/sandbox-addon/full-access-pass checkout and enhance subscription UX ([337d07d](https://github.com/ScienceOL/Xyzen/commit/337d07d2087ac7ef962f8f28c6caa84cb1b8f9d5))
+
 ## [1.6.8](https://github.com/ScienceOL/Xyzen/compare/v1.6.7...v1.6.8) (2026-02-28)
 
 ### 🐛 Bug Fixes

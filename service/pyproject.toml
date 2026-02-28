@@ -1,6 +1,6 @@
 [project]
 name = "service"
-version = "1.6.8"
+version = "1.6.9"
 description = "The backend service of Xyzen"
 readme = "README.md"
 requires-python = ">=3.13, <3.14"
