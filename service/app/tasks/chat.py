@@ -570,7 +570,7 @@ async def _resume_chat_from_interrupt_async(
 
     set_session_factory(TaskSessionLocal)
 
-    from app.core.consume.context import TrackingContext, clear_tracking_context, set_tracking_context
+    from app.core.consume.consume_service import TrackingContext, clear_tracking_context, set_tracking_context
 
     set_tracking_context(
         TrackingContext(
@@ -637,7 +637,7 @@ async def _resume_chat_from_interrupt_async(
             from app.core.prompts import build_system_prompt_with_provenance
 
             user_pm = await _get_provider_manager(user_id, db)
-            provider_id, model_name = await resolve_provider_and_model(
+            provider_id, model_name, _resolved_tier = await resolve_provider_and_model(
                 db=db,
                 agent=agent,
                 topic=topic,
@@ -733,9 +733,7 @@ async def _resume_chat_from_interrupt_async(
             last_abort_check_time = time.time()
 
             # Resume the agent
-            async for stream_event in resume_agent_from_interrupt(
-                langchain_agent, user_response, thread_id, ctx
-            ):
+            async for stream_event in resume_agent_from_interrupt(langchain_agent, user_response, thread_id, ctx):
                 event_type = stream_event["type"]
 
                 # Time-based abort check
@@ -778,14 +776,14 @@ async def _resume_chat_from_interrupt_async(
             ctx_developer_user_id = task_ctx.developer_user_id
 
             if task_ctx.is_aborted:
-                await handle_abort(task_ctx, pre_deducted_amount, access_token)
+                await handle_abort(task_ctx, access_token)
                 return
 
             if task_ctx.interrupted:
                 return
 
             if not task_ctx.error_handled:
-                await handle_normal_finalization(task_ctx, pre_deducted_amount, access_token)
+                await handle_normal_finalization(task_ctx, access_token)
 
     except Exception as e:
         from app.common.code.chat_error_code import classify_exception
@@ -855,7 +853,7 @@ async def _resume_chat_from_interrupt_async(
         # Exception-path settlement
         try:
             from app.core.consume.pricing import calculate_settlement_total
-            from app.core.consume.service import settle_chat_records
+            from app.core.consume.settlement_service import settle_chat_records
             from app.repos.consume import ConsumeRepository
 
             async with TaskSessionLocal() as settle_db:

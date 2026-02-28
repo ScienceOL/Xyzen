@@ -758,7 +758,7 @@ async def handle_ask_user_question(ctx: ChatTaskContext, stream_event: dict[str,
     # Ensure message object exists for persisting question state
     if not ctx.ai_message_obj:
         ai_message_create = MessageCreate(role="assistant", content="", topic_id=ctx.topic_id)
-        ctx.ai_message_obj = await ctx.message_repo.create_message(ai_message_create)
+        ctx.ai_message_obj = await ctx.get_message_repo().create_message(ai_message_create)
 
     # Sequential question: if the message already has an answered question,
     # finalize the current message and create a new one for this question.
@@ -766,11 +766,11 @@ async def handle_ask_user_question(ctx: ChatTaskContext, stream_event: dict[str,
     if existing_qd and existing_qd.get("status") != "pending":
         # Save accumulated content on the current message
         ctx.ai_message_obj.content = ctx.full_content or ""
-        ctx.db.add(ctx.ai_message_obj)
+        ctx.get_db().add(ctx.ai_message_obj)
 
         # Create a fresh assistant message for the follow-up question
         ai_message_create = MessageCreate(role="assistant", content="", topic_id=ctx.topic_id)
-        ctx.ai_message_obj = await ctx.message_repo.create_message(ai_message_create)
+        ctx.ai_message_obj = await ctx.get_message_repo().create_message(ai_message_create)
         ctx.full_content = ""
 
     # Persist question data on the message for reconnect recovery
@@ -786,8 +786,8 @@ async def handle_ask_user_question(ctx: ChatTaskContext, stream_event: dict[str,
         "asked_at": time.time(),
     }
     ctx.ai_message_obj.content = ctx.full_content or ""
-    ctx.db.add(ctx.ai_message_obj)
-    await ctx.db.commit()
+    ctx.get_db().add(ctx.ai_message_obj)
+    await ctx.get_db().commit()
 
     # Store interrupt metadata in Redis for the resume handler
     r = None
