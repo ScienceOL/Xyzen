@@ -1,5 +1,6 @@
 import { AgentList } from "@/components/agents";
 import ChatStatusBadge from "@/components/base/ChatStatusBadge";
+import { Switch } from "@/components/base/Switch";
 import { Capsule } from "@/components/capsule";
 import {
   DOCK_HORIZONTAL_MARGIN,
@@ -12,7 +13,7 @@ import type { Agent } from "@/types/agents";
 import { ChevronLeftIcon, SparklesIcon } from "@heroicons/react/24/outline";
 import { Crown } from "lucide-react";
 import { AnimatePresence, motion } from "framer-motion";
-import { useCallback, useEffect, useMemo, useRef } from "react";
+import { useCallback, useEffect, useMemo, useRef, useState } from "react";
 import { useTranslation } from "react-i18next";
 import { TopicTabBar } from "./components/TopicTabBar";
 import { useAgentTopics } from "./hooks";
@@ -51,6 +52,21 @@ export function FocusedView({
 
   const collapsed = useXyzen((s) => s.spatialSidebarCollapsed);
   const runningAgentIds = useRunningAgentIds();
+  const toggleAutoExplore = useXyzen((s) => s.toggleAutoExplore);
+  const [autoExploreLoading, setAutoExploreLoading] = useState(false);
+  const handleAutoExploreToggle = useCallback(
+    async (enabled: boolean) => {
+      setAutoExploreLoading(true);
+      try {
+        await toggleAutoExplore(enabled);
+      } catch (error) {
+        console.error("Failed to toggle auto-explore:", error);
+      } finally {
+        setAutoExploreLoading(false);
+      }
+    },
+    [toggleAutoExplore],
+  );
   const focusedKnowledgeSetId = useXyzen((s) => {
     const id = s.activeChatChannel;
     return id ? (s.channels[id]?.knowledge_set_id ?? null) : null;
@@ -473,6 +489,24 @@ export function FocusedView({
                                 {ceoAgentData.role}
                               </div>
                             )}
+                            {/* Auto-Explore toggle */}
+                            <div
+                              className="mt-1 flex items-center gap-2"
+                              onClick={(e) => e.stopPropagation()}
+                              onPointerDown={(e) => e.stopPropagation()}
+                            >
+                              <span className="text-xs text-neutral-400 dark:text-neutral-500">
+                                {t("agents.rootAgent.autoExplore")}
+                              </span>
+                              <Switch
+                                checked={
+                                  ceoAgentData.agent?.auto_explore_enabled ??
+                                  false
+                                }
+                                onChange={handleAutoExploreToggle}
+                                disabled={autoExploreLoading}
+                              />
+                            </div>
                           </div>
                         </div>
                       );
