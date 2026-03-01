@@ -1085,3 +1085,17 @@ async def handle_normal_finalization(
             )
     except Exception:
         pass  # Never affect chat flow
+
+    # --- Background memory extraction: extract facts and update core memory ---
+    try:
+        from app.configs import configs
+
+        if ctx.full_content and configs.Memory.Enabled:
+            from app.tasks.memory import extract_and_update_memories
+
+            extract_and_update_memories.delay(
+                user_id=ctx.user_id,
+                topic_id=str(ctx.topic_id),
+            )
+    except Exception:
+        pass  # Never affect chat flow

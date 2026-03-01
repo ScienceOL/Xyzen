@@ -7,7 +7,13 @@ celery_app = Celery(
     "xyzen_worker",
     broker=configs.Redis.REDIS_URL,
     backend=configs.Redis.REDIS_URL,
-    include=["app.tasks.chat", "app.tasks.notification", "app.tasks.sandbox_cleanup", "app.tasks.scheduled"],
+    include=[
+        "app.tasks.chat",
+        "app.tasks.notification",
+        "app.tasks.sandbox_cleanup",
+        "app.tasks.scheduled",
+        "app.tasks.memory",
+    ],
 )
 
 celery_app.conf.update(
