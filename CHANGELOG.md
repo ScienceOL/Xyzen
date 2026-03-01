@@ -2,6 +2,12 @@
 
 All notable changes to Xyzen will be documented in this file.
 
+## [1.6.11](https://github.com/ScienceOL/Xyzen/compare/v1.6.10...v1.6.11) (2026-03-01)
+
+### 🐛 Bug Fixes
+
+* force-push test branch recreation after release ([#284](https://github.com/ScienceOL/Xyzen/issues/284)) ([7b7ddb4](https://github.com/ScienceOL/Xyzen/commit/7b7ddb4a7e773702e8965c9a48facfa1a5d4dc31))
+
 ## [1.6.10](https://github.com/ScienceOL/Xyzen/compare/v1.6.9...v1.6.10) (2026-02-28)
 
 ### 🐛 Bug Fixes
