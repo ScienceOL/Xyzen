@@ -1,9 +1,8 @@
 "use client";
 
 import ChatStatusBadge from "@/components/base/ChatStatusBadge";
-import { Switch } from "@/components/base/Switch";
 import type { Agent } from "@/types/agents";
-import { Crown, PencilIcon } from "lucide-react";
+import { Crown, PencilIcon, Sparkles } from "lucide-react";
 import { motion } from "framer-motion";
 import React, { useCallback, useEffect, useRef, useState } from "react";
 import { useTranslation } from "react-i18next";
@@ -167,7 +166,7 @@ const CeoAgentCard: React.FC<CeoAgentCardProps> = ({
         whileTap={swipeOffset === 0 ? { scale: 0.98 } : undefined}
         onClick={handleClick}
         className={`
-          relative cursor-pointer overflow-hidden rounded-2xl
+          group relative cursor-pointer overflow-hidden rounded-2xl
           bg-white/60 dark:bg-neutral-900/60
           backdrop-blur-2xl
           shadow-[0_2px_16px_rgba(0,0,0,0.08)]
@@ -193,6 +192,45 @@ const CeoAgentCard: React.FC<CeoAgentCardProps> = ({
         <div className="pointer-events-none absolute -right-8 -top-8 h-32 w-32 rounded-full bg-amber-400/[0.06] dark:bg-amber-400/[0.04]" />
         {/* Thin gold accent line at top */}
         <div className="pointer-events-none absolute inset-x-0 top-0 h-px bg-gradient-to-r from-transparent via-amber-400/50 to-transparent" />
+
+        {/* Top-right action badges */}
+        <div
+          className="absolute right-3 top-3 z-20 flex items-center gap-1"
+          onClick={(e) => e.stopPropagation()}
+          onPointerDown={(e) => e.stopPropagation()}
+        >
+          {/* Edit button — hover reveal */}
+          {onEdit && (
+            <button
+              onClick={handleEditClick}
+              className="rounded-full bg-white/50 p-1 text-neutral-400 opacity-0 transition-opacity group-hover:opacity-100 hover:bg-white hover:text-amber-600 active:bg-amber-50 dark:bg-black/20 dark:text-neutral-500 dark:hover:bg-black/40 dark:hover:text-amber-400"
+            >
+              <PencilIcon className="h-3 w-3" />
+            </button>
+          )}
+          {/* Auto-explore badge — always visible */}
+          {onAutoExploreToggle && (
+            <button
+              title={t("agents.rootAgent.autoExploreHint")}
+              onClick={() =>
+                !autoExploreLoading &&
+                onAutoExploreToggle(!(agent.auto_explore_enabled ?? false))
+              }
+              disabled={autoExploreLoading}
+              className={`
+                rounded-full p-1 transition-all duration-300
+                ${autoExploreLoading ? "cursor-not-allowed opacity-40" : "cursor-pointer"}
+                ${
+                  agent.auto_explore_enabled
+                    ? "bg-amber-400/20 text-amber-500 shadow-[0_0_6px_rgba(245,158,11,0.25)] dark:bg-amber-500/15 dark:text-amber-400 dark:shadow-[0_0_6px_rgba(245,158,11,0.15)]"
+                    : "bg-neutral-100/60 text-neutral-300 dark:bg-white/[0.04] dark:text-neutral-600"
+                }
+              `}
+            >
+              <Sparkles className="h-3 w-3" />
+            </button>
+          )}
+        </div>
 
         <div className="relative flex items-center gap-3.5">
           {/* Avatar — always use dicebear with seed=ceo */}
@@ -235,23 +273,6 @@ const CeoAgentCard: React.FC<CeoAgentCardProps> = ({
                   defaultValue: "No need to overthink — just chat with me",
                 })}
             </p>
-            {/* Auto-Explore toggle */}
-            {onAutoExploreToggle && (
-              <div
-                className="mt-2 flex items-center justify-between"
-                onClick={(e) => e.stopPropagation()}
-                onPointerDown={(e) => e.stopPropagation()}
-              >
-                <span className="text-xs text-amber-200/70">
-                  {t("agents.rootAgent.autoExplore")}
-                </span>
-                <Switch
-                  checked={agent.auto_explore_enabled ?? false}
-                  onChange={(checked) => onAutoExploreToggle(checked)}
-                  disabled={autoExploreLoading}
-                />
-              </div>
-            )}
           </div>
         </div>
       </motion.div>

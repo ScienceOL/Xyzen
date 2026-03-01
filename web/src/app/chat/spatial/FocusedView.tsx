@@ -1,13 +1,11 @@
 import { AgentList } from "@/components/agents";
 import ChatStatusBadge from "@/components/base/ChatStatusBadge";
-import { Switch } from "@/components/base/Switch";
 import { Capsule } from "@/components/capsule";
 import {
   DOCK_HORIZONTAL_MARGIN,
   DOCK_SAFE_AREA,
 } from "@/components/layouts/BottomDock";
 import XyzenChat from "@/components/layouts/XyzenChat";
-import { useAutoExploreToggle } from "@/hooks/useAutoExploreToggle";
 import { useRunningAgentIds } from "@/hooks/useChannelSelectors";
 import { useXyzen } from "@/store";
 import type { Agent } from "@/types/agents";
@@ -53,8 +51,6 @@ export function FocusedView({
 
   const collapsed = useXyzen((s) => s.spatialSidebarCollapsed);
   const runningAgentIds = useRunningAgentIds();
-  const { handleToggle: handleAutoExploreToggle, loading: autoExploreLoading } =
-    useAutoExploreToggle();
   const focusedKnowledgeSetId = useXyzen((s) => {
     const id = s.activeChatChannel;
     return id ? (s.channels[id]?.knowledge_set_id ?? null) : null;
@@ -477,24 +473,6 @@ export function FocusedView({
                                 {ceoAgentData.role}
                               </div>
                             )}
-                            {/* Auto-Explore toggle */}
-                            <div
-                              className="mt-1 flex items-center gap-2"
-                              onClick={(e) => e.stopPropagation()}
-                              onPointerDown={(e) => e.stopPropagation()}
-                            >
-                              <span className="text-xs text-neutral-400 dark:text-neutral-500">
-                                {t("agents.rootAgent.autoExplore")}
-                              </span>
-                              <Switch
-                                checked={
-                                  ceoAgentData.agent?.auto_explore_enabled ??
-                                  false
-                                }
-                                onChange={handleAutoExploreToggle}
-                                disabled={autoExploreLoading}
-                              />
-                            </div>
                           </div>
                         </div>
                       );
