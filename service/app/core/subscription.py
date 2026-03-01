@@ -17,6 +17,7 @@ from app.repos.subscription import SubscriptionRepository
 from app.schemas.plan_catalog import (
     CurrencyPricingResponse,
     FullAccessPassRateResponse,
+    PaymentMethodInfo,
     PlanCatalogResponse,
     PlanFeatureResponse,
     PlanLimitsResponse,
@@ -275,8 +276,42 @@ class SubscriptionService:
                 )
             )
 
+        # Build payment_methods from enabled providers
+        payment_enabled = configs.Payment.Provider.lower() != "off"
+        payment_methods: list[PaymentMethodInfo] = []
+        if payment_enabled and configs.Payment.Airwallex.Enabled:
+            payment_methods.append(
+                PaymentMethodInfo(
+                    key="alipaycn",
+                    flow_type="qrcode",
+                    currency="CNY",
+                    display_name_key="subscription.payment.alipay",
+                )
+            )
+            payment_methods.append(
+                PaymentMethodInfo(
+                    key="wechatpay",
+                    flow_type="qrcode",
+                    currency="CNY",
+                    display_name_key="subscription.payment.wechat",
+                )
+            )
+        if payment_enabled and configs.Payment.PayPal.Enabled:
+            payment_methods.append(
+                PaymentMethodInfo(
+                    key="paypal",
+                    flow_type="paypal_sdk",
+                    currency="USD",
+                    display_name_key="subscription.payment.paypal",
+                    sdk_config={"client_id": configs.Payment.PayPal.ClientId},
+                )
+            )
+
+        paypal_method = next((m for m in payment_methods if m.key == "paypal"), None)
+
         return PlanCatalogResponse(
             region=region,
+            payment_enabled=payment_enabled,
             plans=plan_responses,
             topup_rates=[
                 TopUpRateResponse(
@@ -307,7 +342,8 @@ class SubscriptionService:
                 )
                 for fa in catalog.full_access_pass_rates
             ],
-            paypal_client_id=configs.Payment.PayPal.ClientId if configs.Payment.PayPal.Enabled else "",
+            payment_methods=payment_methods,
+            paypal_client_id=paypal_method.sdk_config.get("client_id", "") if paypal_method else "",
         )
 
 

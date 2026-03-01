@@ -13,7 +13,12 @@ from sqlmodel.ext.asyncio.session import AsyncSession
 
 from app.configs import configs
 from app.core.payment.provider import get_payment_provider
-from app.core.plan_catalog import get_full_access_pass_rate, get_plan_pricing, get_sandbox_addon_rate, get_topup_rate
+from app.core.plan_catalog import (
+    get_full_access_pass_rate,
+    get_plan_pricing_any,
+    get_sandbox_addon_rate,
+    get_topup_rate,
+)
 from app.core.subscription import SubscriptionService
 from app.core.user_events import broadcast_wallet_update
 from app.models.payment import PaymentOrderCreate
@@ -23,11 +28,12 @@ from app.repos.subscription import SubscriptionRepository
 
 logger = logging.getLogger(__name__)
 
-# Map payment methods to their currency and provider hint
+# Map payment methods to their provider.  Currency is determined by the
+# plan catalog, NOT by the payment method — payment and region are independent.
 PAYMENT_METHOD_CONFIG: dict[str, dict[str, str]] = {
-    "alipaycn": {"currency": "CNY", "provider": "airwallex"},
-    "wechatpay": {"currency": "CNY", "provider": "airwallex"},
-    "paypal": {"currency": "USD", "provider": "paypal"},
+    "alipaycn": {"provider": "airwallex"},
+    "wechatpay": {"provider": "airwallex"},
+    "paypal": {"provider": "paypal"},
 }
 
 
@@ -53,10 +59,11 @@ class PaymentService:
         if method_cfg is None:
             raise HTTPException(status_code=400, detail=f"Unsupported payment method: {payment_method}")
 
-        currency = method_cfg["currency"]
-        pricing = get_plan_pricing(plan_name, currency)
+        # Currency comes from the plan catalog, not the payment method
+        pricing = get_plan_pricing_any(plan_name)
         if pricing is None:
             raise HTTPException(status_code=400, detail=f"Unknown plan: {plan_name}")
+        currency = pricing.currency
 
         # 1. Create local order
         order = await self.repo.create_order(
@@ -80,6 +87,7 @@ class PaymentService:
             order_id=str(order.id),
             metadata={"user_id": user_id, "plan_name": plan_name},
             return_url=configs.Payment.Airwallex.ReturnUrl,
+            payment_method=payment_method,
         )
 
         # 3. Save provider reference to order
@@ -121,10 +129,11 @@ class PaymentService:
         if method_cfg is None:
             raise HTTPException(status_code=400, detail=f"Unsupported payment method: {payment_method}")
 
-        currency = method_cfg["currency"]
-        rate = get_topup_rate(currency)
+        # Currency comes from the catalog, not the payment method
+        rate = get_topup_rate()
         if rate is None:
-            raise HTTPException(status_code=400, detail=f"Top-up not available for currency: {currency}")
+            raise HTTPException(status_code=400, detail="Top-up not available")
+        currency = rate.currency
 
         if credits <= 0 or credits % rate.credits_per_unit != 0:
             raise HTTPException(
@@ -154,6 +163,7 @@ class PaymentService:
             order_id=str(order.id),
             metadata={"user_id": user_id, "credits": credits},
             return_url=configs.Payment.Airwallex.ReturnUrl,
+            payment_method=payment_method,
         )
 
         await self.repo.set_provider_id_and_url(
@@ -195,10 +205,11 @@ class PaymentService:
         if method_cfg is None:
             raise HTTPException(status_code=400, detail=f"Unsupported payment method: {payment_method}")
 
-        currency = method_cfg["currency"]
-        rate = get_sandbox_addon_rate(currency)
+        # Currency comes from the catalog, not the payment method
+        rate = get_sandbox_addon_rate()
         if rate is None:
-            raise HTTPException(status_code=400, detail=f"Sandbox add-on not available for currency: {currency}")
+            raise HTTPException(status_code=400, detail="Sandbox add-on not available")
+        currency = rate.currency
 
         if quantity <= 0:
             raise HTTPException(status_code=400, detail="Quantity must be positive")
@@ -244,6 +255,7 @@ class PaymentService:
             order_id=str(order.id),
             metadata={"user_id": user_id, "quantity": quantity},
             return_url=configs.Payment.Airwallex.ReturnUrl,
+            payment_method=payment_method,
         )
 
         await self.repo.set_provider_id_and_url(
@@ -284,10 +296,11 @@ class PaymentService:
         if method_cfg is None:
             raise HTTPException(status_code=400, detail=f"Unsupported payment method: {payment_method}")
 
-        currency = method_cfg["currency"]
-        rate = get_full_access_pass_rate(currency)
+        # Currency comes from the catalog, not the payment method
+        rate = get_full_access_pass_rate()
         if rate is None:
-            raise HTTPException(status_code=400, detail=f"Full access pass not available for currency: {currency}")
+            raise HTTPException(status_code=400, detail="Full access pass not available")
+        currency = rate.currency
 
         order = await self.repo.create_order(
             PaymentOrderCreate(
@@ -308,6 +321,7 @@ class PaymentService:
             order_id=str(order.id),
             metadata={"user_id": user_id, "duration_days": rate.duration_days},
             return_url=configs.Payment.Airwallex.ReturnUrl,
+            payment_method=payment_method,
         )
 
         await self.repo.set_provider_id_and_url(

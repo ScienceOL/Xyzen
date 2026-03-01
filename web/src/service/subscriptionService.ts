@@ -150,12 +150,22 @@ export interface FullAccessPassRateResponse {
   display_rate: string;
 }
 
+export interface PaymentMethodInfo {
+  key: string;
+  flow_type: "qrcode" | "paypal_sdk";
+  currency: string;
+  display_name_key: string;
+  sdk_config: Record<string, string>;
+}
+
 export interface PlanCatalogResponse {
   region: string;
   plans: PlanResponse[];
   topup_rates: TopUpRateResponse[];
   sandbox_addon_rates: SandboxAddonRateResponse[];
   full_access_pass_rates: FullAccessPassRateResponse[];
+  payment_methods: PaymentMethodInfo[];
+  payment_enabled: boolean;
   paypal_client_id: string;
 }
 

@@ -107,14 +107,24 @@ export function PaymentQRModal({
         <div className="flex flex-col items-center space-y-5 px-5 py-6">
           {status === "pending" && (
             <>
-              {/* QR Code */}
-              <motion.div
-                initial={{ opacity: 0, scale: 0.9 }}
-                animate={{ opacity: 1, scale: 1 }}
-                className="rounded-lg bg-white p-4"
-              >
-                <QRCodeSVG value={qrCodeUrl} size={200} level="M" />
-              </motion.div>
+              {/* QR Code (only for QR flow) */}
+              {qrCodeUrl ? (
+                <motion.div
+                  initial={{ opacity: 0, scale: 0.9 }}
+                  animate={{ opacity: 1, scale: 1 }}
+                  className="rounded-lg bg-white p-4"
+                >
+                  <QRCodeSVG value={qrCodeUrl} size={200} level="M" />
+                </motion.div>
+              ) : (
+                <motion.div
+                  initial={{ opacity: 0, scale: 0.9 }}
+                  animate={{ opacity: 1, scale: 1 }}
+                  className="flex h-[200px] w-[200px] items-center justify-center"
+                >
+                  <div className="h-8 w-8 animate-spin rounded-full border-2 border-neutral-300 border-t-indigo-500" />
+                </motion.div>
+              )}
 
               {/* Amount + plan info */}
               <div className="text-center">
@@ -122,7 +132,7 @@ export function PaymentQRModal({
                   {formattedAmount}
                 </div>
                 <div className="mt-1 text-[13px] text-neutral-500 dark:text-neutral-400">
-                  {planName} · {t("subscription.plan.perMonth")}
+                  {planName}
                 </div>
               </div>
 

@@ -216,9 +216,12 @@ class _AirwallexAdapter:
         order_id: str,
         metadata: dict | None = None,
         return_url: str = "",
+        payment_method: str = "",
     ) -> CreateOrderResult:
         actual_return_url = return_url or configs.Payment.Airwallex.ReturnUrl
-        payment_method_type = "alipaycn"  # default; overridden by service layer
+
+        # Resolve Airwallex payment_method_type from the app-level payment_method
+        payment_method_type = "wechatpay" if payment_method == "wechatpay" else "alipaycn"
 
         intent = await self._client.create_payment_intent(
             amount=amount,
@@ -235,12 +238,25 @@ class _AirwallexAdapter:
             flow="qrcode",
         )
 
-        qr_code_url = ""
         next_action = confirmation.get("next_action", {})
-        if next_action.get("type") == "render_qr_code":
-            qr_code_url = next_action.get("data", {}).get("qr_code_url", "")
-        elif next_action.get("url"):
-            qr_code_url = next_action["url"]
+        na_type = next_action.get("type", "")
+
+        # Airwallex returns different shapes depending on payment method:
+        #   alipaycn  → {type: "render_qrcode", qrcode: "...", url: "https://..."}
+        #   wechatpay → {type: "render_qrcode", qrcode: "https://..."}
+        # Prefer `url` (full checkout URL) over raw `qrcode` value.
+        qr_code_url = ""
+        if na_type in ("render_qr_code", "render_qrcode"):
+            data = next_action.get("data", {})
+            qr_code_url = (
+                next_action.get("url")
+                or data.get("qr_code_url")
+                or data.get("code_url")
+                or next_action.get("qrcode")
+                or ""
+            )
+        if not qr_code_url:
+            logger.warning("No QR URL extracted for %s, next_action=%s", payment_method_type, next_action)
 
         return CreateOrderResult(
             provider_order_id=intent_id,

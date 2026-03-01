@@ -105,7 +105,10 @@
     "waiting": "Waiting for payment...",
     "success": "Payment Successful!",
     "failed": "Payment failed or expired",
-    "close": "Close"
+    "close": "Close",
+    "alipay": "Alipay",
+    "wechat": "WeChat Pay",
+    "paypal": "PayPal / Credit Cards"
   },
 
   "creator": "Creator",
@@ -147,5 +150,6 @@
       "views100": "Popular",
       "views100Desc": "Get 100 views"
     }
-  }
+  },
+  "paymentDisabledHint": "External top-up is not available during the beta period"
 }

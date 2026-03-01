@@ -196,6 +196,250 @@
   "footer": {
     "copyright": "\u00a9 2024-2026 Miracle Story (Shanghai) Intelligent Technology Co., Ltd. All rights reserved.",
     "terms": "Terms of Service",
-    "privacy": "Privacy Policy"
+    "privacy": "Privacy Policy",
+    "github": "GitHub",
+    "license": "License"
+  },
+  "v2": {
+    "nav": {
+      "github": "GitHub",
+      "getStarted": "Get Started"
+    },
+    "hero": {
+      "title1": "One SuperBrain,",
+      "title2": "or Many Minds, Each a Master?",
+      "pillarExploration": "Autonomous Exploration",
+      "pillarEconomy": "Agent Economy",
+      "subtitle": "The infrastructure for a world where Agents specialize, trade, and evolve — like civilization itself.",
+      "getStarted": "Get Started",
+      "starOnGithub": "Star on GitHub"
+    },
+    "exploration": {
+      "badge": "Autonomous Exploration",
+      "title1": "You Sleep, They Explore",
+      "title2": "— Wake Up to Results",
+      "subtitle": "Chat about your work during the day. At night, CEO Agent reviews your conversations, explores the codebase, and dispatches agents to fix bugs, create branches, and open PRs — all while you sleep.",
+      "ceoAgent": "CEO Agent",
+      "root": "ROOT",
+      "you": "You",
+      "working": "Working…",
+      "done": "Done",
+      "alwaysOn": "Always On",
+      "autonomousExplore": "Autonomous Explore",
+      "toggleHint": "Toggle the switch to start the autonomous cycle",
+      "tasksDone": "{{count}} tasks done",
+      "ceo": {
+        "goodMorning": "Good morning — ready to listen",
+        "listening": "Listening…",
+        "noted": "Noted: \"{{snippet}}…\"",
+        "buildingPlan": "Building tonight's plan…",
+        "nightMode": "Night mode — autonomous exploration",
+        "allCompleted": "All tasks completed ✅",
+        "overnightDone": "{{count}} tasks done overnight ✅"
+      },
+      "scenarios": [
+        {
+          "dayChat": [
+            "The auth module keeps crashing on null users",
+            "Can we speed up the /api/users endpoint?",
+            "We need better test coverage before release",
+            "Prioritize the critical bugs tonight"
+          ],
+          "ceoLog": [
+            "Scanning today's 23 messages…",
+            "\"auth crash\" mentioned 4 times",
+            "Exploring auth.ts — null at line 47",
+            "Scanning related files… 2 more issues",
+            "Dispatching 4 agents ▸▸▸"
+          ],
+          "agentNames": ["Bug Fixer", "Optimizer", "Test Writer", "PR Author"],
+          "agentTasks": [
+            "Patching auth.ts:47",
+            "Profiling /api/users",
+            "Testing auth module",
+            "Composing PR #203"
+          ],
+          "agentResults": [
+            "Fixed → fix/auth-null",
+            "Latency −2.1s → 340ms",
+            "14 tests, all green",
+            "PR #203 · +47 −12"
+          ],
+          "results": [
+            "Fixed null pointer in auth.ts:47",
+            "Created branch fix/auth-null-check",
+            "/api/users: 2.1s → 340ms",
+            "14 new tests passing",
+            "PR #203 ready for review"
+          ]
+        },
+        {
+          "dayChat": [
+            "Users keep asking for dark mode support",
+            "Our components don't have consistent theming",
+            "We should run visual regression tests",
+            "Document the design system changes too"
+          ],
+          "ceoLog": [
+            "Reviewing feature discussions…",
+            "Dark mode planned, not started",
+            "Analyzing 34 components for gaps",
+            "12 components need theme tokens",
+            "Dispatching 4 agents ▸▸▸"
+          ],
+          "agentNames": [
+            "Theme Agent",
+            "Code Agent",
+            "Visual Tester",
+            "Docs Agent"
+          ],
+          "agentTasks": [
+            "Generating tokens",
+            "Updating 12 components",
+            "Running regression",
+            "Updating style guide"
+          ],
+          "agentResults": [
+            "theme.dark.ts · 48 tokens",
+            "12/12 components themed",
+            "0 regressions / 34 pages",
+            "Style guide updated"
+          ],
+          "results": [
+            "theme.dark.ts created — 48 tokens",
+            "12 components updated to dark mode",
+            "Visual regression: 0 failures",
+            "Style guide published",
+            "Branch feat/dark-mode ready"
+          ]
+        },
+        {
+          "dayChat": [
+            "There's a memory leak switching channels",
+            "Heap keeps growing after WebSocket reconnects",
+            "We need to audit all useEffect cleanup",
+            "Add a CI gate so this can't regress"
+          ],
+          "ceoLog": [
+            "Analyzing today's debug session…",
+            "Memory leak in WebSocket handler",
+            "Tracing heap — listener buildup",
+            "Scanning 89 useEffect hooks…",
+            "Dispatching 4 agents ▸▸▸"
+          ],
+          "agentNames": ["Debugger", "Fixer", "Auditor", "CI Agent"],
+          "agentTasks": [
+            "Tracing ws/chat.ts",
+            "Adding cleanup handlers",
+            "Scanning effect hooks",
+            "Adding memory gate"
+          ],
+          "agentResults": [
+            "Found 3 missing cleanups",
+            "Fixed → fix/ws-leak",
+            "2 more leaks patched",
+            "CI memory guard added"
+          ],
+          "results": [
+            "3 listener leaks fixed in ws/chat.ts",
+            "Branch fix/ws-memory-leak created",
+            "2 additional leaks patched",
+            "Heap snapshot CI gate added",
+            "Memory regression test passing"
+          ]
+        }
+      ]
+    },
+    "economy": {
+      "badge": "Agent Economy",
+      "title1": "Let Your Agent Earn",
+      "title2": "While You Sleep",
+      "subtitle": "Publish your agent to the network. Others call it. You get paid.\nAgents trade with agents. The economy grows.",
+      "you": "YOU",
+      "live": "Live",
+      "totalEarned": "Total Earned",
+      "callsThisWeek": "from {{count}}+ calls this week",
+      "liveFeed": "Live Feed",
+      "calledYou": "called you",
+      "waitingForTransactions": "Waiting for transactions…",
+      "calls": "{{count}}+ calls",
+      "agents": {
+        "yours": "SEO Optimizer",
+        "saas": "SaaS Page Builder",
+        "watercolor": "Watercolor Artist",
+        "timeseries": "TimeSeries Forecaster",
+        "legal": "Contract Reviewer",
+        "translator": "JP↔EN Localizer",
+        "copywriter": "Ad Copywriter",
+        "quant": "Quant Analyst"
+      }
+    },
+    "capabilities": {
+      "badge": "Your Digital Assets",
+      "title1": "Agents Are the Most Valuable Assets",
+      "title2": "— And They Belong to You",
+      "subtitle": "Create once. Own forever. Let them grow.",
+      "demoComingSoon": "Demo coming soon",
+      "items": {
+        "autonomous": {
+          "title": "Autonomous Exploration",
+          "desc": "Agents proactively discover tasks, plan execution paths, and reflect on results — no prompt required. While you sleep, they review the day's context and autonomously begin the next cycle of work."
+        },
+        "team": {
+          "title": "Agent Teams",
+          "desc": "A CEO Agent orchestrates specialized workers — data analysts, coders, researchers — each with their own memory and skills. The World Model coordinates multi-agent collaboration across complex, multi-phase workflows."
+        },
+        "sandbox": {
+          "title": "Sandbox Environment",
+          "desc": "Secure, isolated cloud execution environments powered by Bohr & UniLab. Every result is verified through real computation, not guesswork — your agents run code, test hypotheses, and produce verified artifacts."
+        },
+        "skills": {
+          "title": "Skills Engine",
+          "desc": "Reusable, battle-tested capability modules that grow with every task. Each successful execution becomes a skill others can invoke — the compound interest of agent intelligence."
+        },
+        "memory": {
+          "title": "Memory System",
+          "desc": "Persistent long-term memory lets agents learn and grow continuously. They remember past decisions, avoid repeated mistakes, and build on accumulated experience across sessions and conversations."
+        },
+        "knowledge": {
+          "title": "Knowledge Base",
+          "desc": "RAG-powered domain-specific knowledge retrieval. Upload your documents, codebases, or datasets — agents search, reason over, and synthesize insights from your private knowledge on demand."
+        },
+        "multimodal": {
+          "title": "Multimodal",
+          "desc": "Text, images, code, files — full-spectrum understanding. Agents process screenshots, analyze charts, read PDFs, and generate visual content natively across every modality."
+        },
+        "mcp": {
+          "title": "MCP & Model Switching",
+          "desc": "50+ MCP tool integrations with seamless model switching. Connect to any external service, swap LLM providers on the fly, and build custom tool chains tailored to your workflows."
+        },
+        "scheduled_tasks": {
+          "title": "Scheduled Tasks",
+          "desc": "Cron-like scheduled execution — agents run tasks on your timetable, fully automated. Set a daily research brief, weekly report, or continuous monitoring pipeline that executes without reminders."
+        },
+        "agent_create_agent": {
+          "title": "Agent Create Agent",
+          "desc": "Agents autonomously design, build, and publish new agents — the ecosystem grows itself. When a task requires a specialist that doesn't exist yet, your agents create one from scratch."
+        },
+        "deploy": {
+          "title": "One-Click Deploy",
+          "desc": "Docker and cloud deployment — seamless from development to production. Package your trained agents as APIs, embed them in products, or share them on the marketplace with a single command."
+        }
+      }
+    },
+    "openSource": {
+      "title": "Built in the Open",
+      "desc": "Fully open source. MIT licensed. Fork it. Extend it. Make it yours.",
+      "starOnGithub": "Star on GitHub",
+      "getStarted": "Get Started",
+      "tagline": "A new digital planet."
+    },
+    "sectionNav": {
+      "hero": "Home",
+      "exploration": "Autonomous Exploration",
+      "economy": "Agent Economy",
+      "capabilities": "Agent Capabilities",
+      "openSource": "Open Source"
+    }
   }
 }

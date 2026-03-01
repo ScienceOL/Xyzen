@@ -8,17 +8,22 @@ import {
 } from "@/components/animate-ui/components/animate/tabs";
 import { StepperInput } from "@/components/base/StepperInput";
 import { PaymentQRModal } from "@/components/features/PaymentQRModal";
+import type { CheckoutResponse } from "@/service/paymentService";
 import {
-  PayPalCheckoutButton,
-  PayPalProvider,
-} from "@/components/features/PayPalCheckoutButton";
+  DropdownMenu,
+  DropdownMenuContent,
+  DropdownMenuItem,
+  DropdownMenuTrigger,
+} from "@/components/animate-ui/components/radix/dropdown-menu";
 import { usePlanCatalog } from "@/hooks/usePlanCatalog";
 import { useCelebration } from "@/hooks/useCelebration";
 import { useSubscriptionInfo, useBilling } from "@/hooks/ee";
 import { cn } from "@/lib/utils";
 import { paymentService } from "@/service/paymentService";
-import { subscriptionService } from "@/service/subscriptionService";
-import type { PlanResponse } from "@/service/subscriptionService";
+import type {
+  PaymentMethodInfo,
+  PlanResponse,
+} from "@/service/subscriptionService";
 import {
   BoltIcon,
   ChatBubbleLeftRightIcon,
@@ -33,14 +38,216 @@ import {
   PlusIcon,
   SparklesIcon,
   TicketIcon,
+  ChevronDownIcon,
 } from "@heroicons/react/24/outline";
 import { motion } from "framer-motion";
-import { Crown, Gem, Gift, Shield } from "lucide-react";
+import { Crown, Gem, Shield } from "lucide-react";
 import { useState, useCallback, useMemo } from "react";
 import { useTranslation } from "react-i18next";
 import { useQueryClient } from "@tanstack/react-query";
-
 import { type TFunction } from "i18next";
+
+function ButtonSpinner() {
+  return (
+    <svg className="h-3.5 w-3.5 animate-spin" viewBox="0 0 24 24" fill="none">
+      <circle
+        className="opacity-25"
+        cx="12"
+        cy="12"
+        r="10"
+        stroke="currentColor"
+        strokeWidth="4"
+      />
+      <path
+        className="opacity-75"
+        fill="currentColor"
+        d="M4 12a8 8 0 018-8V0C5.373 0 0 5.373 0 12h4z"
+      />
+    </svg>
+  );
+}
+
+// ---------- Payment brand icons ----------
+
+function AlipayIcon({ className }: { className?: string }) {
+  return (
+    <svg className={className} viewBox="0 0 24 24" fill="currentColor">
+      <path
+        d="M22 12c0 5.523-4.477 10-10 10S2 17.523 2 12 6.477 2 12 2s10 4.477 10 10z"
+        fill="#1677FF"
+      />
+      <path
+        d="M17.2 14.8c-1.6-.7-3-.9-3-.9s.7-1.8.9-3h-3.4V9.6h4.2v-.5h-4.2V7.3h-1.1v1.8h-3.7v.5h3.3v1.3H7.1v.5h5.9c-.3.8-.7 1.7-1.1 2.5-1.5-.5-3.3-.6-4.2.1-.7.6-.8 1.6-.2 2.3.6.7 1.7.8 2.8.2.7-.4 1.4-1.2 2-2.1 1 .4 2.9 1.3 3.9 1.8.15.08.28-.07.2-.2-.06-.1-.15-.16-.4-.3zM8.3 15.7c-.8.3-1.6 0-1.8-.4-.2-.4 0-1.1.8-1.4.8-.3 1.9-.1 2.8.4-.6.9-1.2 1.2-1.8 1.4z"
+        fill="white"
+      />
+    </svg>
+  );
+}
+
+function WeChatPayIcon({ className }: { className?: string }) {
+  return (
+    <svg className={className} viewBox="0 0 24 24" fill="currentColor">
+      <path
+        d="M22 12c0 5.523-4.477 10-10 10S2 17.523 2 12 6.477 2 12 2s10 4.477 10 10z"
+        fill="#07C160"
+      />
+      <path
+        d="M9.5 6.5c-2.8 0-5 1.8-5 4.1 0 1.3.7 2.4 1.8 3.2l-.5 1.4 1.6-.8c.6.2 1.3.3 2 .3.1 0 .3 0 .4-.01a3.8 3.8 0 01-.1-.9c0-2.3 2.1-4.2 4.7-4.2h.4C14.3 7.8 12.1 6.5 9.5 6.5zm-1.8 2.3a.7.7 0 110 1.4.7.7 0 010-1.4zm3.5 0a.7.7 0 110 1.4.7.7 0 010-1.4zm3.2 2.4c-2.3 0-4.1 1.6-4.1 3.5 0 1.9 1.8 3.5 4.1 3.5.5 0 .9-.1 1.3-.2l1.2.6-.3-.9c1-.7 1.6-1.7 1.6-2.8 0-2.1-1.8-3.7-4.1-3.7h.3zm-1.3 2a.55.55 0 110 1.1.55.55 0 010-1.1zm2.6 0a.55.55 0 110 1.1.55.55 0 010-1.1z"
+        fill="white"
+      />
+    </svg>
+  );
+}
+
+function PayPalIcon({ className }: { className?: string }) {
+  return (
+    <svg className={className} viewBox="0 0 24 24" fill="currentColor">
+      <path
+        d="M22 12c0 5.523-4.477 10-10 10S2 17.523 2 12 6.477 2 12 2s10 4.477 10 10z"
+        fill="#003087"
+      />
+      <path
+        d="M15.4 7.3c-.5-.6-1.5-.8-2.8-.8H9.4c-.3 0-.5.2-.5.4L7.5 16c0 .2.1.3.3.3h2.2l.5-3.4v.1c0-.3.3-.5.6-.5h1.2c2.3 0 4.1-1 4.7-3.7v-.2c-.1-.8-.1-.8-1.6-1.3z"
+        fill="white"
+      />
+      <path
+        d="M16 8.6c-.5 2.5-2.2 3.4-4.4 3.4H10.5l-.7 4.2h-1c-.2 0-.3-.1-.3-.3l.1-.3.6-3.6v.1c0-.3.3-.5.6-.5h1.2c2.3 0 4.1-1 4.7-3.7.1-.3.1-.6.1-.8-.2.1-.2.1.2.5z"
+        fill="#E0E0E0"
+        opacity=".5"
+      />
+    </svg>
+  );
+}
+
+const PAYMENT_ICON_MAP: Record<
+  string,
+  { Icon: React.FC<{ className?: string }>; color: string }
+> = {
+  alipaycn: { Icon: AlipayIcon, color: "text-[#1677FF]" },
+  wechatpay: { Icon: WeChatPayIcon, color: "text-[#07C160]" },
+  paypal: { Icon: PayPalIcon, color: "text-[#003087]" },
+};
+
+function DisabledPaymentButton({
+  label,
+  className,
+}: {
+  label: string;
+  className?: string;
+}) {
+  return (
+    <button
+      disabled
+      className={cn(
+        "flex cursor-not-allowed items-center justify-center gap-1.5 rounded-lg py-2 text-xs font-semibold text-white bg-neutral-300 dark:bg-neutral-600",
+        className,
+      )}
+    >
+      {label}
+    </button>
+  );
+}
+
+function PaymentMethodDropdown({
+  label,
+  paymentMethods,
+  loadingMethodKey,
+  disabled,
+  paymentEnabled = true,
+  onSelect,
+  className,
+}: {
+  label: string;
+  paymentMethods: PaymentMethodInfo[];
+  loadingMethodKey?: string | null;
+  disabled?: boolean;
+  paymentEnabled?: boolean;
+  onSelect: (methodKey: string) => void;
+  className?: string;
+}) {
+  const { t } = useTranslation();
+
+  if (!paymentEnabled) {
+    return <DisabledPaymentButton label={label} className={className} />;
+  }
+
+  const busy = !!loadingMethodKey;
+  const isLoading = paymentMethods.some((m) => m.key === loadingMethodKey);
+
+  if (paymentMethods.length === 0) return null;
+
+  // Single method: direct button with brand icon
+  if (paymentMethods.length === 1) {
+    const method = paymentMethods[0];
+    const iconInfo = PAYMENT_ICON_MAP[method.key];
+    const isThis = loadingMethodKey === method.key;
+    return (
+      <button
+        disabled={busy || disabled}
+        onClick={() => onSelect(method.key)}
+        className={cn(
+          "flex items-center justify-center gap-1.5 rounded-lg py-2 text-xs font-semibold text-white",
+          busy
+            ? "cursor-not-allowed bg-indigo-400 dark:bg-indigo-500/70"
+            : "bg-indigo-500 hover:bg-indigo-600 dark:hover:bg-indigo-400",
+          className,
+        )}
+      >
+        {isThis ? (
+          <ButtonSpinner />
+        ) : (
+          iconInfo && <iconInfo.Icon className="h-4 w-4" />
+        )}
+        {label}
+      </button>
+    );
+  }
+
+  // Multiple methods: single button + dropdown listing ALL methods
+  return (
+    <DropdownMenu>
+      <DropdownMenuTrigger asChild>
+        <button
+          disabled={busy || disabled}
+          className={cn(
+            "flex items-center justify-center gap-1.5 rounded-lg py-2 text-xs font-semibold text-white transition-colors",
+            isLoading
+              ? "cursor-not-allowed bg-indigo-400 dark:bg-indigo-500/70"
+              : busy || disabled
+                ? "cursor-not-allowed bg-indigo-500 opacity-50"
+                : "bg-indigo-500 hover:bg-indigo-600 dark:hover:bg-indigo-400",
+            className,
+          )}
+        >
+          {isLoading && <ButtonSpinner />}
+          {label}
+          {!isLoading && <ChevronDownIcon className="h-3 w-3" />}
+        </button>
+      </DropdownMenuTrigger>
+      <DropdownMenuContent
+        align="center"
+        sideOffset={6}
+        className="min-w-[180px] rounded-lg border-neutral-200/40 bg-white/95 p-1.5 shadow-xl shadow-black/10 backdrop-blur-xl dark:border-neutral-700/40 dark:bg-neutral-800/95 dark:shadow-black/30"
+      >
+        {paymentMethods.map((method) => {
+          const iconInfo = PAYMENT_ICON_MAP[method.key];
+          return (
+            <DropdownMenuItem
+              key={method.key}
+              onSelect={() => onSelect(method.key)}
+              className="flex cursor-pointer items-center gap-2.5 rounded-md px-3 py-2.5 transition-colors hover:bg-neutral-100 focus:bg-neutral-100 dark:hover:bg-neutral-700/60 dark:focus:bg-neutral-700/60"
+            >
+              {iconInfo && <iconInfo.Icon className="h-5 w-5 shrink-0" />}
+              <span className="text-[13px] font-medium text-neutral-700 dark:text-neutral-200">
+                {t(method.display_name_key)}
+              </span>
+            </DropdownMenuItem>
+          );
+        })}
+      </DropdownMenuContent>
+    </DropdownMenu>
+  );
+}
 
 interface PointsInfoModalProps {
   isOpen: boolean;
@@ -200,18 +407,11 @@ function MySubscriptionTab() {
   const { t } = useTranslation();
   const subInfo = useSubscriptionInfo();
   const billing = useBilling();
-  const queryClient = useQueryClient();
-  const [claiming, setClaiming] = useState(false);
-  const [claimResult, setClaimResult] = useState<{
-    amount: number;
-  } | null>(null);
-
   const subQuery = subInfo?.subQuery;
   const usageQuery = subInfo?.usageQuery;
 
   const role = subQuery?.data?.role;
   const sub = subQuery?.data?.subscription;
-  const canClaim = subQuery?.data?.can_claim_credits ?? false;
   const usage = usageQuery?.data;
   const walletBalance = billing?.balance;
 
@@ -230,21 +430,6 @@ function MySubscriptionTab() {
     : null;
   const expiryPct =
     daysLeft !== null ? Math.min(100, Math.max(2, (daysLeft / 30) * 100)) : 100;
-
-  const handleClaim = async () => {
-    if (claiming) return;
-    setClaiming(true);
-    try {
-      const result = await subscriptionService.claimCredits();
-      setClaimResult({ amount: result.amount_credited });
-      // Invalidate subscription query + refresh wallet from store
-      await queryClient.invalidateQueries({ queryKey: ["subscription"] });
-    } catch {
-      // Error is silently handled; button stays enabled for retry
-    } finally {
-      setClaiming(false);
-    }
-  };
 
   return (
     <motion.div
@@ -425,42 +610,6 @@ function MySubscriptionTab() {
                 </span>
               )}
             </div>
-          )}
-          {/* Claim button */}
-          {canClaim && !claimResult && (
-            <motion.button
-              initial={{ opacity: 0, scale: 0.9 }}
-              animate={{ opacity: 1, scale: 1 }}
-              whileHover={{ scale: 1.03 }}
-              whileTap={{ scale: 0.97 }}
-              onClick={handleClaim}
-              disabled={claiming}
-              className={cn(
-                "mt-2 flex w-full items-center justify-center gap-1.5 rounded-lg px-3 py-1.5 text-xs font-semibold text-white transition-all",
-                `bg-gradient-to-r ${tier.gradient} ${tier.glow}`,
-                claiming && "opacity-60",
-              )}
-            >
-              <Gift className="h-3.5 w-3.5" />
-              {claiming
-                ? t("subscription.sub.claiming")
-                : t("subscription.sub.claimCredits", {
-                    amount: role.monthly_credits.toLocaleString(),
-                  })}
-            </motion.button>
-          )}
-          {/* Claim success */}
-          {claimResult && (
-            <motion.div
-              initial={{ opacity: 0, y: 4 }}
-              animate={{ opacity: 1, y: 0 }}
-              className="mt-2 flex items-center gap-1.5 rounded-lg bg-emerald-50 px-3 py-1.5 text-xs font-medium text-emerald-600 dark:bg-emerald-900/20 dark:text-emerald-400"
-            >
-              <CheckIcon className="h-3.5 w-3.5" />
-              {t("subscription.sub.claimed", {
-                amount: claimResult.amount.toLocaleString(),
-              })}
-            </motion.div>
           )}
         </motion.div>
 
@@ -665,13 +814,17 @@ function MySubscriptionTab() {
 function PlanCard({
   plan,
   index,
-  isChina,
-  onSubscribe,
+  paymentMethods,
+  loadingMethodKey,
+  paymentEnabled,
+  onSubscribeQR,
 }: {
   plan: SubscriptionPlan;
   index: number;
-  isChina: boolean;
-  onSubscribe?: (planKey: string) => void;
+  paymentMethods: PaymentMethodInfo[];
+  loadingMethodKey?: string | null;
+  paymentEnabled?: boolean;
+  onSubscribeQR?: (planKey: string, methodKey: string) => void;
 }) {
   const { t } = useTranslation();
   const isLocked = plan.isLocked;
@@ -834,37 +987,24 @@ function PlanCard({
       </div>
 
       {/* Subscribe action */}
-      {!isFree && !isLocked && !isChina ? (
-        <PayPalCheckoutButton
-          className="mt-auto w-full"
-          onCreateOrder={async () => {
-            const result = await paymentService.createCheckout(
-              plan.planKey,
-              "paypal",
-            );
-            return {
-              order_id: result.order_id,
-              provider_order_id: result.provider_order_id,
-            };
-          }}
-        />
-      ) : (
+      {isFree || isLocked ? (
         <button
-          disabled={isLocked || isFree}
-          onClick={() => !isFree && !isLocked && onSubscribe?.(plan.planKey)}
-          className={cn(
-            "w-full rounded-lg py-2 text-xs font-semibold transition-colors",
-            isLocked || isFree
-              ? "cursor-not-allowed bg-neutral-200 text-neutral-400 dark:bg-neutral-700 dark:text-neutral-500"
-              : "bg-indigo-500 text-white hover:bg-indigo-600 dark:hover:bg-indigo-400",
-          )}
+          disabled
+          className="w-full rounded-lg py-2 text-xs font-semibold cursor-not-allowed bg-neutral-200 text-neutral-400 dark:bg-neutral-700 dark:text-neutral-500"
         >
-          {isFree
-            ? t("subscription.plan.free")
-            : isLocked
-              ? t("subscription.comingSoon")
-              : t("subscription.subscribe")}
+          {isFree ? t("subscription.plan.free") : t("subscription.comingSoon")}
         </button>
+      ) : (
+        <div className="mt-auto">
+          <PaymentMethodDropdown
+            label={t("subscription.subscribe")}
+            paymentMethods={paymentMethods}
+            loadingMethodKey={loadingMethodKey}
+            paymentEnabled={paymentEnabled}
+            onSelect={(methodKey) => onSubscribeQR?.(plan.planKey, methodKey)}
+            className="w-full"
+          />
+        </div>
       )}
     </motion.div>
   );
@@ -872,20 +1012,24 @@ function PlanCard({
 
 function TopUpCard({
   displayRate,
-  isChina,
+  paymentMethods,
+  loadingMethodKey,
   delay,
   creditsPerUnit,
   unitAmount,
   currency,
+  paymentEnabled,
   onQRCheckout,
 }: {
   displayRate: string;
-  isChina: boolean;
+  paymentMethods: PaymentMethodInfo[];
+  loadingMethodKey?: string | null;
   delay: number;
   creditsPerUnit: number;
   unitAmount: number;
   currency: string;
-  onQRCheckout?: (credits: number) => void;
+  paymentEnabled?: boolean;
+  onQRCheckout?: (credits: number, methodKey: string) => void;
 }) {
   const { t } = useTranslation();
   const [credits, setCredits] = useState(0);
@@ -897,21 +1041,6 @@ function TopUpCard({
       : `$${(priceMinor / 100).toFixed(2)}`;
 
   const canBuy = credits > 0;
-
-  const handleCreateOrder = useCallback(async () => {
-    if (!credits) throw new Error("No credits");
-    const result = await paymentService.createTopUpCheckout(credits, "paypal");
-    return {
-      order_id: result.order_id,
-      provider_order_id: result.provider_order_id,
-    };
-  }, [credits]);
-
-  const handleQRBuy = useCallback(() => {
-    if (credits && onQRCheckout) {
-      onQRCheckout(credits);
-    }
-  }, [credits, onQRCheckout]);
 
   return (
     <motion.div
@@ -939,15 +1068,14 @@ function TopUpCard({
             {t(displayRate)}
           </div>
           <div className="text-[11px] text-neutral-500 dark:text-neutral-400">
-            {isChina
-              ? t("subscription.topUp.methodsChina")
-              : t("subscription.topUp.methodsIntl")}
+            {paymentMethods.map((m) => t(m.display_name_key)).join(" / ") ||
+              t("subscription.topUp.methodsIntl")}
           </div>
         </div>
       </div>
 
       {/* Credit amount NumberField + price + buy */}
-      <div className="mt-3 flex items-center gap-3">
+      <div className="mt-3 flex flex-wrap items-center gap-3">
         <StepperInput
           value={credits}
           onChange={setCredits}
@@ -960,23 +1088,18 @@ function TopUpCard({
             {priceDisplay}
           </span>
         )}
-        <div className="ml-auto shrink-0">
-          {canBuy &&
-            (isChina ? (
-              <button
-                onClick={handleQRBuy}
-                className="rounded-lg bg-indigo-500 px-5 py-2 text-xs font-semibold text-white transition-colors hover:bg-indigo-600 dark:hover:bg-indigo-400"
-              >
-                {t("subscription.topUp.buy")}
-              </button>
-            ) : (
-              <PayPalCheckoutButton
-                className="w-40"
-                label={t("subscription.topUp.buy")}
-                onCreateOrder={handleCreateOrder}
-              />
-            ))}
-        </div>
+        {canBuy && (
+          <div className="ml-auto flex shrink-0 items-center gap-2">
+            <PaymentMethodDropdown
+              label={t("subscription.topUp.buy")}
+              paymentMethods={paymentMethods}
+              loadingMethodKey={loadingMethodKey}
+              paymentEnabled={paymentEnabled}
+              onSelect={(methodKey) => onQRCheckout?.(credits, methodKey)}
+              className="px-4"
+            />
+          </div>
+        )}
       </div>
     </motion.div>
   );
@@ -984,18 +1107,22 @@ function TopUpCard({
 
 function SandboxPackCard({
   displayRate,
-  isChina,
+  paymentMethods,
+  loadingMethodKey,
   delay,
   minPlan,
   userPlan,
+  paymentEnabled,
   onQRCheckout,
 }: {
   displayRate: string;
-  isChina: boolean;
+  paymentMethods: PaymentMethodInfo[];
+  loadingMethodKey?: string | null;
   delay: number;
   minPlan: string;
   userPlan: string;
-  onQRCheckout?: (quantity: number) => void;
+  paymentEnabled?: boolean;
+  onQRCheckout?: (quantity: number, methodKey: string) => void;
 }) {
   const { t } = useTranslation();
   const [quantity, setQuantity] = useState(1);
@@ -1008,23 +1135,6 @@ function SandboxPackCard({
   };
   const meetsMinPlan =
     (planPriority[userPlan] ?? 0) >= (planPriority[minPlan] ?? 1);
-
-  const handleCreateOrder = useCallback(async () => {
-    const result = await paymentService.createSandboxAddonCheckout(
-      quantity,
-      "paypal",
-    );
-    return {
-      order_id: result.order_id,
-      provider_order_id: result.provider_order_id,
-    };
-  }, [quantity]);
-
-  const handleQRBuy = useCallback(() => {
-    if (onQRCheckout) {
-      onQRCheckout(quantity);
-    }
-  }, [quantity, onQRCheckout]);
 
   return (
     <motion.div
@@ -1069,21 +1179,15 @@ function SandboxPackCard({
             className="w-36 shrink-0"
           />
 
-          <div className="ml-auto shrink-0">
-            {isChina ? (
-              <button
-                onClick={handleQRBuy}
-                className="rounded-lg bg-indigo-500 px-5 py-2 text-xs font-semibold text-white transition-colors hover:bg-indigo-600 dark:hover:bg-indigo-400"
-              >
-                {t("subscription.sandboxAddon.buy")}
-              </button>
-            ) : (
-              <PayPalCheckoutButton
-                className="w-40"
-                label={t("subscription.sandboxAddon.buy")}
-                onCreateOrder={handleCreateOrder}
-              />
-            )}
+          <div className="ml-auto flex shrink-0 items-center gap-2">
+            <PaymentMethodDropdown
+              label={t("subscription.sandboxAddon.buy")}
+              paymentMethods={paymentMethods}
+              loadingMethodKey={loadingMethodKey}
+              paymentEnabled={paymentEnabled}
+              onSelect={(methodKey) => onQRCheckout?.(quantity, methodKey)}
+              className="px-4"
+            />
           </div>
         </div>
       ) : (
@@ -1099,26 +1203,22 @@ function SandboxPackCard({
 
 function FullAccessCard({
   displayPrice,
-  isChina,
+  paymentMethods,
+  loadingMethodKey,
   delay,
   expiresAt,
+  paymentEnabled,
   onQRCheckout,
 }: {
   displayPrice: string;
-  isChina: boolean;
+  paymentMethods: PaymentMethodInfo[];
+  loadingMethodKey?: string | null;
   delay: number;
   expiresAt?: string | null;
-  onQRCheckout?: () => void;
+  paymentEnabled?: boolean;
+  onQRCheckout?: (methodKey: string) => void;
 }) {
   const { t } = useTranslation();
-
-  const handleCreateOrder = useCallback(async () => {
-    const result = await paymentService.createFullAccessCheckout("paypal");
-    return {
-      order_id: result.order_id,
-      provider_order_id: result.provider_order_id,
-    };
-  }, []);
 
   const daysRemaining = useMemo(() => {
     if (!expiresAt) return null;
@@ -1182,33 +1282,27 @@ function FullAccessCard({
               </div>
             </div>
           )}
-          <div className="shrink-0">
-            {isChina ? (
-              <button
-                onClick={onQRCheckout}
-                className="rounded-lg bg-indigo-500 px-5 py-2 text-xs font-semibold text-white transition-colors hover:bg-indigo-600 dark:hover:bg-indigo-400"
-              >
-                {isActive
+          <div className="flex shrink-0 items-center gap-2">
+            <PaymentMethodDropdown
+              label={
+                isActive
                   ? t("subscription.fullAccess.renew")
-                  : t("subscription.fullAccess.buy")}
-              </button>
-            ) : (
-              <PayPalCheckoutButton
-                className="w-40"
-                label={
-                  isActive
-                    ? t("subscription.fullAccess.renew")
-                    : t("subscription.fullAccess.buy")
-                }
-                onCreateOrder={handleCreateOrder}
-              />
-            )}
+                  : t("subscription.fullAccess.buy")
+              }
+              paymentMethods={paymentMethods}
+              loadingMethodKey={loadingMethodKey}
+              paymentEnabled={paymentEnabled}
+              onSelect={(methodKey) => onQRCheckout?.(methodKey)}
+              className="px-4"
+            />
           </div>
         </div>
       </div>
     </motion.div>
   );
 }
+
+// ---------- PayPal provider wrapper ----------
 
 // ---------- Modal ----------
 
@@ -1222,6 +1316,8 @@ export function PointsInfoModal({ isOpen, onClose }: PointsInfoModalProps) {
   const roleName = subInfo?.roleName;
   const hasPaidSub = !!roleName && roleName !== "free";
 
+  const methods = catalog?.payment_methods ?? [];
+  const paymentEnabled = catalog?.payment_enabled ?? true;
   const isChina = catalog?.region === "zh-cn";
   const regionTab = isChina ? "china" : "international";
 
@@ -1250,34 +1346,48 @@ export function PointsInfoModal({ isOpen, onClose }: PointsInfoModalProps) {
     planName: "",
   });
 
-  const [checkoutLoading, setCheckoutLoading] = useState(false);
+  // Compound key: "card:methodKey" — scopes loading to specific card
+  const [loadingKey, setLoadingKey] = useState<string | null>(null);
+  const cardLoading = (prefix: string) =>
+    loadingKey?.startsWith(`${prefix}:`)
+      ? loadingKey.slice(prefix.length + 1)
+      : null;
 
-  const handleSubscribe = useCallback(
-    async (planKey: string) => {
-      if (checkoutLoading) return;
-      setCheckoutLoading(true);
+  const openCheckoutResult = useCallback(
+    (result: CheckoutResponse, planName: string) => {
+      if (result.flow_type === "paypal_sdk" && result.approval_url) {
+        // PayPal: redirect to approval page, no polling modal needed.
+        // Payment completion is handled by the PayPal webhook on the backend.
+        window.open(result.approval_url, "_blank", "noopener,noreferrer");
+        return;
+      }
+      setQrModal({
+        open: true,
+        orderId: result.order_id,
+        qrCodeUrl: result.qr_code_url ?? "",
+        amount: result.amount,
+        currency: result.currency,
+        planName,
+      });
+    },
+    [],
+  );
+
+  const handleSubscribeQR = useCallback(
+    async (planKey: string, methodKey: string) => {
+      if (loadingKey) return;
+      setLoadingKey(`plan:${planKey}:${methodKey}`);
       try {
-        const paymentMethod = "alipaycn";
-        const result = await paymentService.createCheckout(
-          planKey,
-          paymentMethod,
-        );
+        const result = await paymentService.createCheckout(planKey, methodKey);
         const plan = regionPlans.find((p) => p.planKey === planKey);
-        setQrModal({
-          open: true,
-          orderId: result.order_id,
-          qrCodeUrl: result.qr_code_url,
-          amount: result.amount,
-          currency: result.currency,
-          planName: plan?.name ?? planKey,
-        });
+        openCheckoutResult(result, plan?.name ?? planKey);
       } catch {
         // TODO: toast error
       } finally {
-        setCheckoutLoading(false);
+        setLoadingKey(null);
       }
     },
-    [checkoutLoading, regionPlans],
+    [loadingKey, regionPlans, openCheckoutResult],
   );
 
   const handlePaymentSuccess = useCallback(() => {
@@ -1287,78 +1397,63 @@ export function PointsInfoModal({ isOpen, onClose }: PointsInfoModalProps) {
   }, [queryClient, celebrate]);
 
   const handleTopUpQR = useCallback(
-    async (credits: number) => {
-      if (checkoutLoading) return;
-      setCheckoutLoading(true);
+    async (credits: number, methodKey: string) => {
+      if (loadingKey) return;
+      setLoadingKey(`topup:${methodKey}`);
       try {
         const result = await paymentService.createTopUpCheckout(
           credits,
-          "alipaycn",
+          methodKey,
         );
-        setQrModal({
-          open: true,
-          orderId: result.order_id,
-          qrCodeUrl: result.qr_code_url,
-          amount: result.amount,
-          currency: result.currency,
-          planName: t("subscription.topUp.credits", {
+        openCheckoutResult(
+          result,
+          t("subscription.topUp.credits", {
             amount: credits.toLocaleString(),
           }),
-        });
+        );
       } catch {
         // TODO: toast error
       } finally {
-        setCheckoutLoading(false);
+        setLoadingKey(null);
       }
     },
-    [checkoutLoading, t],
+    [loadingKey, t, openCheckoutResult],
   );
 
   const handleSandboxAddonQR = useCallback(
-    async (quantity: number) => {
-      if (checkoutLoading) return;
-      setCheckoutLoading(true);
+    async (quantity: number, methodKey: string) => {
+      if (loadingKey) return;
+      setLoadingKey(`sandbox:${methodKey}`);
       try {
         const result = await paymentService.createSandboxAddonCheckout(
           quantity,
-          "alipaycn",
+          methodKey,
         );
-        setQrModal({
-          open: true,
-          orderId: result.order_id,
-          qrCodeUrl: result.qr_code_url,
-          amount: result.amount,
-          currency: result.currency,
-          planName: t("subscription.sandboxAddon.title"),
-        });
+        openCheckoutResult(result, t("subscription.sandboxAddon.title"));
       } catch {
         // TODO: toast error
       } finally {
-        setCheckoutLoading(false);
+        setLoadingKey(null);
       }
     },
-    [checkoutLoading, t],
+    [loadingKey, t, openCheckoutResult],
   );
 
-  const handleFullAccessQR = useCallback(async () => {
-    if (checkoutLoading) return;
-    setCheckoutLoading(true);
-    try {
-      const result = await paymentService.createFullAccessCheckout("alipaycn");
-      setQrModal({
-        open: true,
-        orderId: result.order_id,
-        qrCodeUrl: result.qr_code_url,
-        amount: result.amount,
-        currency: result.currency,
-        planName: t("subscription.fullAccess.title"),
-      });
-    } catch {
-      // TODO: toast error
-    } finally {
-      setCheckoutLoading(false);
-    }
-  }, [checkoutLoading, t]);
+  const handleFullAccessQR = useCallback(
+    async (methodKey: string) => {
+      if (loadingKey) return;
+      setLoadingKey(`fullaccess:${methodKey}`);
+      try {
+        const result = await paymentService.createFullAccessCheckout(methodKey);
+        openCheckoutResult(result, t("subscription.fullAccess.title"));
+      } catch {
+        // TODO: toast error
+      } finally {
+        setLoadingKey(null);
+      }
+    },
+    [loadingKey, t, openCheckoutResult],
+  );
 
   return (
     <>
@@ -1412,30 +1507,43 @@ export function PointsInfoModal({ isOpen, onClose }: PointsInfoModalProps) {
                           <div className="h-6 w-6 animate-spin rounded-full border-2 border-neutral-300 border-t-indigo-500" />
                         </div>
                       ) : (
-                        <PayPalProvider
-                          clientId={catalog?.paypal_client_id ?? ""}
-                        >
+                        <>
+                          {!paymentEnabled && (
+                            <motion.div
+                              initial={{ opacity: 0, y: -6 }}
+                              animate={{ opacity: 1, y: 0 }}
+                              className="rounded-lg bg-amber-50/80 px-4 py-3 text-center text-[13px] text-amber-700 dark:bg-amber-950/20 dark:text-amber-400"
+                            >
+                              {t("subscription.betaNotice")}
+                            </motion.div>
+                          )}
                           <div className="grid grid-cols-2 gap-2 sm:gap-3 lg:grid-cols-4">
                             {regionPlans.map((plan, index) => (
                               <PlanCard
                                 key={plan.planKey}
                                 plan={plan}
                                 index={index}
-                                isChina={isChina}
-                                onSubscribe={handleSubscribe}
+                                paymentMethods={methods}
+                                loadingMethodKey={cardLoading(
+                                  `plan:${plan.planKey}`,
+                                )}
+                                paymentEnabled={paymentEnabled}
+                                onSubscribeQR={handleSubscribeQR}
                               />
                             ))}
                           </div>
                           {catalog?.topup_rates[0] && (
                             <TopUpCard
                               displayRate={catalog.topup_rates[0].display_rate}
-                              isChina={isChina}
+                              paymentMethods={methods}
+                              loadingMethodKey={cardLoading("topup")}
                               delay={0.3}
                               creditsPerUnit={
                                 catalog.topup_rates[0].credits_per_unit
                               }
                               unitAmount={catalog.topup_rates[0].unit_amount}
                               currency={catalog.topup_rates[0].currency}
+                              paymentEnabled={paymentEnabled}
                               onQRCheckout={handleTopUpQR}
                             />
                           )}
@@ -1444,10 +1552,12 @@ export function PointsInfoModal({ isOpen, onClose }: PointsInfoModalProps) {
                               displayRate={
                                 catalog.sandbox_addon_rates[0].display_rate
                               }
-                              isChina={isChina}
+                              paymentMethods={methods}
+                              loadingMethodKey={cardLoading("sandbox")}
                               delay={0.35}
                               minPlan={catalog.sandbox_addon_rates[0].min_plan}
                               userPlan={roleName ?? "free"}
+                              paymentEnabled={paymentEnabled}
                               onQRCheckout={handleSandboxAddonQR}
                             />
                           )}
@@ -1456,12 +1566,14 @@ export function PointsInfoModal({ isOpen, onClose }: PointsInfoModalProps) {
                               displayPrice={
                                 catalog.full_access_pass_rates[0].display_price
                               }
-                              isChina={isChina}
+                              paymentMethods={methods}
+                              loadingMethodKey={cardLoading("fullaccess")}
                               delay={0.4}
                               expiresAt={
                                 subInfo?.subQuery.data?.subscription
                                   ?.full_model_access_expires_at
                               }
+                              paymentEnabled={paymentEnabled}
                               onQRCheckout={handleFullAccessQR}
                             />
                           )}
@@ -1475,7 +1587,7 @@ export function PointsInfoModal({ isOpen, onClose }: PointsInfoModalProps) {
                               {t("subscription.notInteroperable")}
                             </motion.p>
                           )}
-                        </PayPalProvider>
+                        </>
                       )}
                     </motion.div>
                   </TabsContent>
