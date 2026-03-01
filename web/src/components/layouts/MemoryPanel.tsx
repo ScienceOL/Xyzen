@@ -203,10 +203,7 @@ function CoreMemoryTab() {
                       rows={4}
                       onKeyDown={(e) => {
                         if (e.key === "Escape") cancelEdit();
-                        if (
-                          e.key === "Enter" &&
-                          (e.metaKey || e.ctrlKey)
-                        ) {
+                        if (e.key === "Enter" && (e.metaKey || e.ctrlKey)) {
                           void handleSave();
                         }
                       }}

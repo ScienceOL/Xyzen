@@ -1,0 +1,36 @@
+{
+  "permissions": {
+    "allow": [
+      "Bash(rg:*)",
+      "Bash(find:*)",
+      "Bash(wc:*)",
+      "Bash(awk:*)",
+      "Bash(ls:*)",
+      "Bash(tree:*)",
+      "Bash(grep:*)",
+      "Bash(git log:*)",
+      "Bash(git show:*)",
+      "Bash(git diff:*)",
+      "Bash(git grep:*)",
+      "Bash(git status:*)",
+      "Bash(git branch:*)",
+      "Bash(git fetch:*)",
+      "Bash(git worktree:*)",
+      "Bash(gh pr view:*)",
+      "Bash(gh pr checks:*)",
+      "Bash(gh pr list:*)",
+      "Bash(gh pr diff:*)",
+      "Bash(gh issue view:*)",
+      "Bash(gh issue list:*)",
+      "Bash(gh run view:*)",
+      "Bash(gh run list:*)",
+      "Bash(uv run:*)",
+      "Bash(yarn:*)",
+      "Bash(docker logs:*)",
+    ],
+    "deny": [],
+    "ask": []
+  },
+  "enabledPlugins": {},
+  "outputStyle": "default"
+}

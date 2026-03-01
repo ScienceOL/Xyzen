@@ -167,6 +167,6 @@ docker-compose.override.yml
 .windsurfrules
 .clinerules
 .github/copilot-instructions.md
-.claude/
-CLAUDE.md
+.claude/settings.local.json
+AGENTS.md
 GEMINI.md
