@@ -32,7 +32,20 @@
     "createPlaceholder": "覚えておきたいことを入力...",
     "createSuccess": "メモリーを追加しました",
     "updateSuccess": "メモリーを更新しました",
-    "saveFailed": "メモリーの保存に失敗しました"
+    "saveFailed": "メモリーの保存に失敗しました",
+    "tabProfile": "プロフィール",
+    "tabMemories": "メモリー",
+    "core": {
+      "userSummary": "あなたについて",
+      "preferences": "設定",
+      "activeContext": "現在のコンテキスト",
+      "workingRules": "ワーキングルール",
+      "emptyHint": "未設定 — エージェントが会話を通じて自動的に記録します。",
+      "charCount": "{{count}} / {{max}}",
+      "saveSuccess": "プロフィールを更新しました",
+      "saveFailed": "プロフィールの更新に失敗しました",
+      "loadFailed": "プロフィールの読み込みに失敗しました"
+    }
   },
   "sandbox": {
     "noSession": "アクティブなセッションがありません",

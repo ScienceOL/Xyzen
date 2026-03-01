@@ -32,7 +32,20 @@
     "createPlaceholder": "Type something to remember...",
     "createSuccess": "Memory created",
     "updateSuccess": "Memory updated",
-    "saveFailed": "Failed to save memory"
+    "saveFailed": "Failed to save memory",
+    "tabProfile": "Profile",
+    "tabMemories": "Memories",
+    "core": {
+      "userSummary": "About You",
+      "preferences": "Preferences",
+      "activeContext": "Active Context",
+      "workingRules": "Working Rules",
+      "emptyHint": "Not set — the agent will fill this in as it learns about you.",
+      "charCount": "{{count}} / {{max}}",
+      "saveSuccess": "Profile updated",
+      "saveFailed": "Failed to update profile",
+      "loadFailed": "Failed to load profile"
+    }
   },
   "sandbox": {
     "noSession": "No active session",
