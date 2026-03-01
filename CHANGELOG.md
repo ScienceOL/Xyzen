@@ -2,6 +2,12 @@
 
 All notable changes to Xyzen will be documented in this file.
 
+## [1.6.13](https://github.com/ScienceOL/Xyzen/compare/v1.6.12...v1.6.13) (2026-03-01)
+
+### 🐛 Bug Fixes
+
+* scope checkpoint thread_id per conversation turn to prevent state accumulation ([95b9ed8](https://github.com/ScienceOL/Xyzen/commit/95b9ed8b3e567f0ecdc3ec02e193cc8dfad00800))
+
 ## [1.6.12](https://github.com/ScienceOL/Xyzen/compare/v1.6.11...v1.6.12) (2026-03-01)
 
 ### 🐛 Bug Fixes
