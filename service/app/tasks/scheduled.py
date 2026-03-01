@@ -223,6 +223,7 @@ async def _execute_scheduled_chat_inner(scheduled_task_id: str) -> None:
                 message_id=None,
                 model_tier=None,
                 db_session_factory=TaskSessionLocal,
+                scheduled_task_metadata=sched_task.metadata_,
             )
         )
 

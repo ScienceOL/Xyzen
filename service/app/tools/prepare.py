@@ -35,6 +35,7 @@ async def prepare_tools(
     user_id: str | None = None,
     session_knowledge_set_id: "UUID | None" = None,
     topic_id: "UUID | None" = None,
+    exclude_ask_user: bool = False,
 ) -> list[BaseTool]:
     """
     Prepare all tools for an agent based on configuration.
@@ -73,7 +74,13 @@ async def prepare_tools(
 
     # 1. Load all available builtin tools
     builtin_tools = _load_all_builtin_tools(
-        agent, user_id, session_knowledge_set_id, topic_id, session_id, memory_store
+        agent,
+        user_id,
+        session_knowledge_set_id,
+        topic_id,
+        session_id,
+        memory_store,
+        exclude_ask_user=exclude_ask_user,
     )
     langchain_tools.extend(builtin_tools)
 
@@ -98,6 +105,7 @@ def _load_all_builtin_tools(
     topic_id: "UUID | None" = None,
     session_id: "UUID | None" = None,
     memory_store: "BaseStore | None" = None,
+    exclude_ask_user: bool = False,
 ) -> list[BaseTool]:
     """
     Load all available builtin tools.
@@ -242,10 +250,11 @@ def _load_all_builtin_tools(
             )
             tools.extend(skill_mgmt_tools)
 
-    # Load ask_user_question tool (always available — uses LangGraph interrupt)
-    from app.tools.builtin.ask_user_question import create_ask_user_question_tool
+    # Load ask_user_question tool (skip in headless auto-explore mode)
+    if not exclude_ask_user:
+        from app.tools.builtin.ask_user_question import create_ask_user_question_tool
 
-    tools.append(create_ask_user_question_tool())
+        tools.append(create_ask_user_question_tool())
 
     return tools
 

@@ -100,6 +100,17 @@ async def create_chat_agent(
     # Prepare tools from builtin tools and MCP servers
     session_id: "UUID | None" = topic.session_id if topic else None
     topic_id: "UUID | None" = topic.id if topic else None
+
+    # Check if we should exclude ask_user_question (auto-explore mode)
+    from app.core.consume.consume_service import get_tracking_context
+
+    _tracking = get_tracking_context()
+    _exclude_ask_user = bool(
+        _tracking
+        and _tracking.scheduled_task_metadata
+        and _tracking.scheduled_task_metadata.get("type") == "auto_explore"
+    )
+
     tools: list[BaseTool] = await prepare_tools(
         db,
         agent_config,
@@ -107,6 +118,7 @@ async def create_chat_agent(
         user_id,
         session_knowledge_set_id=session_knowledge_set_id,
         topic_id=topic_id,
+        exclude_ask_user=_exclude_ask_user,
     )
 
     # Resolve the agent configuration

@@ -62,6 +62,7 @@ class TrackingContext:
     developer_user_id: str | None = None
     model_name: str | None = None
     model_provider: str | None = None
+    scheduled_task_metadata: dict[str, Any] | None = None
 
 
 _tracking_ctx: ContextVar[TrackingContext | None] = ContextVar("tracking_ctx", default=None)
