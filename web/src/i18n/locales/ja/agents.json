@@ -67,7 +67,9 @@
   "rootAgent": {
     "title": "CEOエージェント",
     "description": "難しいことは気にせず、気軽に話しかけてね",
-    "badge": "CEO"
+    "badge": "CEO",
+    "autoExplore": "自動探索",
+    "autoExploreHint": "エージェントがあなたの興味を自動的に探索します"
   },
   "sessionSettings": {
     "title": "{{name}} 設定",

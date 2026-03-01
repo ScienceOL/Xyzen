@@ -67,7 +67,9 @@
   "rootAgent": {
     "title": "CEO 助手",
     "description": "不用关心其他事，和我聊就好",
-    "badge": "CEO"
+    "badge": "CEO",
+    "autoExplore": "自动探索",
+    "autoExploreHint": "助手自动探索你感兴趣的内容"
   },
   "sessionSettings": {
     "title": "{{name}} 设置",
