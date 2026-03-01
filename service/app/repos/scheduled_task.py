@@ -124,3 +124,14 @@ class ScheduledTaskRepository:
             task.updated_at = datetime.now(timezone.utc)
             self.db.add(task)
             await self.db.flush()
+
+    async def get_active_auto_explore(self, user_id: str) -> ScheduledTask | None:
+        """Get the active auto-explore scheduled task for a user, if any."""
+        statement = (
+            select(ScheduledTask).where(ScheduledTask.user_id == user_id).where(ScheduledTask.status == "active")
+        )
+        result = await self.db.exec(statement)
+        for task in result.all():
+            if task.metadata_ and task.metadata_.get("type") == "auto_explore":
+                return task
+        return None
