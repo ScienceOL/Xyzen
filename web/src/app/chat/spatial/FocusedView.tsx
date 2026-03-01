@@ -7,13 +7,14 @@ import {
   DOCK_SAFE_AREA,
 } from "@/components/layouts/BottomDock";
 import XyzenChat from "@/components/layouts/XyzenChat";
+import { useAutoExploreToggle } from "@/hooks/useAutoExploreToggle";
 import { useRunningAgentIds } from "@/hooks/useChannelSelectors";
 import { useXyzen } from "@/store";
 import type { Agent } from "@/types/agents";
 import { ChevronLeftIcon, SparklesIcon } from "@heroicons/react/24/outline";
 import { Crown } from "lucide-react";
 import { AnimatePresence, motion } from "framer-motion";
-import { useCallback, useEffect, useMemo, useRef, useState } from "react";
+import { useCallback, useEffect, useMemo, useRef } from "react";
 import { useTranslation } from "react-i18next";
 import { TopicTabBar } from "./components/TopicTabBar";
 import { useAgentTopics } from "./hooks";
@@ -52,21 +53,8 @@ export function FocusedView({
 
   const collapsed = useXyzen((s) => s.spatialSidebarCollapsed);
   const runningAgentIds = useRunningAgentIds();
-  const toggleAutoExplore = useXyzen((s) => s.toggleAutoExplore);
-  const [autoExploreLoading, setAutoExploreLoading] = useState(false);
-  const handleAutoExploreToggle = useCallback(
-    async (enabled: boolean) => {
-      setAutoExploreLoading(true);
-      try {
-        await toggleAutoExplore(enabled);
-      } catch (error) {
-        console.error("Failed to toggle auto-explore:", error);
-      } finally {
-        setAutoExploreLoading(false);
-      }
-    },
-    [toggleAutoExplore],
-  );
+  const { handleToggle: handleAutoExploreToggle, loading: autoExploreLoading } =
+    useAutoExploreToggle();
   const focusedKnowledgeSetId = useXyzen((s) => {
     const id = s.activeChatChannel;
     return id ? (s.channels[id]?.knowledge_set_id ?? null) : null;

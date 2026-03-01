@@ -14,6 +14,7 @@ import { useTranslation } from "react-i18next";
 import AddAgentModal from "@/components/modals/AddAgentModal";
 import AgentSettingsModal from "@/components/modals/AgentSettingsModal";
 import ConfirmationModal from "@/components/modals/ConfirmationModal";
+import { useAutoExploreToggle } from "@/hooks/useAutoExploreToggle";
 import { useMyMarketplaceListings } from "@/hooks/useMarketplace";
 import { useXyzen } from "@/store";
 import { useShallow } from "zustand/react/shallow";
@@ -52,7 +53,6 @@ export default function XyzenAgent({
     deleteAgent,
     updateAgentAvatar,
     reorderAgents,
-    toggleAutoExplore,
 
     chatHistory,
     activateChannelForAgent,
@@ -65,7 +65,6 @@ export default function XyzenAgent({
       deleteAgent: s.deleteAgent,
       updateAgentAvatar: s.updateAgentAvatar,
       reorderAgents: s.reorderAgents,
-      toggleAutoExplore: s.toggleAutoExplore,
       chatHistory: s.chatHistory,
       activateChannelForAgent: s.activateChannelForAgent,
       fetchMcpServers: s.fetchMcpServers,
@@ -158,20 +157,8 @@ export default function XyzenAgent({
   );
 
   // Auto-explore toggle handler
-  const [autoExploreLoading, setAutoExploreLoading] = useState(false);
-  const handleAutoExploreToggle = useCallback(
-    async (enabled: boolean) => {
-      setAutoExploreLoading(true);
-      try {
-        await toggleAutoExplore(enabled);
-      } catch (error) {
-        console.error("Failed to toggle auto-explore:", error);
-      } finally {
-        setAutoExploreLoading(false);
-      }
-    },
-    [toggleAutoExplore],
-  );
+  const { handleToggle: handleAutoExploreToggle, loading: autoExploreLoading } =
+    useAutoExploreToggle();
 
   // Merge external scroll ref with internal ref
   const internalScrollRef = useRef<HTMLDivElement>(null);

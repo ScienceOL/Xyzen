@@ -644,9 +644,9 @@ async def enable_auto_explore(
     if not await root_agent_repo.is_root_agent(agent_id, user_id):
         raise HTTPException(status_code=403, detail="Auto-explore is only available for the root agent")
 
-    # Check if already enabled
+    # Check if already enabled (with FOR UPDATE to prevent race conditions)
     sched_repo = ScheduledTaskRepository(db)
-    existing = await sched_repo.get_active_auto_explore(user_id)
+    existing = await sched_repo.get_active_auto_explore(user_id, for_update=True)
     if existing:
         return AutoExploreToggleResponse(enabled=True, scheduled_task_id=str(existing.id))
 
@@ -669,8 +669,14 @@ async def enable_auto_explore(
         ),
         user_id,
     )
-    result = execute_scheduled_chat.apply_async(args=(str(task.id),), eta=first_run)
-    await sched_repo.update_celery_task_id(task.id, result.id)
+
+    try:
+        result = execute_scheduled_chat.apply_async(args=(str(task.id),), eta=first_run)
+        await sched_repo.update_celery_task_id(task.id, result.id)
+    except Exception:
+        # Celery dispatch failed — remove the orphan task record
+        await sched_repo.mark_failed(task.id, "Failed to dispatch Celery task")
+        raise HTTPException(status_code=503, detail="Task scheduler unavailable")
 
     # Update agent flag
     agent_repo = AgentRepository(db)
@@ -719,9 +725,15 @@ async def disable_auto_explore(
 async def get_auto_explore_status(
     agent_id: UUID,
     user_id: str = Depends(get_current_user),
+    auth_service: AuthorizationService = Depends(get_auth_service),
     db: AsyncSession = Depends(get_session),
 ) -> AutoExploreToggleResponse:
     """Get auto-explore status for an agent."""
+    try:
+        await auth_service.authorize_agent_read(agent_id, user_id)
+    except ErrCodeError as e:
+        raise handle_auth_error(e)
+
     sched_repo = ScheduledTaskRepository(db)
     existing = await sched_repo.get_active_auto_explore(user_id)
     return AutoExploreToggleResponse(

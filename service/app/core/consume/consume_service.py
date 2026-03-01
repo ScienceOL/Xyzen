@@ -83,6 +83,12 @@ def clear_tracking_context() -> None:
     _tracking_ctx.set(None)
 
 
+def is_auto_explore() -> bool:
+    """Check if the current task is an auto-explore session."""
+    ctx = _tracking_ctx.get()
+    return bool(ctx and ctx.scheduled_task_metadata and ctx.scheduled_task_metadata.get("type") == "auto_explore")
+
+
 # ---------------------------------------------------------------------------
 # ConsumptionTrackingService
 # ---------------------------------------------------------------------------

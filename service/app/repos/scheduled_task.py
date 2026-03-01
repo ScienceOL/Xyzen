@@ -2,6 +2,7 @@ import logging
 from datetime import datetime, timezone
 from uuid import UUID
 
+import sqlalchemy as sa
 from sqlmodel import select
 from sqlmodel.ext.asyncio.session import AsyncSession
 
@@ -125,13 +126,17 @@ class ScheduledTaskRepository:
             self.db.add(task)
             await self.db.flush()
 
-    async def get_active_auto_explore(self, user_id: str) -> ScheduledTask | None:
+    async def get_active_auto_explore(self, user_id: str, *, for_update: bool = False) -> ScheduledTask | None:
         """Get the active auto-explore scheduled task for a user, if any."""
+        # Use the underlying SA column for JSON path filtering
+        metadata_col = sa.cast(ScheduledTask.__table__.c.metadata, sa.JSON)
         statement = (
-            select(ScheduledTask).where(ScheduledTask.user_id == user_id).where(ScheduledTask.status == "active")
+            select(ScheduledTask)
+            .where(ScheduledTask.user_id == user_id)
+            .where(ScheduledTask.status == "active")
+            .where(metadata_col["type"].as_string() == "auto_explore")
         )
+        if for_update:
+            statement = statement.with_for_update()
         result = await self.db.exec(statement)
-        for task in result.all():
-            if task.metadata_ and task.metadata_.get("type") == "auto_explore":
-                return task
-        return None
+        return result.first()

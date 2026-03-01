@@ -1042,12 +1042,9 @@ async def handle_normal_finalization(
             from app.core.notification.events import pack_notification_body, strip_markdown
             from app.tasks.notification import send_notification, send_web_push
 
-            from app.core.consume.consume_service import get_tracking_context as _get_tc
+            from app.core.consume.consume_service import is_auto_explore as _is_auto_explore
 
-            _tc = _get_tc()
-            _is_explore = bool(
-                _tc and _tc.scheduled_task_metadata and _tc.scheduled_task_metadata.get("type") == "auto_explore"
-            )
+            _is_explore = _is_auto_explore()
             _title = "Auto-Explore Digest" if _is_explore else f"{ctx.agent_name or 'Agent'} replied"
             _push_title = "Auto-Explore" if _is_explore else (ctx.agent_name or "Agent")
             _msg_id = str(ctx.ai_message_obj.id)
