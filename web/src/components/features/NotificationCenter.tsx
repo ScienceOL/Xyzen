@@ -46,7 +46,10 @@ import { useShallow } from "zustand/react/shallow";
 
 type FilterTab = "all" | "unread" | "archived";
 
-const FILTER_TABS: { key: FilterTab; icon: React.ElementType }[] = [
+const FILTER_TABS: {
+  key: FilterTab;
+  icon: React.ComponentType<{ className?: string }>;
+}[] = [
   { key: "all", icon: Inbox },
   { key: "unread", icon: MailOpen },
   { key: "archived", icon: Archive },

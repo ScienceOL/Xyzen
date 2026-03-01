@@ -57,6 +57,7 @@ function DialogBackdrop<TTag extends React.ElementType = typeof motion.div>(
   props: DialogBackdropProps<TTag>,
 ) {
   const {
+    // @ts-expect-error — union type too complex for TS to represent
     as = motion.div,
     transition = { duration: 0.2, ease: "easeInOut" },
     ...rest
@@ -90,6 +91,7 @@ function DialogPanel<TTag extends React.ElementType = typeof motion.div>(
 ) {
   const {
     children,
+    // @ts-expect-error — union type too complex for TS to represent
     as = motion.div,
     from = "top",
     transition = { type: "spring", stiffness: 150, damping: 25 },

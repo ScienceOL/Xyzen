@@ -29,7 +29,10 @@ export const FileIcon = ({
   const ext = getExtension(filename);
 
   // Helper to render icon with color
-  const renderIcon = (Icon: React.ElementType, colorClass: string) => (
+  const renderIcon = (
+    Icon: React.ComponentType<{ className?: string }>,
+    colorClass: string,
+  ) => (
     <div className={`flex items-center justify-center rounded-lg ${className}`}>
       <Icon className={`h-full w-full ${colorClass}`} />
     </div>

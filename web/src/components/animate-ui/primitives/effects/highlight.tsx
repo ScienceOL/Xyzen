@@ -218,6 +218,7 @@ function Highlight<T extends React.ElementType = "div">({
     (children: React.ReactNode) => {
       if (mode === "parent") {
         return (
+          // @ts-expect-error — polymorphic Component type not fully resolvable
           <Component
             ref={localRef}
             data-slot="motion-highlight-container"

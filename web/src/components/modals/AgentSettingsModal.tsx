@@ -38,7 +38,7 @@ type TabType = "profile" | "size" | "workflow" | "danger";
 
 interface NavItem {
   id: TabType;
-  icon: React.ElementType;
+  icon: React.ComponentType<{ className?: string }>;
   labelKey: string;
   color?: string;
 }

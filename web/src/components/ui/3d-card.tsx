@@ -143,14 +143,16 @@ export const CardItem = ({
     handleAnimations();
   }, [handleAnimations]);
 
+  // eslint-disable-next-line @typescript-eslint/no-explicit-any
+  const Comp = Tag as any;
   return (
-    <Tag
+    <Comp
       ref={ref}
       className={cn("w-fit transition duration-200 ease-linear", className)}
       {...rest}
     >
       {children}
-    </Tag>
+    </Comp>
   );
 };
 
