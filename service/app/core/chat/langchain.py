@@ -548,8 +548,14 @@ async def _process_agent_stream(
     messages_count = 0
     agent_error: Exception | None = None
 
-    # Build thread_id for checkpointer (if session/topic available)
-    thread_id = f"xyzen:{ctx.session_id}:{ctx.topic_id}" if ctx.session_id and ctx.topic_id else None
+    # Build thread_id for checkpointer (if session/topic available).
+    # Include stream_id to scope each conversation turn to its own checkpoint
+    # namespace.  Without this, successive turns accumulate messages in the
+    # checkpoint state (via the add_messages reducer), eventually producing
+    # requests too large for the LLM API.  Interrupt/resume still works
+    # because the thread_id is round-tripped through the ASK_USER_QUESTION
+    # event and reused verbatim by resume_agent_from_interrupt().
+    thread_id = f"xyzen:{ctx.session_id}:{ctx.topic_id}:{ctx.stream_id}" if ctx.session_id and ctx.topic_id else None
     configurable: dict[str, Any] = {"user_id": ctx.user_id}
     if thread_id:
         configurable["thread_id"] = thread_id
@@ -653,7 +659,7 @@ async def resume_agent_from_interrupt(
     Args:
         agent: The compiled graph (must use the same checkpointer DB)
         user_response: User's answer dict from the frontend
-        thread_id: Checkpointer thread identifier (xyzen:{session}:{topic})
+        thread_id: Checkpointer thread identifier (xyzen:{session}:{topic}:{stream_id})
         ctx: StreamContext for event emission
     """
     from langgraph.types import Command
