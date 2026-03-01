@@ -52,6 +52,7 @@ export default function XyzenAgent({
     deleteAgent,
     updateAgentAvatar,
     reorderAgents,
+    toggleAutoExplore,
 
     chatHistory,
     activateChannelForAgent,
@@ -64,6 +65,7 @@ export default function XyzenAgent({
       deleteAgent: s.deleteAgent,
       updateAgentAvatar: s.updateAgentAvatar,
       reorderAgents: s.reorderAgents,
+      toggleAutoExplore: s.toggleAutoExplore,
       chatHistory: s.chatHistory,
       activateChannelForAgent: s.activateChannelForAgent,
       fetchMcpServers: s.fetchMcpServers,
@@ -155,6 +157,22 @@ export default function XyzenAgent({
     [reorderAgents],
   );
 
+  // Auto-explore toggle handler
+  const [autoExploreLoading, setAutoExploreLoading] = useState(false);
+  const handleAutoExploreToggle = useCallback(
+    async (enabled: boolean) => {
+      setAutoExploreLoading(true);
+      try {
+        await toggleAutoExplore(enabled);
+      } catch (error) {
+        console.error("Failed to toggle auto-explore:", error);
+      } finally {
+        setAutoExploreLoading(false);
+      }
+    },
+    [toggleAutoExplore],
+  );
+
   // Merge external scroll ref with internal ref
   const internalScrollRef = useRef<HTMLDivElement>(null);
   const scrollRefCallback = useCallback(
@@ -224,6 +242,8 @@ export default function XyzenAgent({
                 activeTopicCount={activeTopicCountByAgent[rootAgent.id] ?? 0}
                 onClick={handleRootAgentClick}
                 onEdit={handleEditClick}
+                onAutoExploreToggle={handleAutoExploreToggle}
+                autoExploreLoading={autoExploreLoading}
               />
             </div>
             {/* Opaque base below the card — fills bottom gap without blocking backdrop-blur */}
