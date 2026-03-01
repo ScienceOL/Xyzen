@@ -2,6 +2,12 @@
 
 All notable changes to Xyzen will be documented in this file.
 
+## [1.6.14](https://github.com/ScienceOL/Xyzen/compare/v1.6.13...v1.6.14) (2026-03-01)
+
+### 🐛 Bug Fixes
+
+* add v2 landing page, memory, auto explorer ([#286](https://github.com/ScienceOL/Xyzen/issues/286)) ([9712897](https://github.com/ScienceOL/Xyzen/commit/97128970e0a26aa5f4dc78c5612ba8333b7e36c4)), closes [#285](https://github.com/ScienceOL/Xyzen/issues/285)
+
 ## [1.6.13](https://github.com/ScienceOL/Xyzen/compare/v1.6.12...v1.6.13) (2026-03-01)
 
 ### 🐛 Bug Fixes
