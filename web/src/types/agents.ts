@@ -106,6 +106,9 @@ export interface Agent {
   // Fork tracking (set when agent was forked from marketplace)
   original_source_id?: string | null;
   source_version?: number | null;
+
+  // Auto-explore toggle (root agent only)
+  auto_explore_enabled?: boolean;
 }
 
 /**
