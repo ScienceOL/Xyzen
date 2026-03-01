@@ -60,6 +60,7 @@ export interface AgentSlice {
     providerId: string | null,
   ) => Promise<void>;
   deleteAgent: (id: string) => Promise<void>;
+  toggleAutoExplore: (enabled: boolean) => Promise<void>;
 }
 
 const defaultSpatialLayoutForIndex = (
@@ -654,5 +655,26 @@ export const createAgentSlice: StateCreator<
       console.error(error);
       throw error;
     }
+  },
+
+  toggleAutoExplore: async (enabled) => {
+    const rootId = get().rootAgentId;
+    if (!rootId) return;
+
+    const method = enabled ? "POST" : "DELETE";
+    const response = await fetch(
+      `${get().backendUrl}/xyzen/api/v1/agents/${rootId}/auto-explore`,
+      { method, headers: createAuthHeaders() },
+    );
+    if (!response.ok) {
+      const errorText = await response.text();
+      throw new Error(`Failed to toggle auto-explore: ${errorText}`);
+    }
+
+    // Update local agent state
+    set((state) => {
+      const agent = state.agents.find((a) => a.id === rootId);
+      if (agent) agent.auto_explore_enabled = enabled;
+    });
   },
 });

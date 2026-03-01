@@ -67,7 +67,9 @@
   "rootAgent": {
     "title": "CEO Agent",
     "description": "No need to overthink — just chat with me",
-    "badge": "CEO"
+    "badge": "CEO",
+    "autoExplore": "Auto Explore",
+    "autoExploreHint": "Agent autonomously explores your interests"
   },
   "sessionSettings": {
     "title": "{{name}} Settings",

@@ -29,7 +29,7 @@ from app.core.chat.stream_handlers import (
     ToolEventHandler,
 )
 from app.core.chat.tracer import LangGraphTracer
-from app.core.prompts import build_system_prompt_with_provenance
+from app.core.prompts import build_system_prompt_with_provenance, fetch_memory_context
 from app.core.providers import get_user_provider_manager
 from app.models.topic import Topic as TopicModel
 from app.schemas.chat_event_payloads import StreamingEvent
@@ -110,8 +110,9 @@ async def get_ai_response_stream_langchain_legacy(
     if not all([model_tier, provider_id, model_name]):
         logger.warning(f"Incomplete model metadata: tier={model_tier}, provider={provider_id}, model={model_name}")
 
-    # Build system prompt
-    prompt_build = await build_system_prompt_with_provenance(db, agent, model_name)
+    # Build system prompt (with memory context: Core Memory + auto-retrieved)
+    memory_ctx = await fetch_memory_context(user_id, message_text)
+    prompt_build = await build_system_prompt_with_provenance(db, agent, model_name, memory_ctx=memory_ctx)
     system_prompt = prompt_build.prompt
     logger.info("System prompt provenance: %s", prompt_build.provenance)
 

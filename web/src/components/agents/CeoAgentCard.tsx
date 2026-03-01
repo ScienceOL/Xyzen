@@ -1,6 +1,7 @@
 "use client";
 
 import ChatStatusBadge from "@/components/base/ChatStatusBadge";
+import { Switch } from "@/components/base/Switch";
 import type { Agent } from "@/types/agents";
 import { Crown, PencilIcon } from "lucide-react";
 import { motion } from "framer-motion";
@@ -17,6 +18,8 @@ interface CeoAgentCardProps {
   activeTopicCount?: number;
   onClick?: (agent: Agent) => void;
   onEdit?: (agent: Agent) => void;
+  onAutoExploreToggle?: (enabled: boolean) => void;
+  autoExploreLoading?: boolean;
 }
 
 /**
@@ -32,6 +35,8 @@ const CeoAgentCard: React.FC<CeoAgentCardProps> = ({
   activeTopicCount = 0,
   onClick,
   onEdit,
+  onAutoExploreToggle,
+  autoExploreLoading = false,
 }) => {
   const { t } = useTranslation();
 
@@ -230,6 +235,23 @@ const CeoAgentCard: React.FC<CeoAgentCardProps> = ({
                   defaultValue: "No need to overthink — just chat with me",
                 })}
             </p>
+            {/* Auto-Explore toggle */}
+            {onAutoExploreToggle && (
+              <div
+                className="mt-2 flex items-center justify-between"
+                onClick={(e) => e.stopPropagation()}
+                onPointerDown={(e) => e.stopPropagation()}
+              >
+                <span className="text-xs text-amber-200/70">
+                  {t("agents.rootAgent.autoExplore")}
+                </span>
+                <Switch
+                  checked={agent.auto_explore_enabled ?? false}
+                  onChange={(checked) => onAutoExploreToggle(checked)}
+                  disabled={autoExploreLoading}
+                />
+              </div>
+            )}
           </div>
         </div>
       </motion.div>

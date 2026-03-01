@@ -203,10 +203,12 @@ REGION_HELPER_MODELS: dict[str, dict[str, tuple[str, ProviderType]]] = {
     "global": {
         "selector": ("qwen3-next-80b-a3b-instruct", ProviderType.QWEN),
         "topic_rename": ("qwen3-next-80b-a3b-instruct", ProviderType.QWEN),
+        "memory_extraction": ("qwen3-next-80b-a3b-instruct", ProviderType.QWEN),
     },
     "zh-cn": {
         "selector": ("qwen3-next-80b-a3b-instruct", ProviderType.QWEN),  # TODO: replace if needed
         "topic_rename": ("qwen3-next-80b-a3b-instruct", ProviderType.QWEN),  # TODO: replace if needed
+        "memory_extraction": ("qwen3-next-80b-a3b-instruct", ProviderType.QWEN),
     },
 }
 
@@ -238,6 +240,12 @@ def get_topic_rename_config() -> tuple[str, ProviderType]:
     """Get (model, provider) for topic title generation."""
     helpers = REGION_HELPER_MODELS.get(_get_region(), REGION_HELPER_MODELS["global"])
     return helpers["topic_rename"]
+
+
+def get_memory_extraction_config() -> tuple[str, ProviderType]:
+    """Get (model, provider) for background memory extraction."""
+    helpers = REGION_HELPER_MODELS.get(_get_region(), REGION_HELPER_MODELS["global"])
+    return helpers["memory_extraction"]
 
 
 # ---------------------------------------------------------------------------

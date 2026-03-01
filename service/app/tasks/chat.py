@@ -634,7 +634,7 @@ async def _resume_chat_from_interrupt_async(
 
             # Resolve provider and model using the same logic as the original task
             from app.core.chat.langchain import resolve_provider_and_model
-            from app.core.prompts import build_system_prompt_with_provenance
+            from app.core.prompts import build_system_prompt_with_provenance, fetch_memory_context
 
             user_pm = await _get_provider_manager(user_id, db)
             provider_id, model_name, _resolved_tier = await resolve_provider_and_model(
@@ -644,9 +644,20 @@ async def _resume_chat_from_interrupt_async(
                 user_provider_manager=user_pm,
             )
 
-            # Build system prompt
+            # Build system prompt (with memory context)
+            # Extract last user message for auto-retrieval (Layer B)
+            last_user_text: str | None = None
+            try:
+                recent_msgs = await message_repo.get_messages_by_topic(topic_id, limit=5)
+                for msg in recent_msgs:
+                    if msg.role == "user" and msg.content:
+                        last_user_text = msg.content
+                        break
+            except Exception:
+                pass  # Non-fatal — auto-retrieval will just be skipped
             model_for_prompt = session.model if session else None
-            prompt_build = await build_system_prompt_with_provenance(db, agent, model_for_prompt)
+            memory_ctx = await fetch_memory_context(user_id, message_text=last_user_text)
+            prompt_build = await build_system_prompt_with_provenance(db, agent, model_for_prompt, memory_ctx=memory_ctx)
 
             # Reconstruct the agent graph with the same checkpointer DB
             langchain_agent, event_ctx, checkpointer = await create_langchain_agent(

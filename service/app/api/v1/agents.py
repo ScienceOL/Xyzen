@@ -29,6 +29,7 @@ from app.models.session_stats import AgentStatsAggregated, DailyStatsResponse, Y
 from app.repos import AgentRepository, KnowledgeSetRepository, ProviderRepository
 from app.repos.agent_marketplace import AgentMarketplaceRepository
 from app.repos.root_agent import RootAgentRepository
+from app.repos.scheduled_task import ScheduledTaskRepository
 from app.repos.session import SessionRepository
 from app.repos.session_stats import SessionStatsRepository
 
@@ -441,7 +442,7 @@ async def update_agent(
         # Root agent: only allow name, description, avatar changes
         root_agent_repo = RootAgentRepository(db)
         if await root_agent_repo.is_root_agent(agent_id, user_id):
-            _allowed = {"name", "description", "avatar"}
+            _allowed = {"name", "description", "avatar", "auto_explore_enabled"}
             forbidden = {
                 field
                 for field, value in agent_data.model_dump(exclude_unset=True).items()
@@ -578,3 +579,164 @@ async def get_agent_stats(
 
     stats_repo = SessionStatsRepository(db)
     return await stats_repo.get_agent_stats(agent_id, user)
+
+
+# ---------------------------------------------------------------------------
+# Auto-Explore toggle
+# ---------------------------------------------------------------------------
+
+AUTO_EXPLORE_PROMPT = """\
+[Auto-Explore Mode — Autonomous Research Session]
+
+You are running autonomously in auto-explore mode. There is NO user present. \
+Do NOT ask questions or request clarification — make reasonable assumptions.
+
+## Instructions
+
+1. **Read your memories**: Use `read_core_memory` and `search_memory` to recall the user's \
+interests, recent topics, goals, and any exploration backlog.
+2. **Choose 1–3 topics** to explore based on what you found.
+3. **Research**: Use `web_search` and `literature_search` to find recent developments, \
+news, papers, or tutorials related to those topics.
+4. **Save findings**: Use `manage_memory` to store the most noteworthy discoveries \
+so the user benefits from them in future conversations.
+5. **Write a digest**: Produce a clear, concise summary of what you found. Use bullet \
+points with sources.
+
+## Schedule Your Next Exploration
+
+After finishing, you MUST call `create_scheduled_task` to schedule your next \
+auto-explore session. Guidelines for timing:
+- If you found a lot of activity → schedule in 6–12 hours
+- If things were quiet → schedule in 18–24 hours
+- Always use `schedule_type="once"` and set `scheduled_at` to the chosen time
+- Always include `metadata={"type": "auto_explore"}` so the system can track it
+- Set `max_runs=1`
+
+## Important
+
+- Do NOT use `ask_user_question` — it is unavailable in this mode.
+- Keep your digest concise (2–4 paragraphs max).
+- Focus on breadth: cover multiple topics rather than going very deep on one.
+"""
+
+
+class AutoExploreToggleResponse(BaseModel):
+    enabled: bool
+    scheduled_task_id: str | None = None
+
+
+@router.post("/{agent_id}/auto-explore", response_model=AutoExploreToggleResponse)
+async def enable_auto_explore(
+    agent_id: UUID,
+    user_id: str = Depends(get_current_user),
+    auth_service: AuthorizationService = Depends(get_auth_service),
+    db: AsyncSession = Depends(get_session),
+) -> AutoExploreToggleResponse:
+    """Enable auto-explore for the root agent. Creates the first scheduled task."""
+    try:
+        agent = await auth_service.authorize_agent_write(agent_id, user_id)
+    except ErrCodeError as e:
+        raise handle_auth_error(e)
+
+    # Must be root agent
+    root_agent_repo = RootAgentRepository(db)
+    if not await root_agent_repo.is_root_agent(agent_id, user_id):
+        raise HTTPException(status_code=403, detail="Auto-explore is only available for the root agent")
+
+    # Check if already enabled (with FOR UPDATE to prevent race conditions)
+    sched_repo = ScheduledTaskRepository(db)
+    existing = await sched_repo.get_active_auto_explore(user_id, for_update=True)
+    if existing:
+        return AutoExploreToggleResponse(enabled=True, scheduled_task_id=str(existing.id))
+
+    # Create the first scheduled task (run in 5 seconds to start quickly)
+    from datetime import datetime, timedelta, timezone
+
+    from app.models.scheduled_task import ScheduledTaskCreate
+    from app.tasks.scheduled import execute_scheduled_chat
+
+    first_run = datetime.now(timezone.utc) + timedelta(seconds=5)
+    task = await sched_repo.create(
+        ScheduledTaskCreate(
+            agent_id=agent_id,
+            prompt=AUTO_EXPLORE_PROMPT,
+            schedule_type="once",
+            scheduled_at=first_run,
+            timezone="UTC",
+            max_runs=1,
+            metadata={"type": "auto_explore"},
+        ),
+        user_id,
+    )
+
+    try:
+        result = execute_scheduled_chat.apply_async(args=(str(task.id),), eta=first_run)
+        await sched_repo.update_celery_task_id(task.id, result.id)
+    except Exception:
+        # Celery dispatch failed — remove the orphan task record
+        await sched_repo.mark_failed(task.id, "Failed to dispatch Celery task")
+        raise HTTPException(status_code=503, detail="Task scheduler unavailable")
+
+    # Update agent flag
+    agent_repo = AgentRepository(db)
+    await agent_repo.update_agent(agent.id, AgentUpdate(auto_explore_enabled=True))
+    await db.commit()
+
+    return AutoExploreToggleResponse(enabled=True, scheduled_task_id=str(task.id))
+
+
+@router.delete("/{agent_id}/auto-explore", response_model=AutoExploreToggleResponse)
+async def disable_auto_explore(
+    agent_id: UUID,
+    user_id: str = Depends(get_current_user),
+    auth_service: AuthorizationService = Depends(get_auth_service),
+    db: AsyncSession = Depends(get_session),
+) -> AutoExploreToggleResponse:
+    """Disable auto-explore. Cancels pending scheduled task and breaks the loop."""
+    try:
+        agent = await auth_service.authorize_agent_write(agent_id, user_id)
+    except ErrCodeError as e:
+        raise handle_auth_error(e)
+
+    root_agent_repo = RootAgentRepository(db)
+    if not await root_agent_repo.is_root_agent(agent_id, user_id):
+        raise HTTPException(status_code=403, detail="Auto-explore is only available for the root agent")
+
+    # Find and cancel active auto-explore task
+    sched_repo = ScheduledTaskRepository(db)
+    existing = await sched_repo.get_active_auto_explore(user_id)
+    if existing:
+        if existing.celery_task_id:
+            from app.core.celery_app import celery_app
+
+            celery_app.control.revoke(existing.celery_task_id, terminate=False)
+        await sched_repo.mark_cancelled(existing.id)
+
+    # Update agent flag
+    agent_repo = AgentRepository(db)
+    await agent_repo.update_agent(agent.id, AgentUpdate(auto_explore_enabled=False))
+    await db.commit()
+
+    return AutoExploreToggleResponse(enabled=False)
+
+
+@router.get("/{agent_id}/auto-explore", response_model=AutoExploreToggleResponse)
+async def get_auto_explore_status(
+    agent_id: UUID,
+    user_id: str = Depends(get_current_user),
+    auth_service: AuthorizationService = Depends(get_auth_service),
+    db: AsyncSession = Depends(get_session),
+) -> AutoExploreToggleResponse:
+    """Get auto-explore status for an agent."""
+    try:
+        await auth_service.authorize_agent_read(agent_id, user_id)
+    except ErrCodeError as e:
+        raise handle_auth_error(e)
+
+    sched_repo = ScheduledTaskRepository(db)
+    existing = await sched_repo.get_active_auto_explore(user_id)
+    return AutoExploreToggleResponse(
+        enabled=existing is not None,
+        scheduled_task_id=str(existing.id) if existing else None,
+    )

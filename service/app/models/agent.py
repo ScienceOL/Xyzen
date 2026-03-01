@@ -80,6 +80,8 @@ class AgentBase(SQLModel):
         description="Whether the user can edit graph_config",
     )
 
+    auto_explore_enabled: bool = Field(default=False)
+
 
 class Agent(AgentBase, table=True):
     id: UUID = Field(default_factory=uuid4, primary_key=True, index=True)
@@ -135,3 +137,4 @@ class AgentUpdate(SQLModel):
     graph_config: dict[str, Any] | None = None
     config_visibility: ConfigVisibility | None = None
     config_editable: bool | None = None
+    auto_explore_enabled: bool | None = None

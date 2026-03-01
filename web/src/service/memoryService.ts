@@ -7,6 +7,13 @@ export interface MemoryItem {
   updated_at: string;
 }
 
+export interface CoreMemory {
+  user_summary: string;
+  preferences: string;
+  active_context: string;
+  working_rules: string;
+}
+
 class MemoryService {
   async listMemories(limit = 100, offset = 0): Promise<MemoryItem[]> {
     return http.get("/xyzen/api/v1/memories", {
@@ -30,6 +37,24 @@ class MemoryService {
 
   async deleteMemory(key: string): Promise<void> {
     return http.delete(`/xyzen/api/v1/memories/${encodeURIComponent(key)}`);
+  }
+
+  async getCoreMemory(): Promise<CoreMemory> {
+    return http.get("/xyzen/api/v1/memories/core");
+  }
+
+  async updateCoreMemory(data: CoreMemory): Promise<CoreMemory> {
+    return http.put("/xyzen/api/v1/memories/core", data);
+  }
+
+  async updateCoreMemorySection(
+    section: string,
+    content: string,
+  ): Promise<CoreMemory> {
+    return http.patch(
+      `/xyzen/api/v1/memories/core/${encodeURIComponent(section)}`,
+      { content },
+    );
   }
 }
 

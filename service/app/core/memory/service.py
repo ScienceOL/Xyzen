@@ -3,6 +3,7 @@ Memory Service - Manages LangGraph's AsyncPostgresStore for cross-thread memory.
 
 Provides a singleton MemoryService that wraps AsyncPostgresStore,
 handling lifecycle (init/shutdown) and exposing the store for agent use.
+Includes Core Memory (always-in-context user profile) and auto-retrieval.
 
 The store manages its own tables (store, store_migrations) via raw SQL,
 independent of Alembic migrations.
@@ -20,6 +21,8 @@ from app.configs import configs
 
 if TYPE_CHECKING:
     from langgraph.store.postgres.base import PoolConfig, PostgresIndexConfig
+
+    from app.core.memory.schemas import CoreMemoryBlock
 
 logger = logging.getLogger(__name__)
 
@@ -121,11 +124,112 @@ class MemoryService:
                 self._store = None
                 self._context_manager = None
 
+    # ------------------------------------------------------------------
+    # Core Memory (Layer A)
+    # ------------------------------------------------------------------
+
+    async def get_core_memory(self, user_id: str) -> CoreMemoryBlock:
+        """Retrieve the user's core memory profile.
+
+        Returns empty CoreMemoryBlock if not found or service disabled.
+        Never raises — callers can always proceed without memory.
+        """
+        from app.core.memory.schemas import CoreMemoryBlock
+
+        if not self._store or not configs.Memory.CoreMemory.Enabled:
+            return CoreMemoryBlock()
+        namespace = (configs.Memory.CoreMemory.NamespacePrefix, user_id)
+        key = configs.Memory.CoreMemory.ProfileKey
+        try:
+            item = await self._store.aget(namespace, key)
+            if item is None:
+                return CoreMemoryBlock()
+            return CoreMemoryBlock.model_validate(item.value)
+        except Exception:
+            logger.warning("Failed to get core memory for user %s", user_id, exc_info=True)
+            return CoreMemoryBlock()
+
+    async def update_core_memory_section(self, user_id: str, section: str, content: str) -> CoreMemoryBlock:
+        """Update a single section of the core memory profile.
+
+        Reads current profile, merges the change, writes back.
+        Truncates content to MaxSectionChars.
+
+        Note: This is a read-modify-write without distributed locking.
+        In multi-pod environments, concurrent updates to different sections
+        of the same user's profile may race. This is acceptable as a soft
+        limit per CLAUDE.md HA guidelines — the worst case is one update
+        being overwritten, not data corruption.
+        """
+        from app.core.memory.schemas import CORE_MEMORY_SECTIONS, CoreMemoryBlock
+
+        if section not in CORE_MEMORY_SECTIONS:
+            raise ValueError(f"Invalid core memory section: {section}")
+        if not self._store:
+            return CoreMemoryBlock()
+
+        current = await self.get_core_memory(user_id)
+        max_chars = configs.Memory.CoreMemory.MaxSectionChars
+        setattr(current, section, content[:max_chars])
+
+        namespace = (configs.Memory.CoreMemory.NamespacePrefix, user_id)
+        key = configs.Memory.CoreMemory.ProfileKey
+        await self._store.aput(namespace, key, current.model_dump())
+        return current
+
+    async def update_core_memory_full(self, user_id: str, block: CoreMemoryBlock) -> CoreMemoryBlock:
+        """Replace the entire core memory profile.
+
+        Truncates each section to MaxSectionChars for consistency.
+        """
+        if not self._store:
+            return block
+        max_chars = configs.Memory.CoreMemory.MaxSectionChars
+        from app.core.memory.schemas import CORE_MEMORY_SECTIONS
+
+        for section in CORE_MEMORY_SECTIONS:
+            value = getattr(block, section)
+            if len(value) > max_chars:
+                setattr(block, section, value[:max_chars])
+        namespace = (configs.Memory.CoreMemory.NamespacePrefix, user_id)
+        key = configs.Memory.CoreMemory.ProfileKey
+        await self._store.aput(namespace, key, block.model_dump())
+        return block
+
+    # ------------------------------------------------------------------
+    # Auto-Retrieval (Layer B)
+    # ------------------------------------------------------------------
+
+    async def auto_retrieve_memories(self, user_id: str, query: str, top_k: int | None = None) -> list[str]:
+        """Semantic search for relevant memories to inject into system prompt.
+
+        Returns list of memory content strings. Fails gracefully → empty list.
+        """
+        if not self._store or not configs.Memory.AutoRetrieval.Enabled:
+            return []
+        k = top_k or configs.Memory.AutoRetrieval.TopK
+        namespace = (configs.Memory.NamespacePrefix, user_id)
+        try:
+            items = await self._store.asearch(namespace, query=query, limit=k)
+            results: list[str] = []
+            for item in items:
+                raw = item.value.get("content", item.value)
+                # langmem nests content as {"content": "..."} — unwrap
+                if isinstance(raw, dict):
+                    raw = raw.get("content", str(raw))
+                results.append(str(raw))
+            return results
+        except Exception:
+            logger.warning("Auto-retrieval failed for user %s", user_id, exc_info=True)
+            return []
+
 
 def _build_connection_string() -> str:
     """Build a plain postgresql:// connection string from config."""
+    from urllib.parse import quote_plus
+
     pg = configs.Database.Postgres
-    return f"postgresql://{pg.User}:{pg.Password}@{pg.Host}:{pg.Port}/{pg.DBName}"
+    return f"postgresql://{quote_plus(pg.User)}:{quote_plus(pg.Password)}@{pg.Host}:{pg.Port}/{pg.DBName}"
 
 
 def _build_index_config() -> PostgresIndexConfig | None:
