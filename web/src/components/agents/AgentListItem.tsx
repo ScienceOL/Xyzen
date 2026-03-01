@@ -7,6 +7,7 @@ import {
 } from "@/components/animate-ui/components/animate/tooltip";
 import { Badge } from "@/components/base/Badge";
 import ChatStatusBadge from "@/components/base/ChatStatusBadge";
+import { Switch } from "@/components/base/Switch";
 import { formatTime } from "@/lib/formatDate";
 import type { Agent } from "@/types/agents";
 import {
@@ -183,6 +184,8 @@ interface DetailedVariantProps extends AgentListItemBaseProps {
   activeTopicCount?: number;
   onEdit?: (agent: Agent) => void;
   onDelete?: (agent: Agent) => void;
+  onAutoExploreToggle?: (enabled: boolean) => void;
+  autoExploreLoading?: boolean;
   // Compact variant props not used
   isSelected?: never;
   status?: never;
@@ -339,6 +342,8 @@ const DetailedAgentListItem: React.FC<DetailedVariantProps> = ({
   onClick,
   onEdit,
   onDelete,
+  onAutoExploreToggle,
+  autoExploreLoading = false,
   isLoading = false,
   isDragging = false,
   sortMode = false,
@@ -559,6 +564,24 @@ const DetailedAgentListItem: React.FC<DetailedVariantProps> = ({
           <p className="mt-1.5 text-[10px] text-neutral-400 dark:text-neutral-500">
             {formatTime(lastConversationTime)}
           </p>
+        )}
+
+        {/* Auto-Explore toggle (root agent only — parent passes handler) */}
+        {onAutoExploreToggle && (
+          <div
+            className="mt-1.5 flex items-center gap-2"
+            onClick={(e) => e.stopPropagation()}
+            onPointerDown={(e) => e.stopPropagation()}
+          >
+            <span className="text-xs text-neutral-400 dark:text-neutral-500">
+              {t("agents.rootAgent.autoExplore")}
+            </span>
+            <Switch
+              checked={agent.auto_explore_enabled ?? false}
+              onChange={(checked) => onAutoExploreToggle(checked)}
+              disabled={autoExploreLoading}
+            />
+          </div>
         )}
       </div>
     </>
