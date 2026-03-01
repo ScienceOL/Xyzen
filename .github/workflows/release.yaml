@@ -435,4 +435,4 @@ jobs:
           token: ${{ secrets.SCIENCEOL_GITHUB_TOKEN }}
 
       - name: Create test branch from main
-        run: git push origin HEAD:refs/heads/test
+        run: git push --force origin main:refs/heads/test
