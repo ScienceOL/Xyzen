@@ -2,6 +2,12 @@
 
 All notable changes to Xyzen will be documented in this file.
 
+## [1.6.15](https://github.com/ScienceOL/Xyzen/compare/v1.6.14...v1.6.15) (2026-03-01)
+
+### 🐛 Bug Fixes
+
+* resolve pre-existing TypeScript strict mode build errors ([e412ad3](https://github.com/ScienceOL/Xyzen/commit/e412ad3d9d44458181b1e6e433e587d5c6b91d7c))
+
 ## [1.6.14](https://github.com/ScienceOL/Xyzen/compare/v1.6.13...v1.6.14) (2026-03-01)
 
 ### 🐛 Bug Fixes
