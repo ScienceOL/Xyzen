@@ -7,7 +7,13 @@ Provides JSON-configurable prompt building with:
 - Backward compatibility with legacy agent.prompt field
 """
 
-from app.core.prompts.builder import SystemPromptBuildResult, build_system_prompt, build_system_prompt_with_provenance
+from app.core.prompts.builder import (
+    MemoryContext,
+    SystemPromptBuildResult,
+    build_system_prompt,
+    build_system_prompt_with_provenance,
+    fetch_memory_context,
+)
 from app.core.prompts.defaults import (
     DEFAULT_PROMPT_CONFIG,
     get_prompt_config_from_graph_config,
@@ -15,8 +21,10 @@ from app.core.prompts.defaults import (
 )
 
 __all__ = [
+    "MemoryContext",
     "build_system_prompt",
     "build_system_prompt_with_provenance",
+    "fetch_memory_context",
     "SystemPromptBuildResult",
     "DEFAULT_PROMPT_CONFIG",
     "get_prompt_config_from_graph_config",

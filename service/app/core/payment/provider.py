@@ -43,6 +43,7 @@ class PaymentProvider(Protocol):
         order_id: str,
         metadata: dict | None = None,
         return_url: str = "",
+        payment_method: str = "",
     ) -> CreateOrderResult: ...
 
     async def capture_order(self, provider_order_id: str) -> CaptureResult: ...
@@ -64,7 +65,9 @@ def get_payment_provider(payment_method: str) -> PaymentProvider:
 
     provider_setting = configs.Payment.Provider.lower()
 
-    if provider_setting == "paypal":
+    if provider_setting == "off":
+        raise RuntimeError("Payment is disabled (XYZEN_PAYMENT_Provider=off)")
+    elif provider_setting == "paypal":
         return _get_paypal()
     elif provider_setting == "airwallex":
         return _get_airwallex()

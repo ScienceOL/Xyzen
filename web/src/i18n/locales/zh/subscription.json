@@ -105,7 +105,10 @@
     "waiting": "等待支付中...",
     "success": "支付成功！",
     "failed": "支付失败或已过期",
-    "close": "关闭"
+    "close": "关闭",
+    "alipay": "支付宝",
+    "wechat": "微信支付",
+    "paypal": "PayPal / 信用卡"
   },
 
   "creator": "创作者",
@@ -147,5 +150,6 @@
       "views100": "热门创作者",
       "views100Desc": "获得 100 次浏览"
     }
-  }
+  },
+  "paymentDisabledHint": "内测期间不支持外部充值"
 }

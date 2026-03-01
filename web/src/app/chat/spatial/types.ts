@@ -76,6 +76,8 @@ export interface AgentNodeRuntimeData {
   onLayoutChange?: (id: string, layout: AgentSpatialLayout) => void;
   onAvatarChange?: (id: string, avatarUrl: string) => void;
   onDelete?: (agentId: string) => void;
+  onAutoExploreToggle?: (enabled: boolean) => void;
+  autoExploreLoading?: boolean;
   isFocused?: boolean;
   isNewlyCreated?: boolean;
 }

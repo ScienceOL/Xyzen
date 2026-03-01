@@ -14,6 +14,7 @@ import { DOCK_SAFE_AREA } from "@/components/layouts/BottomDock";
 import AddAgentModal from "@/components/modals/AddAgentModal";
 import AgentSettingsModal from "@/components/modals/AgentSettingsModal";
 import ConfirmationModal from "@/components/modals/ConfirmationModal";
+import { useAutoExploreToggle } from "@/hooks/useAutoExploreToggle";
 import {
   useRunningAgentIds,
   useChannelAgentIdMap,
@@ -80,6 +81,8 @@ function InnerWorkspace() {
   // Derived state from store (only updates on state transitions, not streaming_chunk)
   const activeAgentIds = useRunningAgentIds();
   const channelAgentIdMap = useChannelAgentIdMap();
+  const { handleToggle: handleAutoExploreToggle, loading: autoExploreLoading } =
+    useAutoExploreToggle();
 
   // Marketplace hook to track published agents
   const { data: myListings } = useMyMarketplaceListings();
@@ -657,6 +660,8 @@ function InnerWorkspace() {
         onLayoutChange: handleLayoutChange,
         onAvatarChange: handleAvatarChange,
         onDelete: n.data.isCeo ? undefined : handleDeleteAgent,
+        onAutoExploreToggle: n.data.isCeo ? handleAutoExploreToggle : undefined,
+        autoExploreLoading: n.data.isCeo ? autoExploreLoading : undefined,
         isFocused: n.id === focusedAgentId,
         isNewlyCreated: n.id === newlyCreatedAgentId,
       },
@@ -667,6 +672,8 @@ function InnerWorkspace() {
     handleLayoutChange,
     handleAvatarChange,
     handleDeleteAgent,
+    handleAutoExploreToggle,
+    autoExploreLoading,
     focusedAgentId,
     newlyCreatedAgentId,
   ]);

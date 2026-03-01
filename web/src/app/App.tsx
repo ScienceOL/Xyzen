@@ -22,7 +22,7 @@ import { AppFullscreen } from "./AppFullscreen";
 import { AppSide } from "./AppSide";
 import { AuthLoadingScreen } from "./AuthLoadingScreen";
 import { MobileApp } from "./MobileApp";
-import { LandingPage } from "./landing/LandingPage";
+import { LandingPageV2 } from "./landing/v2/LandingPageV2";
 
 const SecretCodePage = React.lazy(() =>
   import("@/components/admin/SecretCodePage").then((m) => ({
@@ -504,7 +504,7 @@ export function Xyzen({
     <AuthLoadingScreen progress={progress} />
   ) : authFailed ? (
     showLandingPage && !showAuthScreen ? (
-      <LandingPage onGetStarted={handleShowAuthScreen} />
+      <LandingPageV2 onGetStarted={handleShowAuthScreen} />
     ) : (
       <AuthErrorScreen onRetry={handleRetry} variant="fullscreen" />
     )

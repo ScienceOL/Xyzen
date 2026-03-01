@@ -76,6 +76,7 @@ class PayPalClient:
         order_id: str,
         metadata: dict | None = None,
         return_url: str = "",
+        payment_method: str = "",
     ) -> CreateOrderResult:
         """Create a PayPal order (Standard Checkout).
 

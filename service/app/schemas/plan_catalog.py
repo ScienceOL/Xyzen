@@ -3,6 +3,16 @@
 from pydantic import BaseModel, Field
 
 
+class PaymentMethodInfo(BaseModel):
+    """A payment method available in this deployment."""
+
+    key: str = Field(description="Payment method identifier (e.g. 'alipaycn', 'wechatpay', 'paypal')")
+    flow_type: str = Field(description="Checkout flow type: 'qrcode' or 'paypal_sdk'")
+    currency: str = Field(description="ISO currency code (e.g. 'CNY', 'USD')")
+    display_name_key: str = Field(description="i18n key for display name")
+    sdk_config: dict[str, str] = Field(default_factory=dict, description="SDK config (e.g. PayPal client_id)")
+
+
 class PlanFeatureResponse(BaseModel):
     key: str = Field(description="i18n key suffix (e.g. 'liteStandard')")
     included: bool
@@ -73,4 +83,6 @@ class PlanCatalogResponse(BaseModel):
     topup_rates: list[TopUpRateResponse]
     sandbox_addon_rates: list[SandboxAddonRateResponse]
     full_access_pass_rates: list[FullAccessPassRateResponse] = Field(default_factory=list)
-    paypal_client_id: str = Field(default="", description="PayPal client ID for JS SDK initialization")
+    payment_methods: list[PaymentMethodInfo] = Field(default_factory=list)
+    payment_enabled: bool = Field(default=True, description="False when PAYMENT_Provider=off")
+    paypal_client_id: str = Field(default="", description="Deprecated: use payment_methods instead")

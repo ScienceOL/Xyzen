@@ -284,6 +284,46 @@ class SkillMetadataBlock(PromptBlock):
         return "\n".join(lines)
 
 
+class CoreMemoryPromptBlock(PromptBlock):
+    """Injects the user's core memory profile into the system prompt (Layer A).
+
+    Accepts pre-fetched XML text from CoreMemoryBlock.to_prompt_text()
+    since build() is synchronous but fetching requires async store access.
+    """
+
+    def __init__(self, core_memory_text: str):
+        self._text = core_memory_text
+
+    def build(self) -> str:
+        return self._text if self._text else ""
+
+
+class AutoRetrievedMemoriesBlock(PromptBlock):
+    """Injects per-turn auto-retrieved memories into the system prompt (Layer B).
+
+    Accepts pre-fetched memory content strings from auto_retrieve_memories().
+    """
+
+    def __init__(self, memories: list[str]):
+        self._memories = memories
+
+    def build(self) -> str:
+        if not self._memories:
+            return ""
+        items = "\n".join(f"  <memory>{_escape_xml(m)}</memory>" for m in self._memories)
+        return (
+            "<RELEVANT_MEMORIES>\n"
+            "The following memories may be relevant to this conversation:\n"
+            f"{items}\n"
+            "</RELEVANT_MEMORIES>"
+        )
+
+
+def _escape_xml(text: str) -> str:
+    """Escape XML-special characters to prevent prompt injection via memory content."""
+    return text.replace("&", "&amp;").replace("<", "&lt;").replace(">", "&gt;")
+
+
 __all__ = [
     "PromptBlock",
     "MetaInstructionBlock",
@@ -294,4 +334,6 @@ __all__ = [
     "FormatBlock",
     "SkillMetadata",
     "SkillMetadataBlock",
+    "CoreMemoryPromptBlock",
+    "AutoRetrievedMemoriesBlock",
 ]

@@ -25,7 +25,7 @@ class ScheduledTaskBase(SQLModel):
     status: str = Field(
         default="active",
         sa_column=sa.Column(sa.String, nullable=False, server_default="active", index=True),
-        description="active | paused | completed | failed",
+        description="active | paused | completed | failed | cancelled",
     )
     max_runs: int | None = Field(default=None)
     run_count: int = Field(default=0)

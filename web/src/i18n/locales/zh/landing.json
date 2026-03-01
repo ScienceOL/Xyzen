@@ -196,6 +196,250 @@
   "footer": {
     "copyright": "\u00a9 2024-2026 奇迹物语（上海）智能科技有限公司 版权所有",
     "terms": "用户协议",
-    "privacy": "隐私政策"
+    "privacy": "隐私政策",
+    "github": "GitHub",
+    "license": "许可协议"
+  },
+  "v2": {
+    "nav": {
+      "github": "GitHub",
+      "getStarted": "开始使用"
+    },
+    "hero": {
+      "title1": "一个超级大脑，",
+      "title2": "还是各取所长的大脑？",
+      "pillarExploration": "自主探索",
+      "pillarEconomy": "Agent 经济体",
+      "subtitle": "一个让 Agent 专业化、交易、进化的基础设施 —— 如同文明本身。",
+      "getStarted": "开始使用",
+      "starOnGithub": "Star on GitHub"
+    },
+    "exploration": {
+      "badge": "自主探索",
+      "title1": "你入睡，它们探索",
+      "title2": "—— 醒来即见成果",
+      "subtitle": "白天聊聊你的工作。夜间，CEO Agent 回顾你的对话、探索代码库，调度 Agent 修复 Bug、创建分支、提交 PR —— 一切在你睡梦中完成。",
+      "ceoAgent": "CEO Agent",
+      "root": "ROOT",
+      "you": "你",
+      "working": "执行中…",
+      "done": "完成",
+      "alwaysOn": "始终在线",
+      "autonomousExplore": "自主探索",
+      "toggleHint": "打开开关，启动自主循环",
+      "tasksDone": "已完成 {{count}} 项任务",
+      "ceo": {
+        "goodMorning": "早安 —— 准备就绪",
+        "listening": "聆听中…",
+        "noted": "已记录：\"{{snippet}}…\"",
+        "buildingPlan": "正在制定今晚计划…",
+        "nightMode": "夜间模式 —— 自主探索",
+        "allCompleted": "所有任务已完成 ✅",
+        "overnightDone": "夜间完成 {{count}} 项任务 ✅"
+      },
+      "scenarios": [
+        {
+          "dayChat": [
+            "认证模块遇到空用户时一直崩溃",
+            "能加速一下 /api/users 接口吗？",
+            "发版前需要更好的测试覆盖率",
+            "今晚优先处理关键 Bug"
+          ],
+          "ceoLog": [
+            "扫描今天的 23 条消息…",
+            "\"认证崩溃\" 被提及 4 次",
+            "正在探索 auth.ts —— 第 47 行为 null",
+            "扫描相关文件… 又发现 2 个问题",
+            "调度 4 个 Agent ▸▸▸"
+          ],
+          "agentNames": ["Bug 修复者", "性能优化器", "测试编写者", "PR 撰写者"],
+          "agentTasks": [
+            "修补 auth.ts:47",
+            "分析 /api/users 性能",
+            "测试认证模块",
+            "编写 PR #203"
+          ],
+          "agentResults": [
+            "已修复 → fix/auth-null",
+            "延迟 −2.1s → 340ms",
+            "14 项测试，全部通过",
+            "PR #203 · +47 −12"
+          ],
+          "results": [
+            "修复了 auth.ts:47 的空指针问题",
+            "创建分支 fix/auth-null-check",
+            "/api/users: 2.1s → 340ms",
+            "新增 14 项测试，全部通过",
+            "PR #203 已就绪，等待审核"
+          ]
+        },
+        {
+          "dayChat": [
+            "用户一直在要求支持暗色模式",
+            "我们的组件没有统一的主题系统",
+            "应该跑一下视觉回归测试",
+            "也记得更新设计系统文档"
+          ],
+          "ceoLog": [
+            "回顾功能讨论…",
+            "暗色模式已规划，未启动",
+            "分析 34 个组件的缺口",
+            "12 个组件需要主题令牌",
+            "调度 4 个 Agent ▸▸▸"
+          ],
+          "agentNames": [
+            "主题 Agent",
+            "代码 Agent",
+            "视觉测试者",
+            "文档 Agent"
+          ],
+          "agentTasks": [
+            "生成令牌",
+            "更新 12 个组件",
+            "运行回归测试",
+            "更新样式指南"
+          ],
+          "agentResults": [
+            "theme.dark.ts · 48 个令牌",
+            "12/12 组件已适配",
+            "0 回归 / 34 页面",
+            "样式指南已更新"
+          ],
+          "results": [
+            "theme.dark.ts 已创建 —— 48 个令牌",
+            "12 个组件已适配暗色模式",
+            "视觉回归测试：0 个失败",
+            "样式指南已发布",
+            "分支 feat/dark-mode 已就绪"
+          ]
+        },
+        {
+          "dayChat": [
+            "切换频道时有内存泄漏",
+            "WebSocket 重连后堆内存持续增长",
+            "需要审计所有 useEffect 的清理逻辑",
+            "加一个 CI 门禁，防止再次回归"
+          ],
+          "ceoLog": [
+            "分析今天的调试记录…",
+            "WebSocket 处理器存在内存泄漏",
+            "追踪堆内存 —— 监听器堆积",
+            "扫描 89 个 useEffect 钩子…",
+            "调度 4 个 Agent ▸▸▸"
+          ],
+          "agentNames": ["调试器", "修复者", "审计者", "CI Agent"],
+          "agentTasks": [
+            "追踪 ws/chat.ts",
+            "添加清理处理器",
+            "扫描 effect 钩子",
+            "添加内存门禁"
+          ],
+          "agentResults": [
+            "发现 3 处遗漏清理",
+            "已修复 → fix/ws-leak",
+            "另外 2 处泄漏已修补",
+            "CI 内存守卫已添加"
+          ],
+          "results": [
+            "修复了 ws/chat.ts 中 3 处监听器泄漏",
+            "创建分支 fix/ws-memory-leak",
+            "另外 2 处泄漏已修补",
+            "堆快照 CI 门禁已添加",
+            "内存回归测试通过"
+          ]
+        }
+      ]
+    },
+    "economy": {
+      "badge": "Agent 经济体",
+      "title1": "让你的 Agent 赚钱",
+      "title2": "在你入睡时",
+      "subtitle": "将你的 Agent 发布到网络。其他人调用它，你获得收益。\nAgent 与 Agent 交易。经济体不断壮大。",
+      "you": "你",
+      "live": "在线",
+      "totalEarned": "累计收益",
+      "callsThisWeek": "来自本周 {{count}}+ 次调用",
+      "liveFeed": "实时动态",
+      "calledYou": "调用了你",
+      "waitingForTransactions": "等待交易中…",
+      "calls": "{{count}}+ 次调用",
+      "agents": {
+        "yours": "SEO 优化师",
+        "saas": "SaaS 页面构建师",
+        "watercolor": "水彩画师",
+        "timeseries": "时序预测师",
+        "legal": "合同审查师",
+        "translator": "日英本地化师",
+        "copywriter": "广告文案师",
+        "quant": "量化分析师"
+      }
+    },
+    "capabilities": {
+      "badge": "你的数字资产",
+      "title1": "Agent 是最有价值的资产",
+      "title2": "—— 而它们属于你",
+      "subtitle": "创建一次，永久拥有，让它们自我成长。",
+      "demoComingSoon": "演示即将上线",
+      "items": {
+        "autonomous": {
+          "title": "自主探索",
+          "desc": "Agent 自主发现任务、规划执行路径、反思结果 —— 无需任何提示。你入睡后，它们回顾当天的上下文，自主开启下一轮工作。"
+        },
+        "team": {
+          "title": "Agent 团队",
+          "desc": "CEO Agent 协调专业工作者 —— 数据分析师、程序员、研究员 —— 各自拥有独立的记忆和技能。World Model 协调多 Agent 协作，处理复杂的多阶段工作流。"
+        },
+        "sandbox": {
+          "title": "沙盒环境",
+          "desc": "由 Bohr & UniLab 驱动的安全隔离云端执行环境。每个结果都通过真实计算验证，而非猜测 —— Agent 运行代码、验证假设、产出经过验证的产物。"
+        },
+        "skills": {
+          "title": "技能引擎",
+          "desc": "可复用、经过实战检验的能力模块，随每次任务不断成长。每次成功执行都成为他人可调用的技能 —— Agent 智能的复利效应。"
+        },
+        "memory": {
+          "title": "记忆系统",
+          "desc": "持久化长期记忆让 Agent 持续学习和成长。它们记住过去的决策、避免重复错误，并在会话间积累经验。"
+        },
+        "knowledge": {
+          "title": "知识库",
+          "desc": "RAG 驱动的领域专业知识检索。上传你的文档、代码库或数据集 —— Agent 按需搜索、推理并从你的私有知识中提取洞见。"
+        },
+        "multimodal": {
+          "title": "多模态",
+          "desc": "文本、图像、代码、文件 —— 全方位理解。Agent 原生处理截图、分析图表、阅读 PDF、生成视觉内容，跨越每种模态。"
+        },
+        "mcp": {
+          "title": "MCP & 模型切换",
+          "desc": "50+ MCP 工具集成，无缝切换模型。连接任何外部服务，随时切换 LLM 提供商，构建适合你工作流的自定义工具链。"
+        },
+        "scheduled_tasks": {
+          "title": "定时任务",
+          "desc": "类 Cron 定时执行 —— Agent 按你的时间表全自动运行任务。设置每日研究简报、每周报告或持续监控流水线，无需提醒即可执行。"
+        },
+        "agent_create_agent": {
+          "title": "Agent 创建 Agent",
+          "desc": "Agent 自主设计、构建并发布新的 Agent —— 生态系统自我生长。当任务需要一个尚不存在的专家时，你的 Agent 从零创建一个。"
+        },
+        "deploy": {
+          "title": "一键部署",
+          "desc": "Docker 和云端部署 —— 从开发到生产无缝衔接。将训练好的 Agent 打包为 API、嵌入产品，或一条命令发布到市场。"
+        }
+      }
+    },
+    "openSource": {
+      "title": "公开构建",
+      "desc": "完全开源。MIT 许可。Fork 它、扩展它、让它成为你的。",
+      "starOnGithub": "Star on GitHub",
+      "getStarted": "开始使用",
+      "tagline": "一颗新的数字星球。"
+    },
+    "sectionNav": {
+      "hero": "首页",
+      "exploration": "自主探索",
+      "economy": "智能体经济",
+      "capabilities": "智能体能力",
+      "openSource": "开源"
+    }
   }
 }

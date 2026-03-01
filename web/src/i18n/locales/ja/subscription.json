@@ -105,7 +105,10 @@
     "waiting": "お支払いを待っています...",
     "success": "お支払い完了！",
     "failed": "お支払いに失敗または期限切れ",
-    "close": "閉じる"
+    "close": "閉じる",
+    "alipay": "Alipay",
+    "wechat": "WeChat Pay",
+    "paypal": "PayPal / クレジットカード"
   },
 
   "creator": "クリエイター",
@@ -147,5 +150,6 @@
       "views100": "人気クリエイター",
       "views100Desc": "100回閲覧される"
     }
-  }
+  },
+  "paymentDisabledHint": "ベータ期間中は外部チャージに対応していません"
 }

@@ -1042,8 +1042,11 @@ async def handle_normal_finalization(
             from app.core.notification.events import pack_notification_body, strip_markdown
             from app.tasks.notification import send_notification, send_web_push
 
-            _title = f"{ctx.agent_name or 'Agent'} replied"
-            _push_title = ctx.agent_name or "Agent"
+            from app.core.consume.consume_service import is_auto_explore as _is_auto_explore
+
+            _is_explore = _is_auto_explore()
+            _title = "Auto-Explore Digest" if _is_explore else f"{ctx.agent_name or 'Agent'} replied"
+            _push_title = "Auto-Explore" if _is_explore else (ctx.agent_name or "Agent")
             _msg_id = str(ctx.ai_message_obj.id)
             _packed = pack_notification_body(
                 ctx.full_content[:200],
@@ -1082,6 +1085,20 @@ async def handle_normal_finalization(
                 title=_push_title,
                 body=_push_body,
                 url=f"/#/chat/{ctx.topic_id}",
+            )
+    except Exception:
+        pass  # Never affect chat flow
+
+    # --- Background memory extraction: extract facts and update core memory ---
+    try:
+        from app.configs import configs
+
+        if ctx.full_content and configs.Memory.Enabled:
+            from app.tasks.memory import extract_and_update_memories
+
+            extract_and_update_memories.delay(
+                user_id=ctx.user_id,
+                topic_id=str(ctx.topic_id),
             )
     except Exception:
         pass  # Never affect chat flow

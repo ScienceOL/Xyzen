@@ -14,6 +14,7 @@ import { useTranslation } from "react-i18next";
 import AddAgentModal from "@/components/modals/AddAgentModal";
 import AgentSettingsModal from "@/components/modals/AgentSettingsModal";
 import ConfirmationModal from "@/components/modals/ConfirmationModal";
+import { useAutoExploreToggle } from "@/hooks/useAutoExploreToggle";
 import { useMyMarketplaceListings } from "@/hooks/useMarketplace";
 import { useXyzen } from "@/store";
 import { useShallow } from "zustand/react/shallow";
@@ -155,6 +156,10 @@ export default function XyzenAgent({
     [reorderAgents],
   );
 
+  // Auto-explore toggle handler
+  const { handleToggle: handleAutoExploreToggle, loading: autoExploreLoading } =
+    useAutoExploreToggle();
+
   // Merge external scroll ref with internal ref
   const internalScrollRef = useRef<HTMLDivElement>(null);
   const scrollRefCallback = useCallback(
@@ -224,6 +229,8 @@ export default function XyzenAgent({
                 activeTopicCount={activeTopicCountByAgent[rootAgent.id] ?? 0}
                 onClick={handleRootAgentClick}
                 onEdit={handleEditClick}
+                onAutoExploreToggle={handleAutoExploreToggle}
+                autoExploreLoading={autoExploreLoading}
               />
             </div>
             {/* Opaque base below the card — fills bottom gap without blocking backdrop-blur */}

@@ -6,13 +6,14 @@
  */
 import { formatTime } from "@/lib/formatDate";
 import { cn } from "@/lib/utils";
-import { Crown } from "lucide-react";
+import { Cog6ToothIcon } from "@heroicons/react/24/outline";
+import { Crown, Sparkles } from "lucide-react";
 import { motion } from "framer-motion";
+import { useTranslation } from "react-i18next";
 import type { AgentFlowNodeProps } from "./types";
 
 import {
   NodeSettingsModal,
-  SettingsGearButton,
   StatsDisplay,
   useAgentNode,
 } from "./agentNodeShared";
@@ -24,6 +25,7 @@ const patternUrl = `url("data:image/svg+xml,%3Csvg width='60' height='60' xmlns=
 const patternUrlLight = `url("data:image/svg+xml,%3Csvg width='60' height='60' xmlns='http://www.w3.org/2000/svg'%3E%3Cg fill='none' fill-rule='evenodd'%3E%3Cpath d='M30 0c0 16.569-13.431 30-30 30C16.569 30 30 16.569 30 0z' fill='%237dd3fc' fill-opacity='.18'/%3E%3Cpath d='M60 0c0 16.569-13.431 30-30 30 16.569 0 30-13.431 30-30z' fill='%237dd3fc' fill-opacity='.18'/%3E%3Cpath d='M30 30c0 16.569-13.431 30-30 30 16.569 0 30-13.431 30-30z' fill='%237dd3fc' fill-opacity='.18'/%3E%3Cpath d='M60 30c0 16.569-13.431 30-30 30 16.569 0 30-13.431 30-30z' fill='%237dd3fc' fill-opacity='.18'/%3E%3C/g%3E%3C/svg%3E")`;
 
 export function RootAgentNode({ id, data, selected }: AgentFlowNodeProps) {
+  const { t } = useTranslation();
   const hasSubordinates =
     data.subordinateAvatars && data.subordinateAvatars.length > 0;
   const node = useAgentNode({
@@ -32,6 +34,7 @@ export function RootAgentNode({ id, data, selected }: AgentFlowNodeProps) {
     extraHeight: hasSubordinates ? 24 : 0,
   });
   const { currentW, currentH, style, setIsSettingsOpen } = node;
+  const autoExploreEnabled = data.agent?.auto_explore_enabled ?? false;
 
   return (
     <>
@@ -145,12 +148,39 @@ export function RootAgentNode({ id, data, selected }: AgentFlowNodeProps) {
             <div className="absolute top-24 -left-10 w-[120%] h-6 rotate-[25deg] bg-gradient-to-r from-transparent via-amber-100/8 to-transparent dark:via-amber-400/[0.03]" />
           </div>
 
-          <SettingsGearButton
-            onClick={(e) => {
-              e.stopPropagation();
-              setIsSettingsOpen(true);
-            }}
-          />
+          {/* Top-right actions: gear (hover) + auto-explore badge (always visible) */}
+          <div className="absolute right-3 top-3 z-50 flex items-center gap-1">
+            <button
+              className="rounded-full bg-white/50 p-1.5 text-neutral-500 opacity-0 transition-opacity group-hover:opacity-100 hover:bg-white hover:text-indigo-600 dark:bg-black/20 dark:text-neutral-400 dark:hover:bg-black/40 dark:hover:text-indigo-400"
+              onClick={(e) => {
+                e.stopPropagation();
+                setIsSettingsOpen(true);
+              }}
+            >
+              <Cog6ToothIcon className="h-4 w-4" />
+            </button>
+            {data.onAutoExploreToggle && (
+              <button
+                title={t("agents.rootAgent.autoExploreHint")}
+                className={cn(
+                  "rounded-full p-1.5 transition-all duration-300",
+                  data.autoExploreLoading && "cursor-not-allowed opacity-40",
+                  autoExploreEnabled
+                    ? "bg-amber-400/20 text-amber-500 shadow-[0_0_8px_rgba(245,158,11,0.25)] hover:bg-amber-400/30 dark:bg-amber-500/15 dark:text-amber-400 dark:shadow-[0_0_8px_rgba(245,158,11,0.15)]"
+                    : "bg-white/40 text-stone-300 hover:bg-white/60 hover:text-stone-400 dark:bg-black/20 dark:text-neutral-600 dark:hover:bg-black/30 dark:hover:text-neutral-500",
+                )}
+                onClick={(e) => {
+                  e.stopPropagation();
+                  if (!data.autoExploreLoading) {
+                    data.onAutoExploreToggle!(!autoExploreEnabled);
+                  }
+                }}
+                disabled={data.autoExploreLoading}
+              >
+                <Sparkles className="h-3.5 w-3.5" />
+              </button>
+            )}
+          </div>
 
           <div className="relative flex items-center gap-3.5 mb-2">
             {/* Large avatar with golden ring + Crown emblem */}

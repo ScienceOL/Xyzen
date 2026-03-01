@@ -415,28 +415,48 @@ def get_catalog_region() -> str:
     return region if region in REGION_CATALOGS else "global"
 
 
-def get_topup_rate(currency: str) -> TopUpRate | None:
-    """Look up the top-up exchange rate for a given currency."""
+def get_topup_rate(currency: str | None = None) -> TopUpRate | None:
+    """Look up the top-up exchange rate.
+
+    If *currency* is given, match that currency; otherwise return the first
+    available rate (currency-agnostic — used when payment method doesn't
+    dictate currency).
+    """
     catalog = get_plan_catalog()
     for rate in catalog.topup_rates:
-        if rate.currency == currency:
+        if currency is None or rate.currency == currency:
             return rate
     return None
 
 
-def get_sandbox_addon_rate(currency: str) -> SandboxAddonRate | None:
-    """Look up the sandbox add-on price for a given currency."""
+def get_sandbox_addon_rate(currency: str | None = None) -> SandboxAddonRate | None:
+    """Look up the sandbox add-on price.
+
+    If *currency* is given, match that currency; otherwise return the first rate.
+    """
     catalog = get_plan_catalog()
     for rate in catalog.sandbox_addon_rates:
-        if rate.currency == currency:
+        if currency is None or rate.currency == currency:
             return rate
     return None
 
 
-def get_full_access_pass_rate(currency: str) -> FullAccessPassRate | None:
-    """Look up the full model-access pass price for a given currency."""
+def get_full_access_pass_rate(currency: str | None = None) -> FullAccessPassRate | None:
+    """Look up the full model-access pass price.
+
+    If *currency* is given, match that currency; otherwise return the first rate.
+    """
     catalog = get_plan_catalog()
     for rate in catalog.full_access_pass_rates:
-        if rate.currency == currency:
+        if currency is None or rate.currency == currency:
             return rate
+    return None
+
+
+def get_plan_pricing_any(plan_key: str) -> CurrencyPricing | None:
+    """Return the first available pricing for *plan_key*, regardless of currency."""
+    catalog = get_plan_catalog()
+    for plan in catalog.plans:
+        if plan.plan_key == plan_key and plan.pricing:
+            return plan.pricing[0]
     return None
