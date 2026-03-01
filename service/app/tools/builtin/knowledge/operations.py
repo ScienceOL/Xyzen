@@ -437,6 +437,10 @@ async def write_file(user_id: str, knowledge_set_id: UUID, filename: str, conten
                 else:
                     content_type = "text/plain"
 
+            # Ensure charset=utf-8 for text-based content types
+            if content_type and content_type.startswith("text/") and "charset" not in content_type:
+                content_type = f"{content_type}; charset=utf-8"
+
             # Resolve image_ids to storage URLs for PPTX files (async DB lookup here)
             if basename.endswith(".pptx"):
                 content = await _resolve_image_ids_to_storage_urls(content, file_repo, user_id)

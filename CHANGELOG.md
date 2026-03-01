@@ -2,6 +2,18 @@
 
 All notable changes to Xyzen will be documented in this file.
 
+## [1.6.13](https://github.com/ScienceOL/Xyzen/compare/v1.6.12...v1.6.13) (2026-03-01)
+
+### 🐛 Bug Fixes
+
+* scope checkpoint thread_id per conversation turn to prevent state accumulation ([95b9ed8](https://github.com/ScienceOL/Xyzen/commit/95b9ed8b3e567f0ecdc3ec02e193cc8dfad00800))
+
+## [1.6.12](https://github.com/ScienceOL/Xyzen/compare/v1.6.11...v1.6.12) (2026-03-01)
+
+### 🐛 Bug Fixes
+
+* enhance PDF generation with Unicode support and add translation for beta join button ([99e5452](https://github.com/ScienceOL/Xyzen/commit/99e5452a39c52f73ef70f9e7f6c90b6a6384f081))
+
 ## [1.6.11](https://github.com/ScienceOL/Xyzen/compare/v1.6.10...v1.6.11) (2026-03-01)
 
 ### 🐛 Bug Fixes

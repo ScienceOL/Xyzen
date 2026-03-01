@@ -279,14 +279,32 @@ function ChatBubble({ message }: ChatBubbleProps) {
     await deleteMessage(message.id);
   };
 
-  // Format date + time
-  const formattedTime = new Date(created_at).toLocaleString([], {
-    month: "short",
-    day: "numeric",
-    hour: "2-digit",
-    minute: "2-digit",
-    second: "2-digit",
-  });
+  // Show date when message is older than 1 day, otherwise just time
+  const formattedTime = useMemo(() => {
+    const msgDate = new Date(created_at);
+    const now = new Date();
+    const diffMs = now.getTime() - msgDate.getTime();
+    const isOlderThanOneDay = diffMs >= 86_400_000;
+
+    if (isOlderThanOneDay) {
+      return (
+        msgDate.toLocaleDateString([], {
+          month: "short",
+          day: "numeric",
+        }) +
+        " " +
+        msgDate.toLocaleTimeString([], {
+          hour: "2-digit",
+          minute: "2-digit",
+        })
+      );
+    }
+    return msgDate.toLocaleTimeString([], {
+      hour: "2-digit",
+      minute: "2-digit",
+      second: "2-digit",
+    });
+  }, [created_at]);
 
   // Unified neutral/transparent styling for all messages
   const messageStyles = "rounded-sm bg-neutral-50/50 dark:bg-neutral-800/30";

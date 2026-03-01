@@ -225,12 +225,20 @@ class TestPdfFileHandler:
         assert content == "Page text"
         mock_open.assert_called_with(stream=b"pdf_bytes", filetype="pdf")
 
-    def test_write_plain_text(self, mock_matrix: MagicMock, mock_open: MagicMock) -> None:
+
+class TestPdfFileHandlerWrite:
+    """PDF write tests use real fitz (no mocking) to verify Unicode support."""
+
+    def test_write_plain_text(self) -> None:
         handler = PdfFileHandler()
-        # For plain text, it uses reportlab, not fitz
         result = handler.create_content("Some text")
         assert isinstance(result, bytes)
-        # PDF magic bytes
+        assert result[:4] == b"%PDF"
+
+    def test_write_unicode_text(self) -> None:
+        handler = PdfFileHandler()
+        result = handler.create_content("你好世界 こんにちは 안녕하세요")
+        assert isinstance(result, bytes)
         assert result[:4] == b"%PDF"
 
 

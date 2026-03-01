@@ -90,6 +90,7 @@
     "mcpOffline": "离线",
     "mcpNoServers": "未配置 MCP 服务器",
     "mcpOpenSettings": "打开设置",
+    "joinBeta": "加入内测",
     "skills": {
       "title": "技能",
       "connected": "已连接",

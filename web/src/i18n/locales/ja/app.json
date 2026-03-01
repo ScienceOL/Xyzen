@@ -90,6 +90,7 @@
     "mcpOffline": "オフライン",
     "mcpNoServers": "MCPサーバーが設定されていません",
     "mcpOpenSettings": "設定を開く",
+    "joinBeta": "ベータに参加",
     "skills": {
       "title": "スキル",
       "connected": "接続済み",
