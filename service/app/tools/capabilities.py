@@ -75,6 +75,9 @@ TOOL_CAPABILITY_MAP: dict[str, list[str]] = {
     # Memory tools (langmem)
     "manage_memory": [ToolCapability.MEMORY],
     "search_memory": [ToolCapability.MEMORY],
+    # Core memory tools
+    "read_core_memory": [ToolCapability.MEMORY],
+    "update_core_memory": [ToolCapability.MEMORY],
     # Image tools
     "generate_image": [ToolCapability.IMAGE_GENERATION],
     "read_image": [ToolCapability.IMAGE_ANALYSIS],

@@ -21,6 +21,8 @@ from sqlmodel.ext.asyncio.session import AsyncSession
 if TYPE_CHECKING:
     from uuid import UUID
 
+    from langgraph.store.base import BaseStore
+
     from app.models.agent import Agent
 
 logger = logging.getLogger(__name__)
@@ -58,8 +60,21 @@ async def prepare_tools(
     """
     langchain_tools: list[BaseTool] = []
 
+    # 0. Resolve memory store (async-safe, handles stale Celery loops)
+    memory_store: BaseStore | None = None
+    if user_id:
+        from app.configs import configs as app_configs
+
+        if app_configs.Memory.Enabled:
+            from app.core.memory.service import get_or_initialize_memory_service
+
+            memory_svc = await get_or_initialize_memory_service()
+            memory_store = memory_svc.store if memory_svc else None
+
     # 1. Load all available builtin tools
-    builtin_tools = _load_all_builtin_tools(agent, user_id, session_knowledge_set_id, topic_id, session_id)
+    builtin_tools = _load_all_builtin_tools(
+        agent, user_id, session_knowledge_set_id, topic_id, session_id, memory_store
+    )
     langchain_tools.extend(builtin_tools)
 
     # 2. Load MCP tools (custom user MCPs)
@@ -82,6 +97,7 @@ def _load_all_builtin_tools(
     session_knowledge_set_id: "UUID | None" = None,
     topic_id: "UUID | None" = None,
     session_id: "UUID | None" = None,
+    memory_store: "BaseStore | None" = None,
 ) -> list[BaseTool]:
     """
     Load all available builtin tools.
@@ -164,22 +180,26 @@ def _load_all_builtin_tools(
         )
         tools.extend(video_tools)
 
-    # Load memory tools if user_id is available and memory is enabled
-    if user_id:
+    # Load memory tools if user_id is available and memory store was pre-resolved
+    if user_id and memory_store:
         from app.configs import configs as app_configs
-        from app.core.memory import get_memory_service
+        from app.tools.builtin.memory import create_memory_tools_for_agent
 
-        if app_configs.Memory.Enabled:
-            memory_svc = get_memory_service()
-            store = memory_svc.store if memory_svc else None
-            if store:
-                from app.tools.builtin.memory import create_memory_tools_for_agent
+        memory_tools = create_memory_tools_for_agent(
+            user_id=user_id,
+            store=memory_store,
+        )
+        tools.extend(memory_tools)
 
-                memory_tools = create_memory_tools_for_agent(
-                    user_id=user_id,
-                    store=store,
-                )
-                tools.extend(memory_tools)
+        # Core memory tools (read/update always-in-context profile)
+        if app_configs.Memory.CoreMemory.Enabled:
+            from app.tools.builtin.memory import create_core_memory_tools_for_agent
+
+            core_memory_tools = create_core_memory_tools_for_agent(
+                user_id=user_id,
+                store=memory_store,
+            )
+            tools.extend(core_memory_tools)
 
     # Load sandbox tools if enabled and session_id is available
     if session_id:
