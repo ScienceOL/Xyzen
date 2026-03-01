@@ -392,100 +392,117 @@ class PdfFileHandler(BaseFileHandler):
         return self._create_pdf_from_text(text_content)
 
     def _create_pdf_from_text(self, text_content: str) -> bytes:
-        """Create simple PDF from plain text using reportlab."""
-        from reportlab.lib.pagesizes import letter
-        from reportlab.lib.styles import getSampleStyleSheet
-        from reportlab.platypus import Paragraph, SimpleDocTemplate, Spacer
+        """Create simple PDF from plain text using PyMuPDF (supports Unicode/CJK)."""
+        import fitz
 
-        buffer = io.BytesIO()
-        doc = SimpleDocTemplate(buffer, pagesize=letter)
-        styles = getSampleStyleSheet()
-        story: list[Any] = []
+        page_width, page_height = fitz.paper_size("letter")
+        margin = 72  # 1 inch
 
-        for line in text_content.split("\n"):
-            if line.strip():
-                story.append(Paragraph(line, styles["Normal"]))
-                story.append(Spacer(1, 12))
+        # Use fitz Story for automatic text layout with Unicode support
+        html = (
+            "<p>"
+            + "</p><p>".join(
+                line.replace("&", "&amp;").replace("<", "&lt;").replace(">", "&gt;")
+                for line in text_content.split("\n")
+                if line.strip()
+            )
+            + "</p>"
+        )
 
-        if not story:
-            story.append(Paragraph("(Empty document)", styles["Normal"]))
+        if not text_content.strip():
+            html = "<p>(Empty document)</p>"
 
-        doc.build(story)
-        return buffer.getvalue()
+        css = "p { font-size: 12px; margin-bottom: 6px; font-family: sans-serif; }"
+
+        story = fitz.Story(html=html, user_css=css)
+        content_rect = fitz.Rect(margin, margin, page_width - margin, page_height - margin)
+        mediabox = fitz.Rect(0, 0, page_width, page_height)
+
+        buf = io.BytesIO()
+        writer = fitz.DocumentWriter(buf)
+        while True:
+            dev = writer.begin_page(mediabox)
+            more, _ = story.place(content_rect)
+            story.draw(dev)
+            writer.end_page()
+            if not more:
+                break
+        writer.close()
+        return buf.getvalue()
 
     def _create_pdf_from_spec(self, spec: DocumentSpec) -> bytes:
-        """Create production PDF from DocumentSpec."""
-        from reportlab.lib import colors
-        from reportlab.lib.pagesizes import A4, legal, letter
-        from reportlab.lib.styles import getSampleStyleSheet
-        from reportlab.platypus import (
-            PageBreak,
-            Paragraph,
-            SimpleDocTemplate,
-            Spacer,
-            Table,
-            TableStyle,
-        )
+        """Create production PDF from DocumentSpec using PyMuPDF (supports Unicode/CJK)."""
+        import fitz
 
-        buffer = io.BytesIO()
-        page_sizes = {"letter": letter, "A4": A4, "legal": legal}
-        page_size = page_sizes.get(spec.page_size, letter)
+        page_sizes = {"letter": "letter", "A4": "a4", "legal": "legal"}
+        paper = page_sizes.get(spec.page_size, "letter")
+        page_width, page_height = fitz.paper_size(paper)
+        margin = 72
 
-        doc = SimpleDocTemplate(
-            buffer,
-            pagesize=page_size,
-            title=spec.title or "",
-            author=spec.author or "",
-            subject=spec.subject or "",
-        )
-
-        styles = getSampleStyleSheet()
-        story: list[Any] = []
-
+        # Build HTML from spec blocks
+        html_parts: list[str] = []
         for block in spec.content:
             if block.type == "heading":
                 level = min(block.level, 6)
-                style_name = f"Heading{level}" if level <= 3 else "Heading3"
-                story.append(Paragraph(block.content, styles[style_name]))
+                escaped = self._escape_html(block.content)
+                html_parts.append(f"<h{level}>{escaped}</h{level}>")
             elif block.type == "text":
-                style = styles["Normal"]
+                escaped = self._escape_html(block.content)
                 if hasattr(block, "style") and block.style == "code":
-                    style = styles["Code"]
-                story.append(Paragraph(block.content, style))
+                    html_parts.append(f"<pre><code>{escaped}</code></pre>")
+                else:
+                    # Preserve line breaks within text blocks
+                    escaped = escaped.replace("\n", "<br>")
+                    html_parts.append(f"<p>{escaped}</p>")
             elif block.type == "list":
-                list_items = [
-                    Paragraph(f"{'• ' if not block.ordered else f'{i + 1}. '}{item}", styles["Normal"])
-                    for i, item in enumerate(block.items)
-                ]
-                for item in list_items:
-                    story.append(item)
+                tag = "ol" if block.ordered else "ul"
+                items = "".join(f"<li>{self._escape_html(item)}</li>" for item in block.items)
+                html_parts.append(f"<{tag}>{items}</{tag}>")
             elif block.type == "table":
-                table_data = [block.headers] + block.rows
-                t = Table(table_data)
-                t.setStyle(
-                    TableStyle(
-                        [
-                            ("BACKGROUND", (0, 0), (-1, 0), colors.HexColor("#4472C4")),
-                            ("TEXTCOLOR", (0, 0), (-1, 0), colors.whitesmoke),
-                            ("ALIGN", (0, 0), (-1, -1), "LEFT"),
-                            ("FONTNAME", (0, 0), (-1, 0), "Helvetica-Bold"),
-                            ("FONTSIZE", (0, 0), (-1, 0), 11),
-                            ("BOTTOMPADDING", (0, 0), (-1, 0), 12),
-                            ("GRID", (0, 0), (-1, -1), 1, colors.black),
-                        ]
-                    )
-                )
-                story.append(t)
+                rows_html = "<tr>" + "".join(f"<th>{self._escape_html(h)}</th>" for h in block.headers) + "</tr>"
+                for row in block.rows:
+                    rows_html += "<tr>" + "".join(f"<td>{self._escape_html(str(cell))}</td>" for cell in row) + "</tr>"
+                html_parts.append(f"<table>{rows_html}</table>")
             elif block.type == "page_break":
-                story.append(PageBreak())
+                html_parts.append('<div style="page-break-after: always;"></div>')
 
-            story.append(Spacer(1, 12))
+        html = "\n".join(html_parts)
+        if not html.strip():
+            html = "<p>(Empty document)</p>"
 
-        if not story:
-            story.append(Paragraph("(Empty document)", styles["Normal"]))
+        css = """
+            body { font-family: sans-serif; font-size: 12px; }
+            h1 { font-size: 24px; margin-bottom: 12px; }
+            h2 { font-size: 20px; margin-bottom: 10px; }
+            h3 { font-size: 16px; margin-bottom: 8px; }
+            p { margin-bottom: 6px; }
+            pre { background: #f4f4f4; padding: 8px; font-size: 10px; }
+            table { border-collapse: collapse; width: 100%; margin-bottom: 8px; }
+            th { background: #4472C4; color: white; padding: 6px 8px; text-align: left; font-size: 11px; }
+            td { border: 1px solid #000; padding: 4px 8px; }
+            li { margin-bottom: 4px; }
+        """
 
-        doc.build(story)
-        return buffer.getvalue()
+        story = fitz.Story(html=html, user_css=css)
+        content_rect = fitz.Rect(margin, margin, page_width - margin, page_height - margin)
+        mediabox = fitz.Rect(0, 0, page_width, page_height)
+
+        buf = io.BytesIO()
+        writer = fitz.DocumentWriter(buf)
+        while True:
+            dev = writer.begin_page(mediabox)
+            more, _ = story.place(content_rect)
+            story.draw(dev)
+            writer.end_page()
+            if not more:
+                break
+        writer.close()
+        return buf.getvalue()
+
+    @staticmethod
+    def _escape_html(text: str) -> str:
+        """Escape HTML special characters."""
+        return text.replace("&", "&amp;").replace("<", "&lt;").replace(">", "&gt;").replace('"', "&quot;")
 
 
 class DocxFileHandler(BaseFileHandler):

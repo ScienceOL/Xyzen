@@ -388,6 +388,7 @@ const BETA_SURVEY_URL =
 
 function VersionInfo() {
   const { backend } = useVersion();
+  const { t } = useTranslation();
   const [hovered, setHovered] = useState(false);
 
   // Current region - hardcoded as international for now
@@ -396,7 +397,9 @@ function VersionInfo() {
   return (
     <div className="relative flex items-center gap-1.5">
       {/* Beta Survey Button */}
-      <GradientButton href={BETA_SURVEY_URL}>加入内测</GradientButton>
+      <GradientButton href={BETA_SURVEY_URL}>
+        {t("app.toolbar.joinBeta")}
+      </GradientButton>
 
       {/* GitHub Link */}
       <a

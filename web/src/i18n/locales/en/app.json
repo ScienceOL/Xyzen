@@ -90,6 +90,7 @@
     "mcpOffline": "offline",
     "mcpNoServers": "No MCP servers configured",
     "mcpOpenSettings": "Open Settings",
+    "joinBeta": "Join Beta",
     "skills": {
       "title": "Skills",
       "connected": "Connected",
