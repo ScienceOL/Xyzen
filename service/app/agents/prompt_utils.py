@@ -7,6 +7,16 @@ from langchain_core.messages import SystemMessage
 from app.core.prompts.builder import PromptLayer, PromptLayerKind
 
 
+def has_jinja2_variables(text: str) -> bool:
+    """Check whether *text* contains Jinja2 template syntax.
+
+    A simple substring check for ``{{`` and ``{%`` — intentionally
+    conservative so that any prompt that *might* need Jinja2 rendering
+    falls back to the template path.
+    """
+    return "{{" in text or "{%" in text
+
+
 def layers_to_system_messages(
     layers: list[PromptLayer],
     node_prompt: str | None = None,
