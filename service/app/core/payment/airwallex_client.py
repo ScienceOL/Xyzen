@@ -220,9 +220,6 @@ class _AirwallexAdapter:
     ) -> CreateOrderResult:
         actual_return_url = return_url or configs.Payment.Airwallex.ReturnUrl
 
-        # Resolve Airwallex payment_method_type from the app-level payment_method
-        payment_method_type = "wechatpay" if payment_method == "wechatpay" else "alipaycn"
-
         intent = await self._client.create_payment_intent(
             amount=amount,
             currency=currency,
@@ -232,36 +229,13 @@ class _AirwallexAdapter:
         )
         intent_id = intent["id"]
 
-        confirmation = await self._client.confirm_payment_intent(
-            intent_id=intent_id,
-            payment_method_type=payment_method_type,
-            flow="qrcode",
-        )
-
-        next_action = confirmation.get("next_action", {})
-        na_type = next_action.get("type", "")
-
-        # Airwallex returns different shapes depending on payment method:
-        #   alipaycn  → {type: "render_qrcode", qrcode: "...", url: "https://..."}
-        #   wechatpay → {type: "render_qrcode", qrcode: "https://..."}
-        # Prefer `url` (full checkout URL) over raw `qrcode` value.
-        qr_code_url = ""
-        if na_type in ("render_qr_code", "render_qrcode"):
-            data = next_action.get("data", {})
-            qr_code_url = (
-                next_action.get("url")
-                or data.get("qr_code_url")
-                or data.get("code_url")
-                or next_action.get("qrcode")
-                or ""
-            )
-        if not qr_code_url:
-            logger.warning("No QR URL extracted for %s, next_action=%s", payment_method_type, next_action)
-
+        # All Airwallex payments use the Drop-in Element SDK on the frontend.
+        # Create intent only — do NOT confirm server-side.
         return CreateOrderResult(
             provider_order_id=intent_id,
-            flow_type="qrcode",
-            qr_code_url=qr_code_url,
+            flow_type="airwallex_dropin",
+            client_secret=intent["client_secret"],
+            intent_id=intent_id,
         )
 
     async def capture_order(self, provider_order_id: str) -> CaptureResult:

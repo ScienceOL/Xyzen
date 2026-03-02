@@ -31,8 +31,7 @@ logger = logging.getLogger(__name__)
 # Map payment methods to their provider.  Currency is determined by the
 # plan catalog, NOT by the payment method — payment and region are independent.
 PAYMENT_METHOD_CONFIG: dict[str, dict[str, str]] = {
-    "alipaycn": {"provider": "airwallex"},
-    "wechatpay": {"provider": "airwallex"},
+    "airwallex": {"provider": "airwallex"},
     "paypal": {"provider": "paypal"},
 }
 
@@ -64,6 +63,22 @@ class PaymentService:
         if pricing is None:
             raise HTTPException(status_code=400, detail=f"Unknown plan: {plan_name}")
         currency = pricing.currency
+
+        # Block downgrades: user cannot subscribe to a plan with lower priority
+        from app.core.plan_catalog import get_plan_limits
+
+        plan_limits = get_plan_limits()
+        target = plan_limits.get(plan_name)
+        if target is not None:
+            sub_repo = SubscriptionRepository(self.db)
+            current_role = await sub_repo.get_user_role(user_id)
+            if current_role is not None:
+                current = plan_limits.get(current_role.name)
+                if current is not None and target.priority <= current.priority:
+                    raise HTTPException(
+                        status_code=400,
+                        detail=f"Cannot subscribe to {plan_name}: your current plan ({current_role.name}) is equal or higher tier",
+                    )
 
         # 1. Create local order
         order = await self.repo.create_order(
@@ -110,6 +125,8 @@ class PaymentService:
             "flow_type": result.flow_type,
             "qr_code_url": result.qr_code_url,
             "approval_url": result.approval_url,
+            "client_secret": result.client_secret,
+            "intent_id": result.intent_id,
             "amount": pricing.amount,
             "currency": currency,
         }
@@ -186,6 +203,8 @@ class PaymentService:
             "flow_type": result.flow_type,
             "qr_code_url": result.qr_code_url,
             "approval_url": result.approval_url,
+            "client_secret": result.client_secret,
+            "intent_id": result.intent_id,
             "amount": amount,
             "currency": currency,
         }
@@ -278,6 +297,8 @@ class PaymentService:
             "flow_type": result.flow_type,
             "qr_code_url": result.qr_code_url,
             "approval_url": result.approval_url,
+            "client_secret": result.client_secret,
+            "intent_id": result.intent_id,
             "amount": amount,
             "currency": currency,
         }
@@ -344,6 +365,8 @@ class PaymentService:
             "flow_type": result.flow_type,
             "qr_code_url": result.qr_code_url,
             "approval_url": result.approval_url,
+            "client_secret": result.client_secret,
+            "intent_id": result.intent_id,
             "amount": rate.amount,
             "currency": currency,
         }

@@ -67,37 +67,16 @@ function ButtonSpinner() {
   );
 }
 
+// ---------- Plan tier priority (shared) ----------
+
+const PLAN_PRIORITY: Record<string, number> = {
+  free: 0,
+  standard: 1,
+  professional: 2,
+  ultra: 3,
+};
+
 // ---------- Payment brand icons ----------
-
-function AlipayIcon({ className }: { className?: string }) {
-  return (
-    <svg className={className} viewBox="0 0 24 24" fill="currentColor">
-      <path
-        d="M22 12c0 5.523-4.477 10-10 10S2 17.523 2 12 6.477 2 12 2s10 4.477 10 10z"
-        fill="#1677FF"
-      />
-      <path
-        d="M17.2 14.8c-1.6-.7-3-.9-3-.9s.7-1.8.9-3h-3.4V9.6h4.2v-.5h-4.2V7.3h-1.1v1.8h-3.7v.5h3.3v1.3H7.1v.5h5.9c-.3.8-.7 1.7-1.1 2.5-1.5-.5-3.3-.6-4.2.1-.7.6-.8 1.6-.2 2.3.6.7 1.7.8 2.8.2.7-.4 1.4-1.2 2-2.1 1 .4 2.9 1.3 3.9 1.8.15.08.28-.07.2-.2-.06-.1-.15-.16-.4-.3zM8.3 15.7c-.8.3-1.6 0-1.8-.4-.2-.4 0-1.1.8-1.4.8-.3 1.9-.1 2.8.4-.6.9-1.2 1.2-1.8 1.4z"
-        fill="white"
-      />
-    </svg>
-  );
-}
-
-function WeChatPayIcon({ className }: { className?: string }) {
-  return (
-    <svg className={className} viewBox="0 0 24 24" fill="currentColor">
-      <path
-        d="M22 12c0 5.523-4.477 10-10 10S2 17.523 2 12 6.477 2 12 2s10 4.477 10 10z"
-        fill="#07C160"
-      />
-      <path
-        d="M9.5 6.5c-2.8 0-5 1.8-5 4.1 0 1.3.7 2.4 1.8 3.2l-.5 1.4 1.6-.8c.6.2 1.3.3 2 .3.1 0 .3 0 .4-.01a3.8 3.8 0 01-.1-.9c0-2.3 2.1-4.2 4.7-4.2h.4C14.3 7.8 12.1 6.5 9.5 6.5zm-1.8 2.3a.7.7 0 110 1.4.7.7 0 010-1.4zm3.5 0a.7.7 0 110 1.4.7.7 0 010-1.4zm3.2 2.4c-2.3 0-4.1 1.6-4.1 3.5 0 1.9 1.8 3.5 4.1 3.5.5 0 .9-.1 1.3-.2l1.2.6-.3-.9c1-.7 1.6-1.7 1.6-2.8 0-2.1-1.8-3.7-4.1-3.7h.3zm-1.3 2a.55.55 0 110 1.1.55.55 0 010-1.1zm2.6 0a.55.55 0 110 1.1.55.55 0 010-1.1z"
-        fill="white"
-      />
-    </svg>
-  );
-}
 
 function PayPalIcon({ className }: { className?: string }) {
   return (
@@ -123,8 +102,6 @@ const PAYMENT_ICON_MAP: Record<
   string,
   { Icon: React.FC<{ className?: string }>; color: string }
 > = {
-  alipaycn: { Icon: AlipayIcon, color: "text-[#1677FF]" },
-  wechatpay: { Icon: WeChatPayIcon, color: "text-[#07C160]" },
   paypal: { Icon: PayPalIcon, color: "text-[#003087]" },
 };
 
@@ -817,6 +794,7 @@ function PlanCard({
   paymentMethods,
   loadingMethodKey,
   paymentEnabled,
+  userPlan,
   onSubscribeQR,
 }: {
   plan: SubscriptionPlan;
@@ -824,11 +802,16 @@ function PlanCard({
   paymentMethods: PaymentMethodInfo[];
   loadingMethodKey?: string | null;
   paymentEnabled?: boolean;
+  userPlan: string;
   onSubscribeQR?: (planKey: string, methodKey: string) => void;
 }) {
   const { t } = useTranslation();
   const isLocked = plan.isLocked;
   const isFree = plan.isFree;
+  const isCurrent = plan.planKey === userPlan;
+  const isLower =
+    !isCurrent &&
+    (PLAN_PRIORITY[plan.planKey] ?? 0) < (PLAN_PRIORITY[userPlan] ?? 0);
 
   return (
     <motion.div
@@ -987,12 +970,18 @@ function PlanCard({
       </div>
 
       {/* Subscribe action */}
-      {isFree || isLocked ? (
+      {isFree || isLocked || isCurrent || isLower ? (
         <button
           disabled
           className="w-full rounded-lg py-2 text-xs font-semibold cursor-not-allowed bg-neutral-200 text-neutral-400 dark:bg-neutral-700 dark:text-neutral-500"
         >
-          {isFree ? t("subscription.plan.free") : t("subscription.comingSoon")}
+          {isCurrent
+            ? t("subscription.plan.currentPlan")
+            : isLower
+              ? t("subscription.plan.hasHigherPlan")
+              : isFree
+                ? t("subscription.plan.free")
+                : t("subscription.comingSoon")}
         </button>
       ) : (
         <div className="mt-auto">
@@ -1127,14 +1116,8 @@ function SandboxPackCard({
   const { t } = useTranslation();
   const [quantity, setQuantity] = useState(1);
 
-  const planPriority: Record<string, number> = {
-    free: 0,
-    standard: 1,
-    professional: 2,
-    ultra: 3,
-  };
   const meetsMinPlan =
-    (planPriority[userPlan] ?? 0) >= (planPriority[minPlan] ?? 1);
+    (PLAN_PRIORITY[userPlan] ?? 0) >= (PLAN_PRIORITY[minPlan] ?? 1);
 
   return (
     <motion.div
@@ -1316,7 +1299,10 @@ export function PointsInfoModal({ isOpen, onClose }: PointsInfoModalProps) {
   const roleName = subInfo?.roleName;
   const hasPaidSub = !!roleName && roleName !== "free";
 
-  const methods = catalog?.payment_methods ?? [];
+  const methods = useMemo(
+    () => catalog?.payment_methods ?? [],
+    [catalog?.payment_methods],
+  );
   const paymentEnabled = catalog?.payment_enabled ?? true;
   const isChina = catalog?.region === "zh-cn";
   const regionTab = isChina ? "china" : "international";
@@ -1353,12 +1339,34 @@ export function PointsInfoModal({ isOpen, onClose }: PointsInfoModalProps) {
       ? loadingKey.slice(prefix.length + 1)
       : null;
 
+  // Resolve Airwallex Drop-in env from the card payment method's sdk_config
+  const dropinEnv = useMemo(() => {
+    const awMethod = methods.find((m) => m.key === "airwallex");
+    return awMethod?.sdk_config?.env ?? "prod";
+  }, [methods]);
+
   const openCheckoutResult = useCallback(
     (result: CheckoutResponse, planName: string) => {
       if (result.flow_type === "paypal_sdk" && result.approval_url) {
         // PayPal: redirect to approval page, no polling modal needed.
         // Payment completion is handled by the PayPal webhook on the backend.
         window.open(result.approval_url, "_blank", "noopener,noreferrer");
+        return;
+      }
+      if (result.flow_type === "airwallex_dropin") {
+        sessionStorage.setItem(
+          "checkout_data",
+          JSON.stringify({
+            orderId: result.order_id,
+            intentId: result.intent_id,
+            clientSecret: result.client_secret,
+            amount: result.amount,
+            currency: result.currency,
+            planName,
+            env: dropinEnv,
+          }),
+        );
+        window.location.hash = "#/checkout";
         return;
       }
       setQrModal({
@@ -1370,7 +1378,7 @@ export function PointsInfoModal({ isOpen, onClose }: PointsInfoModalProps) {
         planName,
       });
     },
-    [],
+    [dropinEnv],
   );
 
   const handleSubscribeQR = useCallback(
@@ -1528,6 +1536,7 @@ export function PointsInfoModal({ isOpen, onClose }: PointsInfoModalProps) {
                                   `plan:${plan.planKey}`,
                                 )}
                                 paymentEnabled={paymentEnabled}
+                                userPlan={roleName ?? "free"}
                                 onSubscribeQR={handleSubscribeQR}
                               />
                             ))}

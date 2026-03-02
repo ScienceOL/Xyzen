@@ -39,6 +39,12 @@ const PrivacyPage = React.lazy(() =>
   import("@/app/legal/PrivacyPage").then((m) => ({ default: m.PrivacyPage })),
 );
 
+const CheckoutPage = React.lazy(() =>
+  import("@/app/checkout/CheckoutPage").then((m) => ({
+    default: m.CheckoutPage,
+  })),
+);
+
 // Handle relink callback in popup - check at module level
 handleRelinkCallback();
 
@@ -453,6 +459,15 @@ export function Xyzen({
       <Suspense>
         <PrivacyPage />
       </Suspense>
+    );
+  }
+  if (currentHash === "#/checkout") {
+    return (
+      <QueryClientProvider client={queryClient}>
+        <Suspense>
+          <CheckoutPage />
+        </Suspense>
+      </QueryClientProvider>
     );
   }
 

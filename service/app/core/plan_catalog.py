@@ -244,7 +244,7 @@ _GLOBAL_CATALOG = RegionCatalog(
             credits_per_unit=500,
             unit_amount=100,  # $1
             display_rate="subscription.topUp.rateIntl",
-            payment_methods=["alipaycn", "wechatpay"],
+            payment_methods=["airwallex"],
         ),
     ],
     sandbox_addon_rates=[
@@ -347,7 +347,7 @@ _CHINA_CATALOG = RegionCatalog(
             credits_per_unit=100,
             unit_amount=100,  # ¥1
             display_rate="subscription.topUp.rateChina",
-            payment_methods=["alipaycn", "wechatpay"],
+            payment_methods=["airwallex"],
         ),
     ],
     sandbox_addon_rates=[

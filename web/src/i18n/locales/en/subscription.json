@@ -25,7 +25,9 @@
     "terminal": "{{count}} terminal",
     "scheduledTaskNone": "—",
     "firstMonth": "First month {{price}}",
-    "bestValue": "Best Value"
+    "bestValue": "Best Value",
+    "currentPlan": "Current Plan",
+    "hasHigherPlan": "Included in your plan"
   },
 
   "feature": {
@@ -108,7 +110,13 @@
     "close": "Close",
     "alipay": "Alipay",
     "wechat": "WeChat Pay",
-    "paypal": "PayPal / Credit Cards"
+    "card": "Credit / Debit Card",
+    "airwallex": "Airwallex",
+    "paypal": "PayPal / Credit Cards",
+    "orderSummary": "Order Summary",
+    "agreeTerms": "I have read and agree to the <terms>Terms of Service</terms> and <refund>Refund Policy</refund>",
+    "agreeRequired": "Please agree to the terms to continue",
+    "backToPlans": "Back"
   },
 
   "creator": "Creator",

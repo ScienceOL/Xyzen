@@ -22,21 +22,21 @@ router = APIRouter(tags=["payment"])
 
 class CheckoutRequest(BaseModel):
     plan_name: str = Field(description="Plan to subscribe: standard, professional, or ultra")
-    payment_method: str = Field(default="paypal", description="Payment method: paypal, alipaycn, wechatpay")
+    payment_method: str = Field(default="paypal", description="Payment method: paypal, alipaycn, wechatpay, card")
 
 
 class TopUpCheckoutRequest(BaseModel):
     credits: int = Field(description="Number of credits to purchase (must be a positive multiple of credits_per_unit)")
-    payment_method: str = Field(default="paypal", description="Payment method: paypal, alipaycn, wechatpay")
+    payment_method: str = Field(default="paypal", description="Payment method: paypal, alipaycn, wechatpay, card")
 
 
 class SandboxAddonCheckoutRequest(BaseModel):
     quantity: int = Field(description="Number of extra sandbox slots to purchase", gt=0)
-    payment_method: str = Field(default="paypal", description="Payment method: paypal, alipaycn, wechatpay")
+    payment_method: str = Field(default="paypal", description="Payment method: paypal, alipaycn, wechatpay, card")
 
 
 class FullAccessCheckoutRequest(BaseModel):
-    payment_method: str = Field(default="paypal", description="Payment method: paypal, alipaycn, wechatpay")
+    payment_method: str = Field(default="paypal", description="Payment method: paypal, alipaycn, wechatpay, card")
 
 
 class CheckoutResponse(BaseModel):
@@ -45,6 +45,8 @@ class CheckoutResponse(BaseModel):
     flow_type: str = "paypal_sdk"
     qr_code_url: str = ""
     approval_url: str = ""
+    client_secret: str = ""
+    intent_id: str = ""
     amount: int
     currency: str
 
