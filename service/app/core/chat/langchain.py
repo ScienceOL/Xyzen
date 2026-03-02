@@ -29,7 +29,7 @@ from app.core.chat.stream_handlers import (
     ToolEventHandler,
 )
 from app.core.chat.tracer import LangGraphTracer
-from app.core.prompts import build_system_prompt_with_provenance, fetch_memory_context
+from app.core.prompts import build_system_prompt_layers, fetch_memory_context
 from app.core.providers import get_user_provider_manager
 from app.models.topic import Topic as TopicModel
 from app.schemas.chat_event_payloads import StreamingEvent
@@ -110,11 +110,11 @@ async def get_ai_response_stream_langchain_legacy(
     if not all([model_tier, provider_id, model_name]):
         logger.warning(f"Incomplete model metadata: tier={model_tier}, provider={provider_id}, model={model_name}")
 
-    # Build system prompt (with memory context: Core Memory + auto-retrieved)
+    # Build system prompt layers (with memory context: Core Memory + auto-retrieved)
     memory_ctx = await fetch_memory_context(user_id, message_text)
-    prompt_build = await build_system_prompt_with_provenance(db, agent, model_name, memory_ctx=memory_ctx)
-    system_prompt = prompt_build.prompt
-    logger.info("System prompt provenance: %s", prompt_build.provenance)
+    prompt_layers = await build_system_prompt_layers(db, agent, model_name, memory_ctx=memory_ctx)
+    system_prompt = prompt_layers.to_flat_string()
+    logger.info("System prompt provenance: %s", prompt_layers.provenance)
 
     # Emit processing status
     yield StreamingEventHandler.create_processing_event(stream_id=stream_id)
@@ -130,6 +130,7 @@ async def get_ai_response_stream_langchain_legacy(
             provider_id=provider_id,
             model_name=model_name,
             system_prompt=system_prompt,
+            prompt_layers=prompt_layers,
         )
 
         # Initialize stream context
@@ -346,6 +347,7 @@ async def create_langchain_agent(
     provider_id: str | None,
     model_name: str | None,
     system_prompt: str,
+    prompt_layers: Any | None = None,
 ) -> tuple[CompiledStateGraph[Any, None, Any, Any], AgentEventContext, Any]:
     """Create and configure the LangChain agent using the agent factory.
 
@@ -373,6 +375,7 @@ async def create_langchain_agent(
         system_prompt=system_prompt,
         store=store,
         checkpointer=checkpointer,
+        prompt_layers=prompt_layers,
     )
     return graph, event_ctx, checkpointer
 

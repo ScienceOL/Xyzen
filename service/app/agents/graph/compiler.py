@@ -62,6 +62,8 @@ class GraphCompiler:
         tool_registry: dict[str, "BaseTool"],
         store: "BaseStore | None" = None,
         checkpointer: "BaseCheckpointSaver | None" = None,
+        prompt_layers: Any | None = None,
+        node_prompts: dict[str, str] | None = None,
     ) -> None:
         canonical = canonicalize_graph_config(config)
         ensure_valid_graph_config(canonical)
@@ -73,6 +75,8 @@ class GraphCompiler:
             tool_registry=tool_registry,
             store=store,
             checkpointer=checkpointer,
+            prompt_layers=prompt_layers,
+            node_prompts=node_prompts,
         )
 
     async def build(self) -> DynamicCompiledGraph:
