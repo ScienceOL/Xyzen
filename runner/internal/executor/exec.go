@@ -47,7 +47,8 @@ func (e *Executor) Exec(command, cwd string, timeoutSec int) protocol.ExecResult
 
 	var cmd *exec.Cmd
 	if runtime.GOOS == "windows" {
-		cmd = exec.CommandContext(ctx, "cmd", "/C", command)
+		shell := findPowerShell()
+		cmd = exec.CommandContext(ctx, shell, "-NoProfile", "-NonInteractive", "-Command", command)
 	} else {
 		cmd = exec.CommandContext(ctx, "sh", "-c", command)
 	}
@@ -82,6 +83,16 @@ func (e *Executor) Exec(command, cwd string, timeoutSec int) protocol.ExecResult
 		Stdout:   stdout.String(),
 		Stderr:   stderr.String(),
 	}
+}
+
+// findPowerShell returns the path to the best available PowerShell
+// executable: pwsh.exe (PowerShell 7+) if present, otherwise the
+// built-in powershell.exe.
+func findPowerShell() string {
+	if path, err := exec.LookPath("pwsh.exe"); err == nil {
+		return path
+	}
+	return "powershell.exe"
 }
 
 // limitedWriter wraps an io.Writer and stops writing after limit bytes.

@@ -138,6 +138,9 @@
     "knowledgeSelected": "Knowledge base selected",
     "noKnowledgeSets": "No knowledge bases available",
     "noKnowledge": "None",
+    "sandboxAutoDesc": "System auto-detect",
+    "runners": "Runners",
+    "activeSandboxes": "Active Sandboxes",
     "image": "Image",
     "imageDesc": "Generate and read images",
     "video": "Video",
@@ -458,7 +461,11 @@
     "daysAgo": "{{count}}d ago",
     "inMinutes": "in {{count}}m",
     "inHours": "in {{count}}h",
-    "inDays": "in {{count}}d"
+    "inDays": "in {{count}}d",
+    "prompt": "Prompt",
+    "status": "Status",
+    "error": "Error",
+    "goToChat": "Go to chat"
   },
   "workspace": {
     "recommendations": {

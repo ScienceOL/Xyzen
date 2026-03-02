@@ -18,9 +18,11 @@ class CreateOrderResult:
     """Returned by ``create_order`` — contains provider-specific URLs."""
 
     provider_order_id: str
-    flow_type: str  # "paypal_sdk" | "qrcode"
+    flow_type: str  # "paypal_sdk" | "qrcode" | "airwallex_dropin"
     approval_url: str = ""  # PayPal: redirect URL for JS SDK
     qr_code_url: str = ""  # Airwallex: QR code URL for scan-to-pay
+    client_secret: str = ""  # Airwallex Drop-in: client secret for SDK
+    intent_id: str = ""  # Airwallex Drop-in: payment intent ID
 
 
 @dataclass(frozen=True)
@@ -72,7 +74,7 @@ def get_payment_provider(payment_method: str) -> PaymentProvider:
     elif provider_setting == "airwallex":
         return _get_airwallex()
     else:  # "auto"
-        if payment_method in ("alipaycn", "wechatpay"):
+        if payment_method == "airwallex":
             return _get_airwallex()
         else:
             return _get_paypal()

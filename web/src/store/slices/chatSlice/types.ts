@@ -48,6 +48,7 @@ export interface ChatSlice {
       model?: string;
       model_tier?: "ultra" | "pro" | "standard" | "lite";
       knowledge_set_id?: string | null;
+      sandbox_backend?: string | null;
     },
   ) => Promise<void>;
   updateSessionProviderAndModel: (

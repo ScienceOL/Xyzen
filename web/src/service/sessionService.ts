@@ -23,6 +23,7 @@ export interface SessionUpdate {
   model?: string;
   model_tier?: "ultra" | "pro" | "standard" | "lite";
   knowledge_set_id?: string | null;
+  sandbox_backend?: string | null;
   avatar?: string;
   spatial_layout?: AgentSpatialLayout;
 }
@@ -38,6 +39,7 @@ export interface SessionRead {
   model?: string;
   model_tier?: "ultra" | "pro" | "standard" | "lite";
   knowledge_set_id?: string;
+  sandbox_backend?: string | null;
   avatar?: string;
   spatial_layout?: AgentSpatialLayout;
   created_at: string;

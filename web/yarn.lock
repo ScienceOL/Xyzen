@@ -64,6 +64,22 @@ __metadata:
   languageName: node
   linkType: hard
 
+"@airwallex/airtracker@npm:^3.0.0":
+  version: 3.2.0
+  resolution: "@airwallex/airtracker@npm:3.2.0"
+  checksum: 10c0/8b37da0ba84f5398fe59c9c1f623bd546557112a9395081e4c3e77f8c6935e93a20bfc9811918042c19081de7e69e3d18da02aa148f83dcf457bf3b886a8fda7
+  languageName: node
+  linkType: hard
+
+"@airwallex/components-sdk@npm:^1.28.3":
+  version: 1.28.3
+  resolution: "@airwallex/components-sdk@npm:1.28.3"
+  dependencies:
+    "@airwallex/airtracker": "npm:^3.0.0"
+  checksum: 10c0/f5dbba6138935028db0a6e5193c24c87ddc39af57691fd9df8b992b1ecda8dbddbe4de96a3cf88b2a97a06610d4ed069fb7f6e2992046e15b2af943096e469a4
+  languageName: node
+  linkType: hard
+
 "@antfu/install-pkg@npm:^1.1.0":
   version: 1.1.0
   resolution: "@antfu/install-pkg@npm:1.1.0"
@@ -7447,6 +7463,7 @@ __metadata:
   resolution: "@sciol/xyzen@workspace:."
   dependencies:
     "@ai-sdk/react": "npm:2.0.28"
+    "@airwallex/components-sdk": "npm:^1.28.3"
     "@ariakit/react": "npm:^0.4.20"
     "@dnd-kit/core": "npm:^6.3.1"
     "@dnd-kit/modifiers": "npm:^9.0.0"

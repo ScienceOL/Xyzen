@@ -16,8 +16,8 @@ import SandboxPanel from "@/components/layouts/SandboxPanel";
 import ScheduledTasksPanel from "@/components/layouts/ScheduledTasksPanel";
 import SkillsLibrary from "@/components/layouts/SkillsLibrary";
 
-import { PwaInstallPrompt } from "@/components/features/PwaInstallPrompt";
-import { PushPermissionPrompt } from "@/components/features/PushPermissionPrompt";
+import { usePwaInstallPrompt } from "@/components/features/PwaInstallPrompt";
+import { usePushPermissionPrompt } from "@/components/features/PushPermissionPrompt";
 import { SettingsModal } from "@/components/modals/SettingsModal";
 import { TerminalModal } from "@/components/modals/TerminalModal";
 
@@ -30,6 +30,8 @@ export interface AppFullscreenProps {
 export function AppFullscreen({
   backendUrl = DEFAULT_BACKEND_URL,
 }: AppFullscreenProps) {
+  usePushPermissionPrompt();
+  usePwaInstallPrompt();
   const { setBackendUrl, activePanel, setActivePanel } = useXyzen(
     useShallow((s) => ({
       setBackendUrl: s.setBackendUrl,
@@ -133,8 +135,6 @@ export function AppFullscreen({
 
       <SettingsModal />
       <TerminalModal />
-      <PwaInstallPrompt />
-      <PushPermissionPrompt />
     </>
   );
   return createPortal(fullscreenContent, document.body);

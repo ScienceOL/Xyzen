@@ -280,20 +280,14 @@ class SubscriptionService:
         payment_enabled = configs.Payment.Provider.lower() != "off"
         payment_methods: list[PaymentMethodInfo] = []
         if payment_enabled and configs.Payment.Airwallex.Enabled:
+            base_url = configs.Payment.Airwallex.BaseUrl
             payment_methods.append(
                 PaymentMethodInfo(
-                    key="alipaycn",
-                    flow_type="qrcode",
-                    currency="CNY",
-                    display_name_key="subscription.payment.alipay",
-                )
-            )
-            payment_methods.append(
-                PaymentMethodInfo(
-                    key="wechatpay",
-                    flow_type="qrcode",
-                    currency="CNY",
-                    display_name_key="subscription.payment.wechat",
+                    key="airwallex",
+                    flow_type="airwallex_dropin",
+                    currency="USD",
+                    display_name_key="subscription.payment.airwallex",
+                    sdk_config={"env": "demo" if "demo" in base_url else "prod"},
                 )
             )
         if payment_enabled and configs.Payment.PayPal.Enabled:

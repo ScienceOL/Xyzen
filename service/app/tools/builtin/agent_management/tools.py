@@ -9,6 +9,7 @@ from __future__ import annotations
 
 import json
 import logging
+from typing import Any
 from uuid import UUID
 
 from langchain_core.tools import BaseTool, StructuredTool
@@ -79,8 +80,9 @@ async def create_agent_management_tools_for_session(
         name="create_agent",
         description=(
             "Create a new agent for the user. For most cases, just provide a name "
-            "and prompt to create a standard ReAct agent. Optionally specify model "
-            "and tags. For advanced custom graphs, pass a full graph_config JSON "
+            "and prompt to create a standard ReAct agent. Prompt/model inputs are compiled "
+            "into canonical graph_config JSON. Optionally specify tags. For advanced custom "
+            "graphs, pass a full graph_config JSON "
             "(call get_agent_schema first to see the spec)."
         ),
         args_schema=CreateAgentInput,
@@ -247,6 +249,54 @@ def _parse_graph_config(graph_config: str) -> dict | None:
     return parsed
 
 
+def _find_main_llm_node(graph_config: dict[str, Any]) -> dict[str, Any] | None:
+    graph = graph_config.get("graph")
+    if not isinstance(graph, dict):
+        return None
+    nodes = graph.get("nodes")
+    if not isinstance(nodes, list):
+        return None
+
+    for node in nodes:
+        if isinstance(node, dict) and node.get("kind") == "llm" and node.get("id") == "agent":
+            return node
+    for node in nodes:
+        if isinstance(node, dict) and node.get("kind") == "llm":
+            return node
+    return None
+
+
+def _build_simple_react_graph_config(prompt: str, model: str) -> dict[str, Any]:
+    """Build canonical ReAct graph_config from simple create-agent inputs."""
+    from app.agents.builtin import get_builtin_config
+
+    builtin_config = get_builtin_config("react")
+    if not builtin_config:
+        raise ValueError("Default 'react' builtin agent not found.")
+
+    graph_config = builtin_config.model_dump()
+
+    # Keep prompt_config compact in user-facing JSON.
+    graph_config["prompt_config"] = {
+        "custom_instructions": prompt.strip(),
+    }
+
+    if not isinstance(graph_config.get("ui"), dict):
+        graph_config["ui"] = {}
+    graph_config["ui"]["builtin_key"] = "react"
+
+    if model.strip():
+        llm_node = _find_main_llm_node(graph_config)
+        if llm_node:
+            llm_config = llm_node.get("config")
+            if not isinstance(llm_config, dict):
+                llm_config = {}
+                llm_node["config"] = llm_config
+            llm_config["model_override"] = model.strip()
+
+    return graph_config
+
+
 async def _create_agent_impl(
     name: str,
     description: str,
@@ -268,6 +318,8 @@ async def _create_agent_impl(
     try:
         parsed_tags = _parse_tags(tags)
         parsed_graph_config = _parse_graph_config(graph_config)
+        if parsed_graph_config is None:
+            parsed_graph_config = _build_simple_react_graph_config(prompt=prompt, model=model)
     except ValueError as e:
         return json.dumps({"ok": False, "error": str(e)})
 
@@ -276,8 +328,9 @@ async def _create_agent_impl(
             scope=AgentScope.USER,
             name=name,
             description=description if description else None,
-            prompt=prompt if prompt else None,
-            model=model if model else None,
+            # Legacy simple fields are deprecated; graph_config is authoritative.
+            prompt=None,
+            model=None,
             tags=parsed_tags,
             graph_config=parsed_graph_config,
         )
@@ -351,6 +404,13 @@ async def _update_agent_impl(
                 return json.dumps(
                     {"ok": False, "error": "This agent's graph configuration is locked and cannot be edited."}
                 )
+            if prompt or model:
+                return json.dumps(
+                    {
+                        "ok": False,
+                        "error": "Top-level prompt/model updates are deprecated. Update graph_config JSON instead.",
+                    }
+                )
 
             # Build update dict with only provided (non-empty) fields
             update_kwargs: dict = {}
@@ -358,10 +418,6 @@ async def _update_agent_impl(
                 update_kwargs["name"] = name
             if description:
                 update_kwargs["description"] = description
-            if prompt:
-                update_kwargs["prompt"] = prompt
-            if model:
-                update_kwargs["model"] = model
             if parsed_tags is not None:
                 update_kwargs["tags"] = parsed_tags
             if parsed_graph_config is not None:

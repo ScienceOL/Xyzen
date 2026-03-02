@@ -77,8 +77,8 @@ export function useNotifications() {
           });
         }
       })
-      .catch(() => {
-        // Silently ignore — notifications are optional
+      .catch((err) => {
+        console.warn("[Notifications] Failed to fetch config:", err);
       });
   }, [token, setNotificationConfig, setPushPermission, setPushSubscribed]);
 

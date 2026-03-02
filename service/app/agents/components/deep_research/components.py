@@ -178,6 +178,7 @@ class ClarifyWithUserComponent(ExecutableComponent):
         logger.info("Building ClarifyWithUserComponent graph")
         cfg = config or {}
         system_prompt = cfg.get("system_prompt")
+        prompt_layers = cfg.get("prompt_layers")
 
         workflow: StateGraph[ClarifyState] = StateGraph(ClarifyState)
 
@@ -189,11 +190,19 @@ class ClarifyWithUserComponent(ExecutableComponent):
             messages_str = get_buffer_string(list(state.messages))
             date_str = get_today_str()
             node_prompt = CLARIFY_WITH_USER_PROMPT.format(messages=messages_str, date=date_str)
-            prompt = _compose_system_and_node_prompt(system_prompt, node_prompt)
 
             # Use function_calling method for structured output (works across all providers)
             llm_with_struct = llm.with_structured_output(ClarifyWithUser, method="function_calling")
-            response = await llm_with_struct.ainvoke([HumanMessage(content=prompt)])
+
+            if prompt_layers:
+                from app.agents.prompt_utils import layers_to_system_messages
+
+                system_msgs = layers_to_system_messages(prompt_layers.non_empty_layers())
+                llm_messages: list[Any] = list(system_msgs) + [HumanMessage(content=node_prompt)]
+                response = await llm_with_struct.ainvoke(llm_messages)
+            else:
+                prompt = _compose_system_and_node_prompt(system_prompt, node_prompt)
+                response = await llm_with_struct.ainvoke([HumanMessage(content=prompt)])
             result = response if isinstance(response, ClarifyWithUser) else ClarifyWithUser.model_validate(response)
 
             # Determine user-facing message
@@ -287,6 +296,7 @@ class ResearchBriefComponent(ExecutableComponent):
         logger.info("Building ResearchBriefComponent graph")
         cfg = config or {}
         system_prompt = cfg.get("system_prompt")
+        prompt_layers = cfg.get("prompt_layers")
 
         workflow: StateGraph[BriefState] = StateGraph(BriefState)
 
@@ -298,10 +308,17 @@ class ResearchBriefComponent(ExecutableComponent):
             messages_str = get_buffer_string(list(state.messages))
             date_str = get_today_str()
             node_prompt = RESEARCH_BRIEF_PROMPT.format(messages=messages_str, date=date_str)
-            prompt = _compose_system_and_node_prompt(system_prompt, node_prompt)
 
             # Invoke LLM
-            response = await llm.ainvoke([HumanMessage(content=prompt)])
+            if prompt_layers:
+                from app.agents.prompt_utils import layers_to_system_messages
+
+                system_msgs = layers_to_system_messages(prompt_layers.non_empty_layers())
+                llm_messages: list[Any] = list(system_msgs) + [HumanMessage(content=node_prompt)]
+                response = await llm.ainvoke(llm_messages)
+            else:
+                prompt = _compose_system_and_node_prompt(system_prompt, node_prompt)
+                response = await llm.ainvoke([HumanMessage(content=prompt)])
             brief = extract_text_from_content(response.content)
 
             logger.info(f"Generated research brief: {brief[:100]}...")
@@ -423,6 +440,7 @@ class ResearchSupervisorComponent(ExecutableComponent):
 
         cfg = config or {}
         system_prompt = cfg.get("system_prompt")
+        prompt_layers = cfg.get("prompt_layers")
         max_iterations = cfg.get("max_iterations", 6)
         max_concurrent_units = cfg.get("max_concurrent_units", 5)
 
@@ -471,10 +489,19 @@ class ResearchSupervisorComponent(ExecutableComponent):
                 max_researcher_iterations=max_iterations,
                 max_concurrent_research_units=max_concurrent_units,
             )
-            prompt = _compose_system_and_node_prompt(system_prompt, node_prompt)
 
             # Build messages - include system prompt and conversation
-            messages = [SystemMessage(content=prompt)] + list(state.messages)
+            if prompt_layers:
+                from app.agents.prompt_utils import layers_to_system_messages
+
+                system_msgs = layers_to_system_messages(
+                    prompt_layers.non_empty_layers(),
+                    node_prompt=node_prompt,
+                )
+                messages: list[Any] = list(system_msgs) + list(state.messages)
+            else:
+                prompt = _compose_system_and_node_prompt(system_prompt, node_prompt)
+                messages = [SystemMessage(content=prompt)] + list(state.messages)
 
             # Ensure messages don't end with an AIMessage
             # (some providers don't support assistant message prefill)
@@ -623,6 +650,7 @@ class FinalReportComponent(ExecutableComponent):
         logger.info("Building FinalReportComponent graph")
         cfg = config or {}
         system_prompt = cfg.get("system_prompt")
+        prompt_layers = cfg.get("prompt_layers")
 
         workflow: StateGraph[FinalReportState] = StateGraph(FinalReportState)
 
@@ -641,10 +669,17 @@ class FinalReportComponent(ExecutableComponent):
                 date=date_str,
                 findings=findings,
             )
-            prompt = _compose_system_and_node_prompt(system_prompt, node_prompt)
 
             # Invoke LLM
-            response = await llm.ainvoke([HumanMessage(content=prompt)])
+            if prompt_layers:
+                from app.agents.prompt_utils import layers_to_system_messages
+
+                system_msgs = layers_to_system_messages(prompt_layers.non_empty_layers())
+                llm_messages: list[Any] = list(system_msgs) + [HumanMessage(content=node_prompt)]
+                response = await llm.ainvoke(llm_messages)
+            else:
+                prompt = _compose_system_and_node_prompt(system_prompt, node_prompt)
+                response = await llm.ainvoke([HumanMessage(content=prompt)])
             report = extract_text_from_content(response.content)
 
             logger.info(f"Generated final report: {len(report)} characters")

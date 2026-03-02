@@ -9,8 +9,12 @@ Provides JSON-configurable prompt building with:
 
 from app.core.prompts.builder import (
     MemoryContext,
+    PromptLayer,
+    PromptLayerKind,
     SystemPromptBuildResult,
+    SystemPromptLayers,
     build_system_prompt,
+    build_system_prompt_layers,
     build_system_prompt_with_provenance,
     fetch_memory_context,
 )
@@ -22,7 +26,11 @@ from app.core.prompts.defaults import (
 
 __all__ = [
     "MemoryContext",
+    "PromptLayer",
+    "PromptLayerKind",
+    "SystemPromptLayers",
     "build_system_prompt",
+    "build_system_prompt_layers",
     "build_system_prompt_with_provenance",
     "fetch_memory_context",
     "SystemPromptBuildResult",

@@ -7,7 +7,7 @@ import RunnerPanel from "@/components/layouts/RunnerPanel";
 import SandboxPanel from "@/components/layouts/SandboxPanel";
 import ScheduledTasksPanel from "@/components/layouts/ScheduledTasksPanel";
 import SkillsLibrary from "@/components/layouts/SkillsLibrary";
-import { PushPermissionPrompt } from "@/components/features/PushPermissionPrompt";
+import { usePushPermissionPrompt } from "@/components/features/PushPermissionPrompt";
 import { SettingsModal } from "@/components/modals/SettingsModal";
 import { TerminalModal } from "@/components/modals/TerminalModal";
 import { useXyzen } from "@/store";
@@ -25,6 +25,7 @@ export function MobileApp({
   showAuthError = false,
   onRetryAuth,
 }: MobileAppProps) {
+  usePushPermissionPrompt();
   const { activePanel, setActivePanel } = useXyzen(
     useShallow((s) => ({
       activePanel: s.activePanel,
@@ -104,7 +105,6 @@ export function MobileApp({
 
       <SettingsModal />
       <TerminalModal />
-      <PushPermissionPrompt />
     </>
   );
 }

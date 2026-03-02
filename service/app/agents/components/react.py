@@ -139,6 +139,7 @@ class ReActComponent(ExecutableComponent):
         cfg = config or {}
         system_prompt = cfg.get("system_prompt", "You are a helpful assistant.")
         max_iterations = cfg.get("max_iterations", 200)
+        prompt_layers = cfg.get("prompt_layers")
 
         logger.info(f"Building ReActComponent graph with {len(tools)} tools")
 
@@ -175,8 +176,14 @@ class ReActComponent(ExecutableComponent):
                     ]
                 }
 
-            # Build messages with system prompt
-            messages = [SystemMessage(content=system_prompt)] + list(state["messages"])
+            # Build messages with system prompt (layered or flat)
+            if prompt_layers:
+                from app.agents.prompt_utils import layers_to_system_messages
+
+                system_msgs = layers_to_system_messages(prompt_layers.non_empty_layers())
+                messages = list(system_msgs) + list(state["messages"])
+            else:
+                messages = [SystemMessage(content=system_prompt)] + list(state["messages"])
 
             # Invoke LLM (using pre-created llm_with_tools)
             response = await llm_with_tools.ainvoke(messages)

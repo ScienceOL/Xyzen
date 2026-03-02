@@ -69,7 +69,10 @@
     "description": "No need to overthink — just chat with me",
     "badge": "CEO",
     "autoExplore": "Auto Explore",
-    "autoExploreHint": "Agent autonomously explores your interests"
+    "autoExploreHint": "Agent autonomously explores your interests",
+    "autoExploreEnabled": "Auto Explore enabled",
+    "autoExploreDisabled": "Auto Explore disabled",
+    "autoExploreFailed": "Failed to toggle Auto Explore"
   },
   "sessionSettings": {
     "title": "{{name}} Settings",

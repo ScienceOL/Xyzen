@@ -23,6 +23,7 @@ import {
   DOCK_SAFE_AREA,
 } from "@/components/layouts/BottomDock";
 import { MOBILE_BREAKPOINT } from "@/configs/common";
+import { SheetModal } from "@/components/animate-ui/components/animate/sheet-modal";
 
 // ── Helpers ──────────────────────────────────────────────────────────
 
@@ -148,15 +149,46 @@ const cardVariants = {
   back: { rotateY: 180, transition: { duration: 0.45, ease: easeOut } },
 };
 
+// ── Detail Row ──────────────────────────────────────────────────────
+
+function DetailRow({
+  label,
+  value,
+  highlight,
+}: {
+  label: string;
+  value: string;
+  highlight?: boolean;
+}) {
+  return (
+    <div className="flex items-baseline justify-between gap-1.5 min-w-0">
+      <span className="shrink-0 text-[9px] md:text-[10px] text-muted-foreground/40">
+        {label}
+      </span>
+      <span
+        className={`truncate text-right text-[9px] md:text-[10px] ${
+          highlight
+            ? "text-emerald-500 dark:text-emerald-400 font-medium"
+            : "text-foreground/60"
+        }`}
+      >
+        {value}
+      </span>
+    </div>
+  );
+}
+
 // ── Card ─────────────────────────────────────────────────────────────
 
 function TaskCard({
   task,
   onDelete,
+  onSelect,
   isDeleting,
 }: {
   task: ScheduledTask;
   onDelete: (task: ScheduledTask) => void;
+  onSelect: (task: ScheduledTask) => void;
   isDeleting: boolean;
 }) {
   const { t, i18n } = useTranslation();
@@ -192,7 +224,18 @@ function TaskCard({
   return (
     <div
       className="relative aspect-[3/4] perspective-1000 cursor-pointer"
-      onClick={() => isTouchDevice && setIsFlipped((f) => !f)}
+      onClick={() => {
+        if (isTouchDevice) {
+          // On touch: first tap flips, second tap (when flipped) opens detail
+          if (isFlipped) {
+            onSelect(task);
+          } else {
+            setIsFlipped(true);
+          }
+        } else {
+          onSelect(task);
+        }
+      }}
       onMouseEnter={() => !isTouchDevice && setIsFlipped(true)}
       onMouseLeave={() => !isTouchDevice && setIsFlipped(false)}
     >
@@ -334,7 +377,163 @@ function TaskCard({
   );
 }
 
-function DetailRow({
+// ── Task Detail Modal ────────────────────────────────────────────────
+
+function TaskDetailModal({
+  task,
+  isOpen,
+  onClose,
+  onDelete,
+  isDeleting,
+}: {
+  task: ScheduledTask;
+  isOpen: boolean;
+  onClose: () => void;
+  onDelete: (task: ScheduledTask) => void;
+  isDeleting: boolean;
+}) {
+  const { t, i18n } = useTranslation();
+  const resolveAgent = useXyzen((s) => s.resolveAgent);
+  const activateChannel = useXyzen((s) => s.activateChannel);
+  const activateChannelForAgent = useXyzen((s) => s.activateChannelForAgent);
+  const setActivePanel = useXyzen((s) => s.setActivePanel);
+
+  const agent = resolveAgent(task.agent_id);
+  const dot = STATUS_DOT[task.status] ?? STATUS_DOT.cancelled;
+  const lang = i18n.language;
+
+  const scheduleDesc =
+    task.schedule_type === "cron" && task.cron_expression
+      ? humanizeCron(task.cron_expression, lang)
+      : t(SCHEDULE_LABELS[task.schedule_type]);
+
+  const handleNavigate = async () => {
+    if (task.topic_id) {
+      await activateChannel(task.topic_id);
+    } else {
+      await activateChannelForAgent(task.agent_id);
+    }
+    setActivePanel("chat");
+    onClose();
+  };
+
+  return (
+    <SheetModal isOpen={isOpen} onClose={onClose} size="sm">
+      {/* Header */}
+      <div className="shrink-0 border-b border-neutral-200/60 px-5 pb-3 pt-5 dark:border-neutral-800/60">
+        <div className="flex items-center gap-2">
+          <span className={`size-[7px] rounded-full shrink-0 ${dot}`} />
+          <span className="text-[13px] font-medium text-foreground">
+            {getStatusLabel(task, t)}
+          </span>
+        </div>
+      </div>
+
+      {/* Scrollable content */}
+      <div className="custom-scrollbar flex-1 overflow-y-auto">
+        <div className="space-y-5 px-5 py-5">
+          {/* Prompt */}
+          <div>
+            <span className="text-xs text-muted-foreground/50 block mb-1.5">
+              {t("app.tasksPanel.prompt")}
+            </span>
+            <p className="text-[13px] leading-relaxed text-foreground/90 rounded-lg bg-neutral-100/60 dark:bg-white/[0.04] px-3 py-2.5">
+              {task.prompt}
+            </p>
+          </div>
+
+          {/* Run count */}
+          <div className="flex items-baseline gap-1">
+            <span className="text-2xl font-bold tabular-nums text-foreground">
+              {task.run_count}
+            </span>
+            {task.max_runs ? (
+              <span className="text-xs text-muted-foreground/40">
+                / {task.max_runs}
+              </span>
+            ) : null}
+            <span className="text-xs text-muted-foreground/50 ml-0.5">
+              {t("app.tasksPanel.runs")}
+            </span>
+          </div>
+
+          {/* Detail fields */}
+          <div className="space-y-3 rounded-lg bg-neutral-100/60 dark:bg-white/[0.04] px-3 py-3">
+            <ModalDetailRow
+              label={t("app.tasksPanel.scheduleType")}
+              value={scheduleDesc}
+            />
+            <ModalDetailRow
+              label={t("app.tasksPanel.timezone")}
+              value={task.timezone}
+            />
+            {task.status === "active" && (
+              <ModalDetailRow
+                label={t("app.tasksPanel.nextRun")}
+                value={formatShortTime(task.scheduled_at)}
+                highlight
+              />
+            )}
+            {task.last_run_at && (
+              <ModalDetailRow
+                label={t("app.tasksPanel.lastRun")}
+                value={formatShortTime(task.last_run_at)}
+              />
+            )}
+            <ModalDetailRow
+              label={t("app.tasksPanel.createdAt")}
+              value={formatShortTime(task.created_at)}
+            />
+            {agent && (
+              <ModalDetailRow
+                label={t("app.tasksPanel.agent")}
+                value={agent.name}
+              />
+            )}
+          </div>
+
+          {/* Error */}
+          {task.last_error && (
+            <div>
+              <span className="text-xs text-muted-foreground/50 block mb-1.5">
+                {t("app.tasksPanel.error")}
+              </span>
+              <p className="rounded-lg bg-red-50/80 dark:bg-red-950/30 px-3 py-2.5 text-[13px] leading-relaxed text-red-500 dark:text-red-400">
+                {task.last_error}
+              </p>
+            </div>
+          )}
+        </div>
+      </div>
+
+      {/* Footer */}
+      <div className="shrink-0 border-t border-neutral-200/60 px-5 py-4 dark:border-neutral-800/60">
+        <div className="flex items-center gap-2.5">
+          {agent && (
+            <button
+              onClick={() => void handleNavigate()}
+              className="flex items-center gap-1.5 rounded-lg bg-neutral-100/80 dark:bg-white/[0.06] px-3 py-1.5 text-[13px] text-foreground/80 hover:bg-neutral-200/80 dark:hover:bg-white/[0.1] transition-colors"
+            >
+              <ArrowTopRightOnSquareIcon className="size-3.5 opacity-60" />
+              {t("app.tasksPanel.goToChat")}
+            </button>
+          )}
+          <span className="flex-1" />
+          <button
+            onClick={() => onDelete(task)}
+            disabled={isDeleting}
+            className="flex items-center gap-1.5 rounded-lg px-3 py-1.5 text-[13px] text-red-500 dark:text-red-400 hover:bg-red-500/10 transition-colors disabled:opacity-40"
+          >
+            <TrashIcon className="size-3.5" />
+            {t("app.tasksPanel.deleteConfirmTitle")}
+          </button>
+        </div>
+      </div>
+    </SheetModal>
+  );
+}
+
+function ModalDetailRow({
   label,
   value,
   highlight,
@@ -344,15 +543,13 @@ function DetailRow({
   highlight?: boolean;
 }) {
   return (
-    <div className="flex items-baseline justify-between gap-1.5 min-w-0">
-      <span className="shrink-0 text-[9px] md:text-[10px] text-muted-foreground/40">
-        {label}
-      </span>
+    <div className="flex items-baseline justify-between gap-3 min-w-0">
+      <span className="shrink-0 text-xs text-muted-foreground/50">{label}</span>
       <span
-        className={`truncate text-right text-[9px] md:text-[10px] ${
+        className={`truncate text-right text-[13px] ${
           highlight
             ? "text-emerald-500 dark:text-emerald-400 font-medium"
-            : "text-foreground/60"
+            : "text-foreground/80"
         }`}
       >
         {value}
@@ -369,6 +566,7 @@ export default function ScheduledTasksPanel() {
   const { data: tasks, isLoading, error } = useScheduledTasks();
   const cancelMutation = useCancelScheduledTask();
 
+  const [selectedTask, setSelectedTask] = useState<ScheduledTask | null>(null);
   const [deleteTarget, setDeleteTarget] = useState<ScheduledTask | null>(null);
 
   const handleRefresh = useCallback(() => {
@@ -382,12 +580,15 @@ export default function ScheduledTasksPanel() {
     try {
       await cancelMutation.mutateAsync(deleteTarget.id);
       toast.success(t("app.tasksPanel.deleted"));
+      if (selectedTask?.id === deleteTarget.id) {
+        setSelectedTask(null);
+      }
     } catch {
       toast.error(t("app.tasksPanel.deleteError"));
     } finally {
       setDeleteTarget(null);
     }
-  }, [deleteTarget, cancelMutation, t]);
+  }, [deleteTarget, cancelMutation, t, selectedTask]);
 
   const isDesktop =
     typeof window !== "undefined" && window.innerWidth >= MOBILE_BREAKPOINT;
@@ -459,6 +660,7 @@ export default function ScheduledTasksPanel() {
                 <TaskCard
                   key={task.id}
                   task={task}
+                  onSelect={setSelectedTask}
                   onDelete={setDeleteTarget}
                   isDeleting={
                     cancelMutation.isPending &&
@@ -470,6 +672,20 @@ export default function ScheduledTasksPanel() {
           )}
         </div>
       </div>
+
+      {/* Detail modal */}
+      {selectedTask && (
+        <TaskDetailModal
+          task={selectedTask}
+          isOpen={!!selectedTask}
+          onClose={() => setSelectedTask(null)}
+          onDelete={setDeleteTarget}
+          isDeleting={
+            cancelMutation.isPending &&
+            cancelMutation.variables === selectedTask.id
+          }
+        />
+      )}
 
       {/* Confirmation modal */}
       <ConfirmationModal

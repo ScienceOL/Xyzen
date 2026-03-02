@@ -43,6 +43,8 @@ if TYPE_CHECKING:
     from langgraph.checkpoint.base import BaseCheckpointSaver
     from langgraph.store.base import BaseStore
 
+    from app.core.prompts.builder import SystemPromptLayers
+
 
 _PREDICATE_OPERATOR_MAP: dict[PredicateOperator, ConditionOperator] = {
     PredicateOperator.EQUALS: ConditionOperator.EQUALS,
@@ -62,6 +64,8 @@ class GraphCompiler:
         tool_registry: dict[str, "BaseTool"],
         store: "BaseStore | None" = None,
         checkpointer: "BaseCheckpointSaver | None" = None,
+        prompt_layers: "SystemPromptLayers | None" = None,
+        node_prompts: dict[str, str] | None = None,
     ) -> None:
         canonical = canonicalize_graph_config(config)
         ensure_valid_graph_config(canonical)
@@ -73,6 +77,8 @@ class GraphCompiler:
             tool_registry=tool_registry,
             store=store,
             checkpointer=checkpointer,
+            prompt_layers=prompt_layers,
+            node_prompts=node_prompts,
         )
 
     async def build(self) -> DynamicCompiledGraph:

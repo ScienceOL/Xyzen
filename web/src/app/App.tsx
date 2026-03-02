@@ -18,6 +18,7 @@ import { useWalletSync } from "@/hooks/useWalletSync";
 import { authService } from "@/service/authService";
 import { LAYOUT_STYLE, type InputPosition } from "@/store/slices/uiSlice/types";
 import { buildAuthorizeUrl } from "@/utils/authFlow";
+import { Toaster } from "@/components/ui/sonner";
 import { AppFullscreen } from "./AppFullscreen";
 import { AppSide } from "./AppSide";
 import { AuthLoadingScreen } from "./AuthLoadingScreen";
@@ -36,6 +37,12 @@ const TermsPage = React.lazy(() =>
 
 const PrivacyPage = React.lazy(() =>
   import("@/app/legal/PrivacyPage").then((m) => ({ default: m.PrivacyPage })),
+);
+
+const CheckoutPage = React.lazy(() =>
+  import("@/app/checkout/CheckoutPage").then((m) => ({
+    default: m.CheckoutPage,
+  })),
 );
 
 // Handle relink callback in popup - check at module level
@@ -454,6 +461,15 @@ export function Xyzen({
       </Suspense>
     );
   }
+  if (currentHash === "#/checkout") {
+    return (
+      <QueryClientProvider client={queryClient}>
+        <Suspense>
+          <CheckoutPage />
+        </Suspense>
+      </QueryClientProvider>
+    );
+  }
 
   // Shared chat page — no auth required, highest priority
   if (sharedChatToken) {
@@ -526,6 +542,7 @@ export function Xyzen({
   return (
     <QueryClientProvider client={queryClient}>
       {gatedContent}
+      <Toaster position="top-right" />
     </QueryClientProvider>
   );
 }

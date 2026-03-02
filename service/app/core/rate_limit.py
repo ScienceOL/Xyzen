@@ -5,7 +5,7 @@ import time
 import uuid
 from dataclasses import dataclass
 
-from fastapi import Depends, HTTPException, status
+from fastapi import Depends, HTTPException, Request, status
 
 from app.infra.redis import get_redis_client
 from app.middleware.auth import get_current_user
@@ -54,6 +54,8 @@ class RateLimitConfig:
 
 UPLOAD_RATE_LIMIT = RateLimitConfig(max_requests=30, window_seconds=60)
 DOWNLOAD_RATE_LIMIT = RateLimitConfig(max_requests=60, window_seconds=60)
+REDEEM_RATE_LIMIT = RateLimitConfig(max_requests=10, window_seconds=60)
+ADMIN_AUTH_RATE_LIMIT = RateLimitConfig(max_requests=10, window_seconds=60)
 
 
 async def _check_rate_limit(action: str, user_id: str, config: RateLimitConfig) -> None:
@@ -99,3 +101,19 @@ async def enforce_download_rate_limit(
     """FastAPI dependency that enforces download rate limiting. Returns user_id."""
     await _check_rate_limit("download", user_id, DOWNLOAD_RATE_LIMIT)
     return user_id
+
+
+async def enforce_redeem_rate_limit(
+    user_id: str = Depends(get_current_user),
+) -> str:
+    """FastAPI dependency that enforces redeem rate limiting. Returns user_id."""
+    await _check_rate_limit("redeem", user_id, REDEEM_RATE_LIMIT)
+    return user_id
+
+
+async def enforce_admin_rate_limit(
+    request: Request,
+) -> None:
+    """FastAPI dependency that enforces admin endpoint rate limiting by IP."""
+    client_ip = request.client.host if request.client else "unknown"
+    await _check_rate_limit("admin_auth", client_ip, ADMIN_AUTH_RATE_LIMIT)

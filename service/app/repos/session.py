@@ -158,10 +158,12 @@ class SessionRepository:
                 )
                 session.model = None
 
-        # Handle explicit null for knowledge_set_id (to allow clearing it)
+        # Handle explicit null for nullable fields (to allow clearing them)
         # This must be done before exclude_none filtering removes it
         if "knowledge_set_id" in update_data and update_data["knowledge_set_id"] is None:
             session.knowledge_set_id = None
+        if "sandbox_backend" in update_data and update_data["sandbox_backend"] is None:
+            session.sandbox_backend = None
 
         # Only update fields that are not None to avoid null constraint violations
         # But we already handled model clearing above for tier changes

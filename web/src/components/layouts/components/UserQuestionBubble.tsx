@@ -2,10 +2,10 @@ import { Input } from "@/components/base/Input";
 import Markdown from "@/lib/Markdown";
 import { useXyzen } from "@/store";
 import type { UserQuestion } from "@/store/types";
-import { CheckIcon, ClockIcon } from "@heroicons/react/24/outline";
+import { CheckIcon } from "@heroicons/react/24/outline";
 import { PencilIcon } from "@heroicons/react/24/outline";
 import clsx from "clsx";
-import { memo, useCallback, useEffect, useMemo, useRef, useState } from "react";
+import { memo, useCallback, useMemo, useState } from "react";
 import { useTranslation } from "react-i18next";
 import { useShallow } from "zustand/react/shallow";
 
@@ -29,7 +29,6 @@ function UserQuestionBubble({ userQuestion }: UserQuestionBubbleProps) {
   const [textInput, setTextInput] = useState(userQuestion.userText || "");
   const [focusedOptionId, setFocusedOptionId] = useState<string | null>(null);
   const [submitted, setSubmitted] = useState(userQuestion.status !== "pending");
-  const timerRef = useRef<ReturnType<typeof setInterval> | null>(null);
 
   const { respondToQuestion, activeChatChannel } = useXyzen(
     useShallow((s) => ({
@@ -37,41 +36,6 @@ function UserQuestionBubble({ userQuestion }: UserQuestionBubbleProps) {
       activeChatChannel: s.activeChatChannel,
     })),
   );
-
-  const [remainingSeconds, setRemainingSeconds] = useState(() => {
-    if (userQuestion.status !== "pending") return 0;
-    const elapsed = Math.floor((Date.now() - userQuestion.askedAt) / 1000);
-    return Math.max(0, userQuestion.timeoutSeconds - elapsed);
-  });
-
-  useEffect(() => {
-    if (userQuestion.status !== "pending" || remainingSeconds <= 0) return;
-
-    timerRef.current = setInterval(() => {
-      setRemainingSeconds((prev) => {
-        if (prev <= 1) {
-          if (timerRef.current) clearInterval(timerRef.current);
-          return 0;
-        }
-        return prev - 1;
-      });
-    }, 1000);
-
-    return () => {
-      if (timerRef.current) clearInterval(timerRef.current);
-    };
-  }, [userQuestion.status, remainingSeconds]);
-
-  useEffect(() => {
-    if (
-      remainingSeconds === 0 &&
-      userQuestion.status === "pending" &&
-      !submitted
-    ) {
-      handleSubmit(true);
-    }
-    // eslint-disable-next-line react-hooks/exhaustive-deps
-  }, [remainingSeconds]);
 
   const handleOptionClick = useCallback(
     (optionId: string) => {
@@ -102,33 +66,22 @@ function UserQuestionBubble({ userQuestion }: UserQuestionBubbleProps) {
     }
   }, [isMultiSelect]);
 
-  const handleSubmit = useCallback(
-    (timedOut = false) => {
-      if (submitted || !activeChatChannel) return;
-      setSubmitted(true);
-      if (timerRef.current) clearInterval(timerRef.current);
+  const handleSubmit = useCallback(() => {
+    if (submitted || !activeChatChannel) return;
+    setSubmitted(true);
 
-      respondToQuestion(activeChatChannel, userQuestion.questionId, {
-        selectedOptions: selectedIds.length > 0 ? selectedIds : undefined,
-        text: textInput || undefined,
-        timedOut,
-      });
-    },
-    [
-      submitted,
-      activeChatChannel,
-      respondToQuestion,
-      userQuestion.questionId,
-      selectedIds,
-      textInput,
-    ],
-  );
-
-  const formattedTime = useMemo(() => {
-    const mins = Math.floor(remainingSeconds / 60);
-    const secs = remainingSeconds % 60;
-    return `${mins}:${secs.toString().padStart(2, "0")}`;
-  }, [remainingSeconds]);
+    respondToQuestion(activeChatChannel, userQuestion.questionId, {
+      selectedOptions: selectedIds.length > 0 ? selectedIds : undefined,
+      text: textInput || undefined,
+    });
+  }, [
+    submitted,
+    activeChatChannel,
+    respondToQuestion,
+    userQuestion.questionId,
+    selectedIds,
+    textInput,
+  ]);
 
   const focusedMarkdown = focusedOptionId
     ? userQuestion.options?.find((o) => o.id === focusedOptionId)?.markdown
@@ -259,13 +212,7 @@ function UserQuestionBubble({ userQuestion }: UserQuestionBubbleProps) {
       )}
 
       {/* Footer */}
-      <div className="flex items-center justify-between">
-        <div className="flex items-center gap-1.5">
-          <ClockIcon className="h-3.5 w-3.5 text-neutral-300 dark:text-neutral-600" />
-          <span className="text-xs text-neutral-400 dark:text-neutral-500">
-            {t("app.question.remaining", { time: formattedTime })}
-          </span>
-        </div>
+      <div className="flex items-center justify-end">
         <button
           type="button"
           onClick={() => handleSubmit()}

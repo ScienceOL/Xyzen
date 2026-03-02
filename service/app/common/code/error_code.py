@@ -290,7 +290,7 @@ def handle_auth_error(error: ErrCodeError) -> HTTPException:
         # 402 errors
         ErrCode.INSUFFICIENT_BALANCE: 402,
         # 404 errors (redemption)
-        ErrCode.REDEMPTION_CODE_NOT_FOUND: 404,
+        ErrCode.REDEMPTION_CODE_NOT_FOUND: 400,
         # 400 errors (redemption)
         ErrCode.REDEMPTION_CODE_INACTIVE: 400,
         ErrCode.REDEMPTION_CODE_EXPIRED: 400,

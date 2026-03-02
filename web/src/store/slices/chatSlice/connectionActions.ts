@@ -647,7 +647,6 @@ export function createConnectionActions(
           question_id: questionId,
           selected_options: response.selectedOptions,
           text: response.text || "",
-          timed_out: response.timedOut || false,
         },
       });
 
@@ -660,9 +659,7 @@ export function createConnectionActions(
           (m) => m.userQuestion?.questionId === questionId,
         );
         if (msg?.userQuestion) {
-          msg.userQuestion.status = response.timedOut
-            ? "timed_out"
-            : "answered";
+          msg.userQuestion.status = "answered";
           msg.userQuestion.selectedOptions = response.selectedOptions;
           msg.userQuestion.userText = response.text;
           msg.status = "pending";

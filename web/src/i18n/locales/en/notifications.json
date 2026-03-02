@@ -23,5 +23,13 @@
     "deleteAllConfirm": "This will permanently delete all archived notifications.",
     "confirmDelete": "Delete"
   },
-  "empty": "No notifications yet"
+  "empty": "No notifications yet",
+  "system": {
+    "title": "System",
+    "dismiss": "Dismiss",
+    "pwa": {
+      "title": "Install App",
+      "body": "Click the install icon in your address bar for a better experience."
+    }
+  }
 }

@@ -25,7 +25,9 @@
     "terminal": "{{count}} 终端",
     "scheduledTaskNone": "—",
     "firstMonth": "首月 {{price}}",
-    "bestValue": "最划算"
+    "bestValue": "最划算",
+    "currentPlan": "当前方案",
+    "hasHigherPlan": "已有更高级方案"
   },
 
   "feature": {
@@ -108,7 +110,13 @@
     "close": "关闭",
     "alipay": "支付宝",
     "wechat": "微信支付",
-    "paypal": "PayPal / 信用卡"
+    "card": "信用卡 / 借记卡",
+    "airwallex": "Airwallex",
+    "paypal": "PayPal / 信用卡",
+    "orderSummary": "订单详情",
+    "agreeTerms": "我已阅读并同意<terms>服务协议</terms>和<refund>退款政策</refund>",
+    "agreeRequired": "请先同意服务协议",
+    "backToPlans": "返回"
   },
 
   "creator": "创作者",

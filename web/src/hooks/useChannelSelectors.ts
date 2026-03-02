@@ -31,6 +31,7 @@ export function useActiveChannelStatus() {
         model_tier: ch?.model_tier ?? null,
         model: ch?.model ?? null,
         knowledge_set_id: ch?.knowledge_set_id ?? null,
+        sandbox_backend: ch?.sandbox_backend ?? null,
         provider_id: ch?.provider_id ?? null,
         title: ch?.title ?? "",
         tokenUsage: ch?.tokenUsage ?? 0,

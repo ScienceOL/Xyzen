@@ -69,7 +69,10 @@
     "description": "難しいことは気にせず、気軽に話しかけてね",
     "badge": "CEO",
     "autoExplore": "自動探索",
-    "autoExploreHint": "エージェントがあなたの興味を自動的に探索します"
+    "autoExploreHint": "エージェントがあなたの興味を自動的に探索します",
+    "autoExploreEnabled": "自動探索を有効にしました",
+    "autoExploreDisabled": "自動探索を無効にしました",
+    "autoExploreFailed": "自動探索の切り替えに失敗しました"
   },
   "sessionSettings": {
     "title": "{{name}} 設定",

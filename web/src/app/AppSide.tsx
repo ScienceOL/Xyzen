@@ -13,7 +13,7 @@ import SkillsLibrary from "@/components/layouts/SkillsLibrary";
 import XyzenAgent from "@/components/layouts/XyzenAgent";
 import XyzenChat from "@/components/layouts/XyzenChat";
 import { Capsule } from "@/components/capsule";
-import { PushPermissionPrompt } from "@/components/features/PushPermissionPrompt";
+import { usePushPermissionPrompt } from "@/components/features/PushPermissionPrompt";
 import { SettingsModal } from "@/components/modals/SettingsModal";
 import { TerminalModal } from "@/components/modals/TerminalModal";
 import { DEFAULT_BACKEND_URL } from "@/configs";
@@ -37,6 +37,7 @@ export function AppSide({
   showAuthError = false,
   onRetryAuth,
 }: AppSideProps) {
+  usePushPermissionPrompt();
   const { t } = useTranslation();
   const {
     isXyzenOpen,
@@ -408,7 +409,6 @@ export function AppSide({
 
       <SettingsModal />
       <TerminalModal />
-      <PushPermissionPrompt />
     </>
   );
 }

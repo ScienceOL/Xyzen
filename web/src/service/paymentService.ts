@@ -8,9 +8,11 @@ export interface CheckoutRequest {
 export interface CheckoutResponse {
   order_id: string;
   provider_order_id: string;
-  flow_type: "paypal_sdk" | "qrcode";
+  flow_type: "paypal_sdk" | "qrcode" | "airwallex_dropin";
   qr_code_url: string;
   approval_url: string;
+  client_secret: string;
+  intent_id: string;
   amount: number;
   currency: string;
 }

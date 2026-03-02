@@ -86,6 +86,11 @@ class SessionBase(SQLModel):
         max_length=500,
         description="Session-specific avatar URL or DiceBear seed (e.g., 'dicebear:adventurer:seed123' or full URL)",
     )
+    sandbox_backend: str | None = Field(
+        default=None,
+        max_length=100,
+        description="Per-session sandbox target. Prefixed: 'runner:{id}', 'sandbox:{session_id}', or None for auto-detect.",
+    )
     spatial_layout: dict[str, Any] | None = Field(
         default=None,
         sa_column=Column(JSON, nullable=True),
@@ -124,6 +129,7 @@ class SessionCreate(SQLModel):
     model: str | None = None
     model_tier: ModelTier | None = None
     knowledge_set_id: UUID | None = None
+    sandbox_backend: str | None = None
     avatar: str | None = None
     spatial_layout: dict[str, Any] | None = None
 
@@ -149,5 +155,6 @@ class SessionUpdate(SQLModel):
     model: str | None = None
     model_tier: ModelTier | None = None
     knowledge_set_id: UUID | None = None
+    sandbox_backend: str | None = None
     avatar: str | None = None
     spatial_layout: dict[str, Any] | None = None

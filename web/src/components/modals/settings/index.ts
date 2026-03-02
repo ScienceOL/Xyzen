@@ -3,6 +3,7 @@ export * from "./AccountSettings";
 export * from "./FeedbackSettings";
 export * from "./LanguageSettings";
 export * from "./McpSettings";
+export * from "./PreferencesSettings";
 export * from "./RedemptionSettings";
 export * from "./RegionSettings";
 export * from "./StyleSettings";

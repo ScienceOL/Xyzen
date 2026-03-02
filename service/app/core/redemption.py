@@ -71,9 +71,9 @@ class RedemptionService:
             expires_at: Expiration time (None means no expiration)
             description: Code description or notes
             is_active: Whether the code is active
-            code_type: Code type ('credits' or 'subscription')
+            code_type: Code type ('credits', 'subscription', or 'full_access')
             role_name: Target subscription role name (required for subscription codes)
-            duration_days: Subscription duration in days (for subscription codes)
+            duration_days: Duration in days (for subscription and full_access codes)
 
         Returns:
             Created redemption code
@@ -84,8 +84,10 @@ class RedemptionService:
         logger.info(f"Creating redemption code with amount: {amount}, max_usage: {max_usage}, type: {code_type}")
 
         # Validate code_type
-        if code_type not in ("credits", "subscription"):
-            raise ErrCode.INVALID_PARAMETER.with_messages("code_type must be 'credits' or 'subscription'")
+        if code_type not in ("credits", "subscription", "full_access"):
+            raise ErrCode.INVALID_PARAMETER.with_messages(
+                "code_type must be 'credits', 'subscription', or 'full_access'"
+            )
 
         # Validate subscription-specific fields
         if code_type == "subscription":
@@ -93,6 +95,11 @@ class RedemptionService:
                 raise ErrCode.INVALID_PARAMETER.with_messages("role_name is required for subscription codes")
             if duration_days <= 0:
                 raise ErrCode.INVALID_PARAMETER.with_messages("duration_days must be positive")
+
+        # Validate full_access-specific fields
+        if code_type == "full_access":
+            if duration_days <= 0:
+                raise ErrCode.INVALID_PARAMETER.with_messages("duration_days must be positive for full_access codes")
 
         # Generate code if not provided
         if code is None:
@@ -107,6 +114,9 @@ class RedemptionService:
             else:
                 raise ErrCode.UNKNOWN_ERROR.with_messages("Failed to generate unique redemption code")
         else:
+            # Enforce minimum length to prevent brute-force guessing
+            if len(code) < 8:
+                raise ErrCode.INVALID_PARAMETER.with_messages("Custom code must be at least 8 characters long")
             # Check if custom code already exists
             existing = await self.repo.get_redemption_code_by_code(code)
             if existing is not None:
@@ -158,24 +168,27 @@ class RedemptionService:
         """
         logger.info(f"User {user_id} attempting to redeem code: {code}")
 
+        # Use a generic message for all validation failures to prevent enumeration
+        _generic_fail_msg = "Invalid or expired redemption code"
+
         # Get redemption code
         redemption_code = await self.repo.get_redemption_code_by_code(code)
         if redemption_code is None:
-            raise ErrCode.REDEMPTION_CODE_NOT_FOUND.with_messages(f"Code '{code}' not found")
+            raise ErrCode.REDEMPTION_CODE_NOT_FOUND.with_messages(_generic_fail_msg)
 
         # Check if code is active
         if not redemption_code.is_active:
-            raise ErrCode.REDEMPTION_CODE_INACTIVE.with_messages(f"Code '{code}' is not active")
+            raise ErrCode.REDEMPTION_CODE_NOT_FOUND.with_messages(_generic_fail_msg)
 
         # Check if code has expired
         if redemption_code.expires_at is not None:
             now = datetime.now(timezone.utc)
             if now > redemption_code.expires_at:
-                raise ErrCode.REDEMPTION_CODE_EXPIRED.with_messages(f"Code '{code}' has expired")
+                raise ErrCode.REDEMPTION_CODE_NOT_FOUND.with_messages(_generic_fail_msg)
 
         # Check if code has reached max usage
         if redemption_code.current_usage >= redemption_code.max_usage:
-            raise ErrCode.REDEMPTION_CODE_MAX_USAGE.with_messages(f"Code '{code}' has reached maximum usage")
+            raise ErrCode.REDEMPTION_CODE_NOT_FOUND.with_messages(_generic_fail_msg)
 
         # Check if user has already redeemed this code
         has_redeemed = await self.repo.check_user_redeemed_code(user_id, redemption_code.id)
@@ -221,6 +234,25 @@ class RedemptionService:
             logger.info(
                 f"User {user_id} subscription upgraded to {redemption_code.role_name} "
                 f"for {redemption_code.duration_days} days via code {code}"
+            )
+        elif redemption_code.code_type == "full_access":
+            # Full access code: extend full model-access pass
+            from app.repos.subscription import SubscriptionRepository
+
+            sub_repo = SubscriptionRepository(self.db)
+            await sub_repo.extend_full_model_access(user_id, redemption_code.duration_days)
+
+            # Record history (amount=0 for full_access codes)
+            wallet = await self.repo.get_or_create_user_wallet(user_id)
+            history_data = RedemptionHistoryCreate(
+                code_id=redemption_code.id,
+                user_id=user_id,
+                amount=0,
+            )
+            history = await self.repo.create_redemption_history(history_data)
+            await self.repo.increment_code_usage(redemption_code.id)
+            logger.info(
+                f"User {user_id} granted full model access for {redemption_code.duration_days} days via code {code}"
             )
         else:
             # Credits code: credit to paid balance

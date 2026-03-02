@@ -35,10 +35,78 @@ import {
   Undo2,
   X,
 } from "lucide-react";
-import React, { useCallback, useEffect, useRef, useState } from "react";
+import React, {
+  useCallback,
+  useEffect,
+  useMemo,
+  useRef,
+  useState,
+} from "react";
 import { createPortal } from "react-dom";
 import { useTranslation } from "react-i18next";
 import { useShallow } from "zustand/react/shallow";
+
+// ---------------------------------------------------------------------------
+// System (local) notifications — client-side prompts that persist in the
+// notification drawer until dismissed (e.g. PWA install, push permission).
+// ---------------------------------------------------------------------------
+
+interface SystemNotificationDef {
+  id: string;
+  titleKey: string;
+  bodyKey: string;
+  icon: React.ReactNode;
+  dismissStorageKey: string;
+  /** Return `true` when this notification should be active. */
+  condition: () => boolean;
+}
+
+const SYSTEM_NOTIFICATION_DEFS: Omit<SystemNotificationDef, "icon">[] = [
+  {
+    id: "pwa-install",
+    titleKey: "notifications.system.pwa.title",
+    bodyKey: "notifications.system.pwa.body",
+    dismissStorageKey: "xyzen-pwa-prompt-dismissed",
+    condition: () => {
+      const isStandalone = window.matchMedia(
+        "(display-mode: standalone)",
+      ).matches;
+      const isDesktop = window.matchMedia("(min-width: 1024px)").matches;
+      return isDesktop && !isStandalone;
+    },
+  },
+];
+
+function useSystemNotifications() {
+  const { t } = useTranslation();
+  const [dismissed, setDismissed] = useState<Set<string>>(() => {
+    const s = new Set<string>();
+    for (const def of SYSTEM_NOTIFICATION_DEFS) {
+      if (localStorage.getItem(def.dismissStorageKey)) s.add(def.id);
+    }
+    return s;
+  });
+
+  const notifications = useMemo(
+    () =>
+      SYSTEM_NOTIFICATION_DEFS.filter(
+        (d) => !dismissed.has(d.id) && d.condition(),
+      ).map((d) => ({
+        id: d.id,
+        title: t(d.titleKey),
+        body: t(d.bodyKey),
+      })),
+    [t, dismissed],
+  );
+
+  const dismiss = useCallback((id: string) => {
+    const def = SYSTEM_NOTIFICATION_DEFS.find((d) => d.id === id);
+    if (def) localStorage.setItem(def.dismissStorageKey, "true");
+    setDismissed((prev) => new Set(prev).add(id));
+  }, []);
+
+  return { notifications, dismiss, count: notifications.length };
+}
 
 // ---------------------------------------------------------------------------
 // Filter tabs
@@ -107,17 +175,67 @@ function parseNotificationBody(raw: string): ParsedNotification {
 }
 
 // ---------------------------------------------------------------------------
+// System notification section — rendered at top of drawer
+// ---------------------------------------------------------------------------
+
+function SystemNotificationSection({
+  items,
+  onDismiss,
+}: {
+  items: { id: string; title: string; body: string }[];
+  onDismiss: (id: string) => void;
+}) {
+  const { t } = useTranslation();
+  if (items.length === 0) return null;
+
+  return (
+    <div className="border-b border-neutral-100 dark:border-neutral-800/60">
+      <div className="px-4 pt-2 pb-1">
+        <span className="text-[11px] font-semibold uppercase tracking-wide text-neutral-400 dark:text-neutral-500">
+          {t("notifications.system.title")}
+        </span>
+      </div>
+      {items.map((item) => (
+        <div
+          key={item.id}
+          className="group flex gap-3 px-4 py-3 bg-amber-50/40 dark:bg-amber-950/10"
+        >
+          <div className="flex h-9 w-9 flex-shrink-0 items-center justify-center rounded-full bg-amber-100 text-amber-600 dark:bg-amber-500/10 dark:text-amber-400">
+            <BellIcon className="h-4.5 w-4.5" />
+          </div>
+          <div className="min-w-0 flex-1">
+            <p className="text-[13px] font-semibold text-neutral-900 dark:text-neutral-100">
+              {item.title}
+            </p>
+            <p className="mt-0.5 text-[13px] leading-snug text-neutral-500 dark:text-neutral-400">
+              {item.body}
+            </p>
+          </div>
+          <button
+            onClick={() => onDismiss(item.id)}
+            className="flex-shrink-0 self-start rounded-md p-1.5 text-neutral-400 transition-colors hover:bg-neutral-200/70 hover:text-neutral-600 dark:hover:bg-neutral-700/50 dark:hover:text-neutral-300"
+            title={t("notifications.system.dismiss")}
+          >
+            <X className="h-3.5 w-3.5" />
+          </button>
+        </div>
+      ))}
+    </div>
+  );
+}
+
+// ---------------------------------------------------------------------------
 // Unread badge (inside NovuProvider)
 // ---------------------------------------------------------------------------
 
-function UnreadBadge() {
+function UnreadBadge({ systemCount = 0 }: { systemCount?: number }) {
   const { counts } = useCounts({ filters: [{ read: false }] });
-  const unread = counts?.[0]?.count ?? 0;
-  if (unread === 0) return null;
+  const total = (counts?.[0]?.count ?? 0) + systemCount;
+  if (total === 0) return null;
 
   return (
     <span className="absolute -top-1 -right-1 flex h-4 min-w-4 items-center justify-center rounded-full bg-red-500 px-1 text-[10px] font-bold text-white shadow-sm">
-      {unread > 99 ? "99+" : unread}
+      {total > 99 ? "99+" : total}
     </span>
   );
 }
@@ -526,6 +644,7 @@ function NotificationList({
 function NotificationUI() {
   const { t } = useTranslation();
   const isMobile = useIsMobile();
+  const system = useSystemNotifications();
   const {
     activateChannel,
     setActivePanel,
@@ -602,7 +721,7 @@ function NotificationUI() {
           className="relative flex items-center justify-center h-7 w-7 text-neutral-500 dark:text-neutral-400 hover:text-neutral-700 dark:hover:text-neutral-200 transition-colors"
         >
           <BellIcon className="h-4.5 w-4.5" />
-          <UnreadBadge />
+          <UnreadBadge systemCount={system.count} />
         </motion.button>
 
         {/* Tooltip (desktop only) */}
@@ -643,6 +762,10 @@ function NotificationUI() {
                 <X className="h-5 w-5" />
               </button>
             </div>
+            <SystemNotificationSection
+              items={system.notifications}
+              onDismiss={system.dismiss}
+            />
             <NotificationList onNavigate={handleNavigate} />
           </div>
         </SheetModal>
@@ -695,6 +818,10 @@ function NotificationUI() {
                         <X className="h-5 w-5" />
                       </button>
                     </div>
+                    <SystemNotificationSection
+                      items={system.notifications}
+                      onDismiss={system.dismiss}
+                    />
                     <NotificationList onNavigate={handleNavigate} />
                   </div>
                 </motion.div>

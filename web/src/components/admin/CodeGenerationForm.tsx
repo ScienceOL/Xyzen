@@ -20,9 +20,9 @@ export function CodeGenerationForm({
   adminSecret,
   onCodeGenerated,
 }: CodeGenerationFormProps) {
-  const [codeType, setCodeType] = useState<"credits" | "subscription">(
-    "credits",
-  );
+  const [codeType, setCodeType] = useState<
+    "credits" | "subscription" | "full_access"
+  >("credits");
   const [amount, setAmount] = useState("10000");
   const [maxUsage, setMaxUsage] = useState("1");
   const [customCode, setCustomCode] = useState("");
@@ -31,6 +31,7 @@ export function CodeGenerationForm({
   const [isActive, setIsActive] = useState(true);
   const [roleName, setRoleName] = useState("");
   const [durationDays, setDurationDays] = useState("30");
+  const [fullAccessDays, setFullAccessDays] = useState("30");
   const [plans, setPlans] = useState<Plan[]>([]);
   const [error, setError] = useState<string | null>(null);
   const [success, setSuccess] = useState<string | null>(null);
@@ -75,6 +76,14 @@ export function CodeGenerationForm({
       return;
     }
 
+    if (
+      codeType === "full_access" &&
+      (!fullAccessDays || parseInt(fullAccessDays) <= 0)
+    ) {
+      setError("Full access duration must be a positive number");
+      return;
+    }
+
     if (!maxUsage || parseInt(maxUsage) <= 0) {
       setError("Max usage must be a positive number");
       return;
@@ -91,10 +100,14 @@ export function CodeGenerationForm({
 
       if (codeType === "credits") {
         payload.amount = parseInt(amount);
-      } else {
+      } else if (codeType === "subscription") {
         payload.amount = 0;
         payload.role_name = roleName;
         payload.duration_days = parseInt(durationDays);
+      } else {
+        // full_access
+        payload.amount = 0;
+        payload.duration_days = parseInt(fullAccessDays);
       }
 
       if (customCode.trim()) {
@@ -124,6 +137,7 @@ export function CodeGenerationForm({
       setExpiresAt("");
       setIsActive(true);
       setDurationDays("30");
+      setFullAccessDays("30");
     } catch (err) {
       setError(err instanceof Error ? err.message : "Failed to generate code");
     } finally {
@@ -138,7 +152,7 @@ export function CodeGenerationForm({
       </h2>
 
       <div className="space-y-4">
-        <div className="flex gap-4">
+        <div className="flex flex-wrap gap-4">
           <label className="flex items-center gap-2 cursor-pointer">
             <input
               type="radio"
@@ -163,19 +177,43 @@ export function CodeGenerationForm({
               Subscription
             </span>
           </label>
+          <label className="flex items-center gap-2 cursor-pointer">
+            <input
+              type="radio"
+              name="code-type"
+              checked={codeType === "full_access"}
+              onChange={() => setCodeType("full_access")}
+              className="accent-indigo-600"
+            />
+            <span className="text-sm font-medium text-neutral-700 dark:text-neutral-300">
+              Full Access
+            </span>
+          </label>
         </div>
 
         <div className="grid grid-cols-2 gap-4">
-          {codeType === "credits" ? (
-            <div>
-              <Input
-                type="number"
-                placeholder="Amount *"
-                value={amount}
-                onChange={(e) => setAmount(e.target.value)}
-              />
-            </div>
-          ) : (
+          {codeType === "credits" && (
+            <>
+              <div>
+                <Input
+                  type="number"
+                  placeholder="Amount *"
+                  value={amount}
+                  onChange={(e) => setAmount(e.target.value)}
+                />
+              </div>
+              <div>
+                <Input
+                  type="number"
+                  placeholder="Max Usage *"
+                  value={maxUsage}
+                  onChange={(e) => setMaxUsage(e.target.value)}
+                />
+              </div>
+            </>
+          )}
+
+          {codeType === "subscription" && (
             <>
               <div>
                 <select
@@ -204,19 +242,19 @@ export function CodeGenerationForm({
             </>
           )}
 
-          {codeType === "credits" && (
+          {codeType === "full_access" && (
             <div>
               <Input
                 type="number"
-                placeholder="Max Usage *"
-                value={maxUsage}
-                onChange={(e) => setMaxUsage(e.target.value)}
+                placeholder="Duration (days) *"
+                value={fullAccessDays}
+                onChange={(e) => setFullAccessDays(e.target.value)}
               />
             </div>
           )}
         </div>
 
-        {codeType === "subscription" && (
+        {(codeType === "subscription" || codeType === "full_access") && (
           <div>
             <Input
               type="number"

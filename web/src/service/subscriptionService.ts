@@ -152,7 +152,7 @@ export interface FullAccessPassRateResponse {
 
 export interface PaymentMethodInfo {
   key: string;
-  flow_type: "qrcode" | "paypal_sdk";
+  flow_type: "qrcode" | "paypal_sdk" | "airwallex_dropin";
   currency: string;
   display_name_key: string;
   sdk_config: Record<string, string>;

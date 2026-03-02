@@ -10,6 +10,7 @@
     "region": "服务与地区",
     "redemption": "兑换码",
     "mcp": "MCP服务器",
+    "preferences": "偏好设置",
     "feedback": "投诉与反馈",
     "about": "关于"
   },
@@ -226,6 +227,19 @@
         "deleteFailed": "删除失败",
         "defaultFailed": "设置默认失败"
       }
+    }
+  },
+  "preferences": {
+    "title": "偏好设置",
+    "subtitle": "管理系统集成与提示",
+    "push": {
+      "label": "推送通知",
+      "description": "当 Agent 完成回复时接收通知。",
+      "deniedHint": "通知权限已被拒绝，请在浏览器设置中允许通知。",
+      "unsupportedHint": "当前浏览器不支持推送通知。",
+      "enabled": "推送通知已开启",
+      "disabled": "推送通知已关闭",
+      "enableFailed": "开启推送通知失败"
     }
   },
   "redemption": {

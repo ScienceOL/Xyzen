@@ -25,7 +25,9 @@
     "terminal": "{{count}} ターミナル",
     "scheduledTaskNone": "—",
     "firstMonth": "初月 {{price}}",
-    "bestValue": "最もお得"
+    "bestValue": "最もお得",
+    "currentPlan": "現在のプラン",
+    "hasHigherPlan": "上位プランに含まれています"
   },
 
   "feature": {
@@ -108,7 +110,13 @@
     "close": "閉じる",
     "alipay": "Alipay",
     "wechat": "WeChat Pay",
-    "paypal": "PayPal / クレジットカード"
+    "card": "クレジットカード",
+    "airwallex": "Airwallex",
+    "paypal": "PayPal / クレジットカード",
+    "orderSummary": "注文概要",
+    "agreeTerms": "私は<terms>利用規約</terms>および<refund>返金ポリシー</refund>を読み、同意します",
+    "agreeRequired": "利用規約に同意してください",
+    "backToPlans": "戻る"
   },
 
   "creator": "クリエイター",

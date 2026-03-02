@@ -55,7 +55,7 @@ class AskUserQuestionInput(BaseModel):
         default=300,
         ge=10,
         le=3600,
-        description="Seconds to wait for user response before auto-timeout (default 5 minutes, max 1 hour)",
+        description="Deprecated: timeout is no longer enforced. The user can respond at any time. Kept for backward compatibility.",
     )
 
 

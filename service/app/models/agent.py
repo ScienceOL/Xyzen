@@ -42,9 +42,21 @@ class AgentBase(SQLModel):
     description: str | None = None
     avatar: str | None = None
     tags: list[str] | None = Field(default=None, sa_column=Column(JSON))
-    model: str | None = None
-    temperature: float | None = None
-    prompt: str | None = None
+    model: str | None = Field(
+        default=None,
+        description="DEPRECATED: use graph_config.graph.nodes[*].config.model_override as source of truth.",
+        schema_extra={"deprecated": True},
+    )
+    temperature: float | None = Field(
+        default=None,
+        description="DEPRECATED: use graph_config.graph.nodes[*].config.temperature_override as source of truth.",
+        schema_extra={"deprecated": True},
+    )
+    prompt: str | None = Field(
+        default=None,
+        description="DEPRECATED: use graph_config.prompt_config.custom_instructions as source of truth.",
+        schema_extra={"deprecated": True},
+    )
     user_id: str | None = Field(index=True, default=None, nullable=True)
     sort_order: int = Field(default=0, index=True)
     require_tool_confirmation: bool = Field(default=False)
@@ -101,9 +113,21 @@ class AgentCreate(SQLModel):
     description: str | None = None
     avatar: str | None = None
     tags: list[str] | None = Field(default=None, sa_column=Column(JSON))
-    model: str | None = None
-    temperature: float | None = None
-    prompt: str | None = None
+    model: str | None = Field(
+        default=None,
+        description="DEPRECATED: use graph_config.graph.nodes[*].config.model_override as source of truth.",
+        schema_extra={"deprecated": True},
+    )
+    temperature: float | None = Field(
+        default=None,
+        description="DEPRECATED: use graph_config.graph.nodes[*].config.temperature_override as source of truth.",
+        schema_extra={"deprecated": True},
+    )
+    prompt: str | None = Field(
+        default=None,
+        description="DEPRECATED: use graph_config.prompt_config.custom_instructions as source of truth.",
+        schema_extra={"deprecated": True},
+    )
     require_tool_confirmation: bool = Field(default=False)
     provider_id: UUID | None = Field(default=None, index=True)
     knowledge_set_id: UUID | None = Field(default=None)
@@ -127,9 +151,21 @@ class AgentUpdate(SQLModel):
     description: str | None = None
     avatar: str | None = None
     tags: list[str] | None = None
-    model: str | None = None
-    temperature: float | None = None
-    prompt: str | None = None
+    model: str | None = Field(
+        default=None,
+        description="DEPRECATED: use graph_config.graph.nodes[*].config.model_override as source of truth.",
+        schema_extra={"deprecated": True},
+    )
+    temperature: float | None = Field(
+        default=None,
+        description="DEPRECATED: use graph_config.graph.nodes[*].config.temperature_override as source of truth.",
+        schema_extra={"deprecated": True},
+    )
+    prompt: str | None = Field(
+        default=None,
+        description="DEPRECATED: use graph_config.prompt_config.custom_instructions as source of truth.",
+        schema_extra={"deprecated": True},
+    )
     require_tool_confirmation: bool | None = None
     provider_id: UUID | None = None
     knowledge_set_id: UUID | None = None

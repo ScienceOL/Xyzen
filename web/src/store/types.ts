@@ -133,7 +133,7 @@ export interface UserQuestion {
   options?: UserQuestionOption[];
   multiSelect?: boolean;
   allowTextInput: boolean;
-  timeoutSeconds: number;
+  timeoutSeconds?: number;
   threadId: string;
   status: "pending" | "answered" | "timed_out";
   selectedOptions?: string[];
@@ -230,6 +230,7 @@ export interface ChatChannel {
   model?: string;
   model_tier?: "ultra" | "pro" | "standard" | "lite";
   knowledge_set_id?: string; // Session-level knowledge set override
+  sandbox_backend?: string | null; // Per-session sandbox backend override
   knowledgeContext?: KnowledgeContext;
   connected: boolean;
   error: string | null;
@@ -279,6 +280,7 @@ export interface SessionResponse {
   model?: string;
   model_tier?: "ultra" | "pro" | "standard" | "lite";
   knowledge_set_id?: string;
+  sandbox_backend?: string | null;
   spatial_layout?: Record<string, unknown> | null;
   topics: TopicResponse[];
 }

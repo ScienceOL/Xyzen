@@ -18,11 +18,19 @@ interface RequestOptions {
   signal?: AbortSignal;
 }
 
-async function handleResponse<T>(response: Response): Promise<T> {
+async function handleResponse<T>(
+  response: Response,
+  triggersAutoLogout: boolean,
+): Promise<T> {
   if (response.ok) {
     // Handle 204 No Content
     if (response.status === 204) return undefined as T;
     return response.json();
+  }
+
+  // Auto-logout on 401 for authenticated endpoints (same pattern as xyzenService.ts WS 4401)
+  if (response.status === 401 && triggersAutoLogout) {
+    import("@/core/auth").then((m) => m.logout()).catch(() => {});
   }
 
   let message: string;
@@ -114,7 +122,7 @@ class HttpClient {
     }
 
     const response = await fetch(url, init);
-    return handleResponse<T>(response);
+    return handleResponse<T>(response, options?.auth !== false);
   }
 
   get<T>(path: string, options?: RequestOptions): Promise<T> {
@@ -152,6 +160,9 @@ class HttpClient {
     if (options?.signal) init.signal = options.signal;
     const response = await fetch(url, init);
     if (!response.ok) {
+      if (response.status === 401 && options?.auth !== false) {
+        import("@/core/auth").then((m) => m.logout()).catch(() => {});
+      }
       throw new HttpError(response.status, `HTTP ${response.status}`);
     }
     return response;

@@ -27,6 +27,7 @@ from app.agents.types import (
     NodeFunction,
     StateDict,
 )
+from app.agents.prompt_utils import has_jinja2_variables
 from app.agents.utils import extract_text_from_content, dedup_tool_calls
 from app.schemas.graph_config_legacy import (
     ConditionType,
@@ -44,6 +45,8 @@ if TYPE_CHECKING:
     from langchain_core.tools import BaseTool
     from langgraph.checkpoint.base import BaseCheckpointSaver
     from langgraph.store.base import BaseStore
+
+    from app.core.prompts.builder import SystemPromptLayers
 
 logger = logging.getLogger(__name__)
 
@@ -132,6 +135,8 @@ class GraphBuilder:
     _tool_node: ToolNode | None
     _store: "BaseStore | None"
     _checkpointer: "BaseCheckpointSaver | None"
+    _prompt_layers: "SystemPromptLayers | None"
+    _node_prompts: dict[str, str]
 
     def __init__(
         self,
@@ -141,6 +146,8 @@ class GraphBuilder:
         context: dict[str, Any] | None = None,
         store: "BaseStore | None" = None,
         checkpointer: "BaseCheckpointSaver | None" = None,
+        prompt_layers: "SystemPromptLayers | None" = None,
+        node_prompts: dict[str, str] | None = None,
     ) -> None:
         """
         Initialize the GraphBuilder.
@@ -152,6 +159,8 @@ class GraphBuilder:
             context: Optional runtime context passed to templates
             store: Optional LangGraph store for cross-thread memory
             checkpointer: Optional checkpointer for interrupt/resume support
+            prompt_layers: Optional SystemPromptLayers for multi-SystemMessage injection
+            node_prompts: Original node-level prompts extracted before system prompt injection
         """
         self.config = config
         self.llm_factory = llm_factory
@@ -159,6 +168,8 @@ class GraphBuilder:
         self.context = context or {}
         self._store = store
         self._checkpointer = checkpointer
+        self._prompt_layers = prompt_layers
+        self._node_prompts = node_prompts or {}
 
         # Validate configuration
         errors = validate_graph_config(config)
@@ -359,10 +370,23 @@ class GraphBuilder:
             # Build messages for LLM - start with conversation messages
             llm_messages = list(messages)
 
-            # Prepend system prompt if configured (uses Jinja2 template rendering)
-            if llm_config.prompt_template:
+            # Determine whether to use layered SystemMessages or flat Jinja2 rendering
+            original_node_prompt = self._node_prompts.get(config.id, "")
+
+            if self._prompt_layers and not has_jinja2_variables(original_node_prompt):
+                # Multi-SystemMessage path: separate platform/agent/memory layers
+                from app.agents.prompt_utils import layers_to_system_messages
+
+                non_empty = self._prompt_layers.non_empty_layers()
+                system_msgs = layers_to_system_messages(
+                    non_empty,
+                    node_prompt=original_node_prompt or None,
+                )
+                llm_messages = [m for m in llm_messages if not isinstance(m, SystemMessage)]
+                llm_messages = list(system_msgs) + llm_messages
+            elif llm_config.prompt_template:
+                # Fallback: single SystemMessage via Jinja2 template rendering
                 rendered_prompt = self._render_template(llm_config.prompt_template, state_dict)
-                # Filter any existing SystemMessage and prepend ours
                 llm_messages = [m for m in llm_messages if not isinstance(m, SystemMessage)]
                 llm_messages = [SystemMessage(content=rendered_prompt)] + llm_messages
 
@@ -539,6 +563,10 @@ class GraphBuilder:
         # Filter tools by component's required capabilities
         filtered_tools = self._filter_tools_by_capabilities(component.metadata.required_capabilities)
         validated_overrides = component.validate_config_overrides(comp_config.config_overrides)
+
+        # Inject prompt_layers into config for component to use
+        if self._prompt_layers:
+            validated_overrides["prompt_layers"] = self._prompt_layers
 
         # Build the component's subgraph (async to create LLM before compilation)
         subgraph = await component.build_graph(
