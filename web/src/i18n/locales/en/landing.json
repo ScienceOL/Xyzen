@@ -207,7 +207,7 @@
     },
     "hero": {
       "title1": "One SuperBrain,",
-      "title2": "or Many Minds, Each a Master?",
+      "title2": "or Distributed Brains?",
       "pillarExploration": "Autonomous Exploration",
       "pillarEconomy": "Agent Economy",
       "subtitle": "The infrastructure for a world where Agents specialize, trade, and evolve — like civilization itself.",
@@ -232,7 +232,7 @@
         "goodMorning": "Good morning — ready to listen",
         "listening": "Listening…",
         "noted": "Noted: \"{{snippet}}…\"",
-        "buildingPlan": "Building tonight's plan…",
+        "buildingPlan": "Memorized {{count}} items — planning tasks…",
         "nightMode": "Night mode — autonomous exploration",
         "allCompleted": "All tasks completed ✅",
         "overnightDone": "{{count}} tasks done overnight ✅"
@@ -244,6 +244,18 @@
             "Can we speed up the /api/users endpoint?",
             "We need better test coverage before release",
             "Prioritize the critical bugs tonight"
+          ],
+          "ceoReplies": [
+            "On it — marking auth as critical.",
+            "I'll profile that endpoint.",
+            "Noted, I'll plan coverage tasks.",
+            "Understood, crash fix comes first."
+          ],
+          "ceoMemories": [
+            "📌 Auth null crash",
+            "📌 /api/users latency",
+            "📌 Test coverage gap",
+            "📋 3 tasks queued"
           ],
           "ceoLog": [
             "Scanning today's 23 messages…",
@@ -279,6 +291,18 @@
             "Our components don't have consistent theming",
             "We should run visual regression tests",
             "Document the design system changes too"
+          ],
+          "ceoReplies": [
+            "Popular request — I've queued it.",
+            "I'll scan components for gaps.",
+            "Good call, adding visual checks.",
+            "Documentation added to the plan."
+          ],
+          "ceoMemories": [
+            "📌 Dark mode demand",
+            "📌 12 components unthemed",
+            "📌 Visual regression check",
+            "📋 4 tasks queued"
           ],
           "ceoLog": [
             "Reviewing feature discussions…",
@@ -319,6 +343,18 @@
             "Heap keeps growing after WebSocket reconnects",
             "We need to audit all useEffect cleanup",
             "Add a CI gate so this can't regress"
+          ],
+          "ceoReplies": [
+            "That's serious — tracking it.",
+            "Likely a listener leak.",
+            "I'll queue a full audit.",
+            "CI gate — smart, added."
+          ],
+          "ceoMemories": [
+            "📌 WS memory leak",
+            "📌 Heap growth pattern",
+            "📌 useEffect audit needed",
+            "📋 4 tasks queued"
           ],
           "ceoLog": [
             "Analyzing today's debug session…",

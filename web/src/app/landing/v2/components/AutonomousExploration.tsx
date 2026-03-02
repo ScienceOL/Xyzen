@@ -21,6 +21,8 @@ interface AgentDef {
 
 interface Scenario {
   dayChat: string[];
+  ceoReplies: string[];
+  ceoMemories: string[];
   ceoLog: string[];
   agents: AgentDef[];
   results: string[];
@@ -158,6 +160,8 @@ const SCENARIO_AGENT_STATIC = [
 
 interface TranslatedScenario {
   dayChat: string[];
+  ceoReplies: string[];
+  ceoMemories: string[];
   ceoLog: string[];
   agentNames: string[];
   agentTasks: string[];
@@ -664,7 +668,58 @@ function DayChatBubble({ text, youLabel }: { text: string; youLabel: string }) {
           {youLabel}
         </span>
       </div>
-      <p className="text-[11px] leading-relaxed text-neutral-300">{text}</p>
+      <p className="text-[12px] leading-relaxed text-neutral-300">{text}</p>
+    </motion.div>
+  );
+}
+
+/* ================================================================== */
+/*  CEO Reply Bubble — amber-themed reply with memory tag               */
+/* ================================================================== */
+
+function CeoReplyBubble({
+  text,
+  memory,
+  ceoLabel,
+}: {
+  text: string;
+  memory: string;
+  ceoLabel: string;
+}) {
+  return (
+    <motion.div
+      initial={{ opacity: 0, x: -20, scale: 0.92 }}
+      animate={{ opacity: 1, x: 0, scale: 1 }}
+      exit={{ opacity: 0, x: 12, scale: 0.95 }}
+      transition={{ type: "spring", stiffness: 180, damping: 20 }}
+      className="rounded-lg px-3.5 py-2"
+      style={{
+        background: "rgba(245,158,11,0.06)",
+        backdropFilter: "blur(10px)",
+        border: "1px solid rgba(245,158,11,0.12)",
+      }}
+    >
+      <div className="mb-1 flex items-center gap-1.5">
+        <div className="flex h-3.5 w-3.5 items-center justify-center rounded-full bg-gradient-to-br from-amber-400 to-orange-500">
+          <Crown className="h-2 w-2 text-white" />
+        </div>
+        <span className="text-[10px] font-medium text-amber-500/70">
+          {ceoLabel}
+        </span>
+      </div>
+      <p className="text-[12px] leading-relaxed text-amber-200/80">{text}</p>
+      <motion.span
+        initial={{ opacity: 0, scale: 0.8 }}
+        animate={{ opacity: 1, scale: 1 }}
+        transition={{ delay: 0.2 }}
+        className="mt-1.5 inline-block rounded-full px-2 py-0.5 text-[10px] font-medium text-amber-300/90"
+        style={{
+          background: "rgba(245,158,11,0.10)",
+          boxShadow: "0 0 8px rgba(245,158,11,0.08)",
+        }}
+      >
+        {memory}
+      </motion.span>
     </motion.div>
   );
 }
@@ -773,7 +828,7 @@ function AgentCard({
                         initial={{ opacity: 0, x: -4 }}
                         animate={{ opacity: 1, x: 0 }}
                         transition={{ duration: 0.2 }}
-                        className="font-mono text-[9px] leading-relaxed"
+                        className="font-mono text-[10px] leading-relaxed"
                       >
                         <span className="text-neutral-700">$ </span>
                         <span className="text-neutral-400">{line}</span>
@@ -943,6 +998,7 @@ export function AutonomousExploration() {
   );
   const [logEntries, setLogEntries] = useState<string[]>([]);
   const [visibleChats, setVisibleChats] = useState(0);
+  const [visibleReplies, setVisibleReplies] = useState(0);
   const [ceoMsg, setCeoMsg] = useState(
     t("landing.v2.exploration.ceo.goodMorning"),
   );
@@ -959,6 +1015,8 @@ export function AutonomousExploration() {
     }) as TranslatedScenario[];
     return SCENARIO_AGENT_STATIC.map((agentStatic, i) => ({
       dayChat: translated[i].dayChat,
+      ceoReplies: translated[i].ceoReplies,
+      ceoMemories: translated[i].ceoMemories,
       ceoLog: translated[i].ceoLog,
       agents: agentStatic.map((a, j) => ({
         ...a,
@@ -1002,6 +1060,7 @@ export function AutonomousExploration() {
     setVisibleResults(0);
     setIsNight(false);
     setVisibleChats(0);
+    setVisibleReplies(0);
 
     // ════════════════════════════════════════
     //  DAY PHASE  (0 – 9 s)
@@ -1014,25 +1073,27 @@ export function AutonomousExploration() {
         : t("landing.v2.exploration.ceo.goodMorning"),
     );
 
-    // Chat bubbles appear one by one
+    // Chat bubbles + CEO replies appear in alternation
     delay(() => setVisibleChats(1), 600);
-    delay(() => setCeoMsg(t("landing.v2.exploration.ceo.listening")), 1200);
-    delay(() => setVisibleChats(2), 2200);
-    delay(() => setVisibleChats(3), 3800);
-    delay(
-      () =>
-        setCeoMsg(
-          t("landing.v2.exploration.ceo.noted", {
-            snippet: sc.dayChat[0].slice(0, 28),
-          }),
-        ),
-      4200,
-    );
-    delay(() => setVisibleChats(4), 5400);
-    delay(() => setCeoMsg(t("landing.v2.exploration.ceo.buildingPlan")), 7000);
+    delay(() => {
+      setVisibleReplies(1);
+      setCeoMsg(t("landing.v2.exploration.ceo.listening"));
+    }, 1200);
+    delay(() => setVisibleChats(2), 2400);
+    delay(() => setVisibleReplies(2), 3000);
+    delay(() => setVisibleChats(3), 4200);
+    delay(() => setVisibleReplies(3), 4800);
+    delay(() => setVisibleChats(4), 6000);
+    delay(() => {
+      setVisibleReplies(4);
+      setCeoMsg(t("landing.v2.exploration.ceo.buildingPlan", { count: 3 }));
+    }, 6600);
 
     // Fade chat bubbles
-    delay(() => setVisibleChats(0), 8500);
+    delay(() => {
+      setVisibleChats(0);
+      setVisibleReplies(0);
+    }, 8500);
 
     // ════════════════════════════════════════
     //  TRANSITION  DAY → NIGHT  (9 – 10.5 s)
@@ -1165,11 +1226,11 @@ export function AutonomousExploration() {
       </motion.div>
 
       {/* ── Stage ── */}
-      <div className="relative z-0 mx-auto w-full max-w-6xl flex-1 px-6 py-8">
+      <div className="relative z-0 mx-auto w-full max-w-7xl flex-1 px-6 py-8">
         <BeamOverlay phases={phases} agents={scenario.agents} />
 
         {/* CEO card — always visible */}
-        <div className="absolute left-[4%] top-1/2 z-[2] w-[280px] -translate-y-1/2 md:left-[6%] md:w-[300px]">
+        <div className="absolute left-[4%] top-1/2 z-[2] w-[300px] -translate-y-1/2 md:left-[6%] md:w-[360px]">
           <CeoCard
             activated={activated}
             onActivate={handleActivate}
@@ -1184,14 +1245,14 @@ export function AutonomousExploration() {
           />
         </div>
 
-        {/* Day: chat bubbles  /  Night: agent cards — same positions */}
+        {/* Day: chat bubbles + CEO replies  /  Night: agent cards — same positions */}
         <AnimatePresence mode="wait">
           {!isNight
-            ? // ── Day: user chat context ──
+            ? // ── Day: user chat + CEO replies ──
               scenario.dayChat.slice(0, visibleChats).map((chat, i) => (
                 <div
                   key={`chat-${scenarioIdx}-${i}`}
-                  className="absolute z-[2] w-[230px] md:w-[260px]"
+                  className="absolute z-[2] flex w-[260px] flex-col gap-1.5 md:w-[320px]"
                   style={{
                     top: AGENT_POSITIONS[i].top,
                     left: AGENT_POSITIONS[i].left,
@@ -1201,13 +1262,22 @@ export function AutonomousExploration() {
                     text={chat}
                     youLabel={t("landing.v2.exploration.you")}
                   />
+                  <AnimatePresence>
+                    {i < visibleReplies && (
+                      <CeoReplyBubble
+                        text={scenario.ceoReplies[i]}
+                        memory={scenario.ceoMemories[i]}
+                        ceoLabel={t("landing.v2.exploration.ceoAgent")}
+                      />
+                    )}
+                  </AnimatePresence>
                 </div>
               ))
             : // ── Night: agent cards ──
               scenario.agents.map((agent, i) => (
                 <div
                   key={`agent-${scenarioIdx}-${agent.id}`}
-                  className="absolute z-[2] w-[220px] md:w-[260px]"
+                  className="absolute z-[2] w-[260px] md:w-[320px]"
                   style={{
                     top: AGENT_POSITIONS[i].top,
                     left: AGENT_POSITIONS[i].left,
@@ -1227,7 +1297,7 @@ export function AutonomousExploration() {
       </div>
 
       {/* ── Bottom ── */}
-      <div className="relative z-10 mx-auto w-full max-w-3xl px-8 pb-8">
+      <div className="relative z-10 mx-auto w-full max-w-4xl px-8 pb-8">
         <AnimatePresence>
           {activated && (
             <motion.div

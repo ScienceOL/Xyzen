@@ -35,6 +35,18 @@ import { useCallback, useEffect, useRef, useState } from "react";
 import { useTranslation } from "react-i18next";
 import { useShallow } from "zustand/react/shallow";
 
+function formatRelativeTime(isoDate: string): string {
+  const diff = Date.now() - new Date(isoDate).getTime();
+  const seconds = Math.floor(diff / 1000);
+  if (seconds < 60) return "just now";
+  const minutes = Math.floor(seconds / 60);
+  if (minutes < 60) return `${minutes}m ago`;
+  const hours = Math.floor(minutes / 60);
+  if (hours < 24) return `${hours}h ago`;
+  const days = Math.floor(hours / 24);
+  return `${days}d ago`;
+}
+
 interface SandboxButtonProps {
   agent: Agent | null;
   onUpdateAgent: (agent: Agent) => Promise<void>;
@@ -76,7 +88,7 @@ export function SandboxButton({
     if (effectiveBackend.startsWith("sandbox:")) {
       const sessionId = effectiveBackend.slice(8);
       const sandbox = sandboxes.find((s) => s.session_id === sessionId);
-      return sandbox?.session_name || "Sandbox";
+      return sandbox?.agent_name || "Sandbox";
     }
     return null;
   }, [effectiveBackend, runners, sandboxes]);
@@ -84,6 +96,7 @@ export function SandboxButton({
   const selectionLabel = getSelectionLabel();
 
   const validatedRef = useRef<string | null>(null);
+  const [sandboxesLoaded, setSandboxesLoaded] = useState(false);
 
   // Eagerly fetch runners + sandboxes when popover opens OR when a selection exists (for badge label + validation)
   useEffect(() => {
@@ -95,7 +108,10 @@ export function SandboxButton({
       .listSandboxes()
       .then((resp) => setSandboxes(resp.sandboxes))
       .catch(console.error)
-      .finally(() => setIsLoading(false));
+      .finally(() => {
+        setIsLoading(false);
+        setSandboxesLoaded(true);
+      });
   }, [isOpen, effectiveBackend, fetchRunners]);
 
   // Validate saved selection: fall back to auto if the target is no longer available
@@ -117,8 +133,8 @@ export function SandboxButton({
         onUpdateSessionSandboxBackend(null);
       }
     } else if (effectiveBackend.startsWith("sandbox:")) {
-      // Need sandboxes loaded to validate
-      if (sandboxes.length === 0 && isLoading) return;
+      // Wait until sandboxes have been fetched at least once
+      if (!sandboxesLoaded) return;
       validatedRef.current = effectiveBackend;
       const sessionId = effectiveBackend.slice(8);
       const sandbox = sandboxes.find((s) => s.session_id === sessionId);
@@ -133,7 +149,7 @@ export function SandboxButton({
     effectiveBackend,
     runners,
     sandboxes,
-    isLoading,
+    sandboxesLoaded,
     onUpdateSessionSandboxBackend,
   ]);
 
@@ -300,11 +316,20 @@ export function SandboxButton({
                         )}
                       >
                         <div className="min-w-0 text-left">
-                          <div className="font-medium text-neutral-900 dark:text-neutral-100 truncate">
-                            {sandbox.session_name || sandbox.sandbox_id}
+                          <div className="flex items-center gap-1.5">
+                            <span className="font-medium text-neutral-900 dark:text-neutral-100 truncate">
+                              {sandbox.agent_name ||
+                                sandbox.session_name ||
+                                sandbox.sandbox_id}
+                            </span>
+                            <span className="shrink-0 text-[11px] font-mono text-neutral-300 dark:text-neutral-600">
+                              {sandbox.sandbox_id.slice(0, 6)}
+                            </span>
                           </div>
                           <div className="text-xs text-neutral-400 truncate">
                             {sandbox.backend}
+                            {sandbox.created_at &&
+                              ` · ${formatRelativeTime(sandbox.created_at)}`}
                           </div>
                         </div>
                         {isSelected && (

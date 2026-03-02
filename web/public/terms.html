@@ -1,61 +1,147 @@
-import { useTranslation } from "react-i18next";
-import { ArrowLeft } from "lucide-react";
-
-const LAST_UPDATED = "2026-03-02";
-
-function EnTerms() {
-  return (
-    <>
+<!doctype html>
+<html lang="en">
+  <head>
+    <meta charset="UTF-8" />
+    <meta name="viewport" content="width=device-width, initial-scale=1.0" />
+    <title>Xyzen — Terms of Service / 用户服务协议</title>
+    <style>
+      * {
+        margin: 0;
+        padding: 0;
+        box-sizing: border-box;
+      }
+      body {
+        font-family:
+          -apple-system, BlinkMacSystemFont, "Segoe UI", Roboto,
+          "Helvetica Neue", Arial, "Noto Sans SC", sans-serif;
+        line-height: 1.9;
+        color: #1a1a1a;
+        background: #fff;
+        padding: 48px 24px 80px;
+      }
+      .container {
+        max-width: 720px;
+        margin: 0 auto;
+      }
+      h1 {
+        font-size: 22px;
+        font-weight: 700;
+        margin-bottom: 4px;
+        letter-spacing: 0.5px;
+      }
+      .meta {
+        font-size: 13px;
+        color: #999;
+        margin-bottom: 28px;
+      }
+      .preamble {
+        font-size: 13px;
+        color: #333;
+        margin-bottom: 32px;
+        padding: 16px 20px;
+        background: #f9fafb;
+        border-left: 3px solid #6366f1;
+      }
+      h2 {
+        font-size: 15px;
+        font-weight: 700;
+        margin-top: 36px;
+        margin-bottom: 14px;
+        color: #111;
+        text-transform: uppercase;
+        letter-spacing: 0.3px;
+      }
+      p {
+        font-size: 14px;
+        margin-bottom: 10px;
+        color: #333;
+        text-align: justify;
+      }
+      a {
+        color: #6366f1;
+        text-decoration: none;
+      }
+      a:hover {
+        text-decoration: underline;
+      }
+      hr {
+        border: none;
+        border-top: 1px solid #e5e5e5;
+        margin: 56px 0;
+      }
+      .lang-label {
+        display: inline-block;
+        font-size: 11px;
+        font-weight: 700;
+        color: #6366f1;
+        background: #eef2ff;
+        padding: 2px 10px;
+        border-radius: 3px;
+        margin-bottom: 20px;
+        letter-spacing: 1px;
+        text-transform: uppercase;
+      }
+      .company-block {
+        font-size: 14px;
+        color: #333;
+        line-height: 1.7;
+      }
+    </style>
+  </head>
+  <body>
+    <div class="container">
+      <!-- ═══════════════════════════════════════════════════ -->
+      <!-- ENGLISH VERSION                                     -->
+      <!-- ═══════════════════════════════════════════════════ -->
+      <div class="lang-label">English</div>
       <h1>TERMS OF SERVICE</h1>
-      <p className="meta">Effective Date: {LAST_UPDATED}</p>
+      <p class="meta">Effective Date: 2026-03-02</p>
 
-      <p>
-        PLEASE READ THESE TERMS OF SERVICE (&quot;AGREEMENT&quot;) CAREFULLY
-        BEFORE ACCESSING OR USING THE SERVICE. THIS AGREEMENT CONSTITUTES A
-        LEGALLY BINDING CONTRACT BETWEEN YOU AND THE COMPANY (AS DEFINED BELOW).
-        BY ACCESSING OR USING THE SERVICE, YOU ACKNOWLEDGE THAT YOU HAVE READ,
+      <p class="preamble">
+        PLEASE READ THESE TERMS OF SERVICE ("AGREEMENT") CAREFULLY BEFORE
+        ACCESSING OR USING THE SERVICE. THIS AGREEMENT CONSTITUTES A LEGALLY
+        BINDING CONTRACT BETWEEN YOU AND THE COMPANY (AS DEFINED BELOW). BY
+        ACCESSING OR USING THE SERVICE, YOU ACKNOWLEDGE THAT YOU HAVE READ,
         UNDERSTOOD, AND AGREE TO BE BOUND BY THIS AGREEMENT. IF YOU DO NOT AGREE
         TO ALL OF THE TERMS AND CONDITIONS OF THIS AGREEMENT, YOU MUST NOT
         ACCESS OR USE THE SERVICE.
       </p>
 
-      <h2>ARTICLE 1 — DEFINITIONS AND INTERPRETATION</h2>
+      <h2>Article 1 — Definitions and Interpretation</h2>
       <p>
         1.1 In this Agreement, unless the context otherwise requires, the
         following terms shall have the meanings set forth below:
       </p>
       <p>
-        (a) &quot;Company&quot; means Miracle Story (Shanghai) Intelligent
-        Technology Co., Ltd., a company incorporated under the laws of the
-        People&apos;s Republic of China, and its affiliates and successors.
+        (a) "Company" means Miracle Story (Shanghai) Intelligent Technology Co.,
+        Ltd., a company incorporated under the laws of the People's Republic of
+        China, and its affiliates and successors.
       </p>
       <p>
-        (b) &quot;Service&quot; means the Xyzen platform accessible at xyzen.ai
-        and any associated applications, APIs, tools, and documentation provided
-        by the Company.
+        (b) "Service" means the Xyzen platform accessible at xyzen.ai and any
+        associated applications, APIs, tools, and documentation provided by the
+        Company.
       </p>
       <p>
-        (c) &quot;User&quot;, &quot;you&quot;, or &quot;your&quot; means any
-        individual or entity that accesses or uses the Service.
+        (c) "User", "you", or "your" means any individual or entity that
+        accesses or uses the Service.
       </p>
       <p>
-        (d) &quot;User Content&quot; means any data, text, files, images,
-        prompts, agent configurations, or other materials uploaded, submitted,
-        or transmitted by a User through the Service.
+        (d) "User Content" means any data, text, files, images, prompts, agent
+        configurations, or other materials uploaded, submitted, or transmitted
+        by a User through the Service.
       </p>
       <p>
-        (e) &quot;AI Output&quot; means any content, text, code, or other
-        materials generated by artificial intelligence models through the
-        Service.
+        (e) "AI Output" means any content, text, code, or other materials
+        generated by artificial intelligence models through the Service.
       </p>
       <p>
-        (f) &quot;Subscription&quot; means a recurring payment plan that grants
-        the User access to certain features of the Service for a defined billing
-        period.
+        (f) "Subscription" means a recurring payment plan that grants the User
+        access to certain features of the Service for a defined billing period.
       </p>
       <p>
-        (g) &quot;Credits&quot; means prepaid tokens, credits, or similar units
-        of value that may be purchased and consumed within the Service.
+        (g) "Credits" means prepaid tokens, credits, or similar units of value
+        that may be purchased and consumed within the Service.
       </p>
       <p>
         1.2 Headings in this Agreement are for convenience of reference only and
@@ -67,7 +153,7 @@ function EnTerms() {
         amended, extended, or re-enacted from time to time.
       </p>
 
-      <h2>ARTICLE 2 — ELIGIBILITY AND ACCOUNT REGISTRATION</h2>
+      <h2>Article 2 — Eligibility and Account Registration</h2>
       <p>
         2.1 You must be at least fourteen (14) years of age to access or use the
         Service. If you are between the ages of fourteen (14) and eighteen (18),
@@ -92,7 +178,7 @@ function EnTerms() {
         terminate any account at its sole discretion and without prior notice.
       </p>
 
-      <h2>ARTICLE 3 — DESCRIPTION OF SERVICE</h2>
+      <h2>Article 3 — Description of Service</h2>
       <p>
         3.1 The Service is an open-source AI agent platform delivered as a
         Software-as-a-Service (SaaS) offering. Users subscribe to build,
@@ -108,7 +194,7 @@ function EnTerms() {
         modification, suspension, or discontinuance of the Service.
       </p>
 
-      <h2>ARTICLE 4 — ACCEPTABLE USE</h2>
+      <h2>Article 4 — Acceptable Use</h2>
       <p>
         4.1 You agree to use the Service only for lawful purposes and in
         compliance with all applicable laws, regulations, and this Agreement.
@@ -135,8 +221,8 @@ function EnTerms() {
       </p>
       <p>
         (e) upload, transmit, or distribute any User Content that infringes,
-        misappropriates, or violates any third party&apos;s intellectual
-        property rights, privacy rights, or other proprietary rights;
+        misappropriates, or violates any third party's intellectual property
+        rights, privacy rights, or other proprietary rights;
       </p>
       <p>
         (f) use the Service to generate, store, or transmit content that is
@@ -149,13 +235,13 @@ function EnTerms() {
       </p>
       <p>
         4.3 The Company reserves the right to investigate and take appropriate
-        action against any User who, in the Company&apos;s sole discretion,
-        violates this Article, including without limitation, removing User
-        Content, suspending or terminating the User&apos;s account, and
-        reporting such User to law enforcement authorities.
+        action against any User who, in the Company's sole discretion, violates
+        this Article, including without limitation, removing User Content,
+        suspending or terminating the User's account, and reporting such User to
+        law enforcement authorities.
       </p>
 
-      <h2>ARTICLE 5 — INTELLECTUAL PROPERTY RIGHTS</h2>
+      <h2>Article 5 — Intellectual Property Rights</h2>
       <p>
         5.1 <strong>Company IP.</strong> The Service and all rights, title, and
         interest therein, including but not limited to all software, algorithms,
@@ -181,16 +267,15 @@ function EnTerms() {
         Output may be generated for other users.
       </p>
 
-      <h2>ARTICLE 6 — AI-GENERATED CONTENT DISCLAIMER</h2>
+      <h2>Article 6 — AI-Generated Content Disclaimer</h2>
       <p>
         6.1 The Service utilizes third-party artificial intelligence models to
         generate content. You expressly acknowledge and agree that:
       </p>
       <p>
         (a) AI Output may contain inaccuracies, errors, omissions, or fabricated
-        information (commonly referred to as &quot;hallucinations&quot;) and
-        shall not be relied upon as the sole basis for any decision, action, or
-        omission;
+        information (commonly referred to as "hallucinations") and shall not be
+        relied upon as the sole basis for any decision, action, or omission;
       </p>
       <p>
         (b) AI Output does not constitute professional, legal, medical,
@@ -208,7 +293,7 @@ function EnTerms() {
         SUITABILITY, OR AVAILABILITY OF ANY AI OUTPUT.
       </p>
 
-      <h2>ARTICLE 7 — FEES, PAYMENT, AND REFUNDS</h2>
+      <h2>Article 7 — Fees, Payment, and Refunds</h2>
       <p>
         7.1 <strong>Fees.</strong> Access to certain features of the Service may
         be subject to the payment of fees as specified on the Service at the
@@ -255,7 +340,7 @@ function EnTerms() {
       <p>
         (d) <em>Refund Procedure.</em> All refund requests shall be submitted in
         writing to <a href="mailto:support@xyzen.ai">support@xyzen.ai</a> and
-        shall include the User&apos;s account information, the transaction in
+        shall include the User's account information, the transaction in
         question, and the grounds for the refund request. The Company shall
         review and process refund requests within fifteen (15) business days.
         Approved refunds shall be credited to the original payment method.
@@ -266,10 +351,10 @@ function EnTerms() {
         fraudulent, or otherwise not in compliance with this Article.
       </p>
 
-      <h2>ARTICLE 8 — ACCOUNT DELETION AND DATA HANDLING</h2>
+      <h2>Article 8 — Account Deletion and Data Handling</h2>
       <p>
         8.1 You may request the deletion of your account at any time by
-        submitting a written request to{" "}
+        submitting a written request to
         <a href="mailto:support@xyzen.ai">support@xyzen.ai</a>.
       </p>
       <p>8.2 Upon confirmation of account deletion:</p>
@@ -294,15 +379,15 @@ function EnTerms() {
         minimum period required by such law, after which it shall be deleted.
       </p>
 
-      <h2>ARTICLE 9 — DISCLAIMER OF WARRANTIES</h2>
+      <h2>Article 9 — Disclaimer of Warranties</h2>
       <p>
-        9.1 THE SERVICE IS PROVIDED ON AN &quot;AS IS&quot; AND &quot;AS
-        AVAILABLE&quot; BASIS, WITHOUT WARRANTIES OF ANY KIND, EITHER EXPRESS OR
-        IMPLIED. TO THE FULLEST EXTENT PERMISSIBLE UNDER APPLICABLE LAW, THE
-        COMPANY HEREBY DISCLAIMS ALL WARRANTIES, EXPRESS OR IMPLIED, INCLUDING
-        BUT NOT LIMITED TO IMPLIED WARRANTIES OF MERCHANTABILITY, FITNESS FOR A
-        PARTICULAR PURPOSE, TITLE, NON-INFRINGEMENT, AND THOSE ARISING FROM
-        COURSE OF DEALING OR USAGE OF TRADE.
+        9.1 THE SERVICE IS PROVIDED ON AN "AS IS" AND "AS AVAILABLE" BASIS,
+        WITHOUT WARRANTIES OF ANY KIND, EITHER EXPRESS OR IMPLIED. TO THE
+        FULLEST EXTENT PERMISSIBLE UNDER APPLICABLE LAW, THE COMPANY HEREBY
+        DISCLAIMS ALL WARRANTIES, EXPRESS OR IMPLIED, INCLUDING BUT NOT LIMITED
+        TO IMPLIED WARRANTIES OF MERCHANTABILITY, FITNESS FOR A PARTICULAR
+        PURPOSE, TITLE, NON-INFRINGEMENT, AND THOSE ARISING FROM COURSE OF
+        DEALING OR USAGE OF TRADE.
       </p>
       <p>
         9.2 WITHOUT LIMITING THE FOREGOING, THE COMPANY DOES NOT WARRANT THAT:
@@ -313,7 +398,7 @@ function EnTerms() {
         WILL BE CORRECTED.
       </p>
 
-      <h2>ARTICLE 10 — LIMITATION OF LIABILITY</h2>
+      <h2>Article 10 — Limitation of Liability</h2>
       <p>
         10.1 TO THE MAXIMUM EXTENT PERMITTED BY APPLICABLE LAW, IN NO EVENT
         SHALL THE COMPANY, ITS DIRECTORS, OFFICERS, EMPLOYEES, AGENTS,
@@ -340,14 +425,14 @@ function EnTerms() {
         OF THE POSSIBILITY OF SUCH DAMAGES.
       </p>
 
-      <h2>ARTICLE 11 — INDEMNIFICATION</h2>
+      <h2>Article 11 — Indemnification</h2>
       <p>
         11.1 You agree to indemnify, defend, and hold harmless the Company and
         its directors, officers, employees, agents, affiliates, successors, and
-        assigns (collectively, the &quot;Indemnified Parties&quot;) from and
-        against any and all claims, liabilities, damages, losses, costs, and
-        expenses (including reasonable attorneys&apos; fees and court costs)
-        arising out of or in connection with:
+        assigns (collectively, the "Indemnified Parties") from and against any
+        and all claims, liabilities, damages, losses, costs, and expenses
+        (including reasonable attorneys' fees and court costs) arising out of or
+        in connection with:
       </p>
       <p>(a) your use of or access to the Service;</p>
       <p>(b) your User Content;</p>
@@ -365,7 +450,7 @@ function EnTerms() {
         and control of any matter subject to indemnification by you.
       </p>
 
-      <h2>ARTICLE 12 — TERMINATION</h2>
+      <h2>Article 12 — Termination</h2>
       <p>
         12.1 <strong>Termination by the Company.</strong> The Company may, at
         its sole discretion, immediately suspend or terminate your account and
@@ -386,7 +471,7 @@ function EnTerms() {
         Articles 5, 6, 9, 10, 11, 15, and 18.
       </p>
 
-      <h2>ARTICLE 13 — FORCE MAJEURE</h2>
+      <h2>Article 13 — Force Majeure</h2>
       <p>
         13.1 Neither party shall be liable for any failure or delay in the
         performance of its obligations under this Agreement (other than payment
@@ -397,8 +482,8 @@ function EnTerms() {
         government actions or orders, sanctions, embargoes, strikes, labor
         disputes, fire, flood, earthquake, power failures, internet or
         telecommunications infrastructure failures, cyberattacks, or disruptions
-        to third-party services upon which the Service depends (each, a
-        &quot;Force Majeure Event&quot;).
+        to third-party services upon which the Service depends (each, a "Force
+        Majeure Event").
       </p>
       <p>
         13.2 The affected party shall promptly notify the other party in writing
@@ -406,13 +491,12 @@ function EnTerms() {
         to mitigate its effects and resume performance as soon as practicable.
       </p>
 
-      <h2>ARTICLE 14 — GEOGRAPHIC RESTRICTIONS</h2>
+      <h2>Article 14 — Geographic Restrictions</h2>
       <p>
         14.1 The Service is not intended for, and shall not be accessed by or
-        made available to, residents or nationals of the People&apos;s Republic
-        of China (excluding the Hong Kong Special Administrative Region, Macau
-        Special Administrative Region, and Taiwan) (the &quot;Restricted
-        Region&quot;).
+        made available to, residents or nationals of the People's Republic of
+        China (excluding the Hong Kong Special Administrative Region, Macau
+        Special Administrative Region, and Taiwan) (the "Restricted Region").
       </p>
       <p>
         14.2 By accessing or using the Service, you represent and warrant that
@@ -426,20 +510,20 @@ function EnTerms() {
         without prior notice.
       </p>
 
-      <h2>ARTICLE 15 — GOVERNING LAW AND DISPUTE RESOLUTION</h2>
+      <h2>Article 15 — Governing Law and Dispute Resolution</h2>
       <p>
         15.1 <strong>Governing Law.</strong> This Agreement shall be governed by
         and construed in accordance with the laws of the Hong Kong Special
-        Administrative Region (&quot;Hong Kong&quot;), without regard to its
-        conflict of laws principles.
+        Administrative Region ("Hong Kong"), without regard to its conflict of
+        laws principles.
       </p>
       <p>
         15.2 <strong>Negotiation.</strong> In the event of any dispute, claim,
         or controversy arising out of or relating to this Agreement or the
         breach, termination, enforcement, interpretation, or validity thereof (a
-        &quot;Dispute&quot;), the parties shall first endeavor to resolve such
-        Dispute amicably through good-faith negotiation for a period of not less
-        than thirty (30) calendar days from the date of written notice of the
+        "Dispute"), the parties shall first endeavor to resolve such Dispute
+        amicably through good-faith negotiation for a period of not less than
+        thirty (30) calendar days from the date of written notice of the
         Dispute.
       </p>
       <p>
@@ -449,7 +533,7 @@ function EnTerms() {
         of Hong Kong.
       </p>
 
-      <h2>ARTICLE 16 — MODIFICATIONS TO THIS AGREEMENT</h2>
+      <h2>Article 16 — Modifications to This Agreement</h2>
       <p>
         16.1 The Company reserves the right to modify this Agreement at any
         time. Modifications shall become effective upon posting of the updated
@@ -469,7 +553,7 @@ function EnTerms() {
         Subscription.
       </p>
 
-      <h2>ARTICLE 17 — GENERAL PROVISIONS</h2>
+      <h2>Article 17 — General Provisions</h2>
       <p>
         17.1 <strong>Entire Agreement.</strong> This Agreement, together with
         the Privacy Policy and any other policies referenced herein, constitutes
@@ -501,7 +585,7 @@ function EnTerms() {
       <p>
         17.5 <strong>Notices.</strong> All notices required or permitted under
         this Agreement shall be in writing and shall be deemed effective when
-        delivered by email. Notices to the Company shall be sent to{" "}
+        delivered by email. Notices to the Company shall be sent to
         <a href="mailto:support@xyzen.ai">support@xyzen.ai</a>. Notices to you
         shall be sent to the email address associated with your account.
       </p>
@@ -516,27 +600,26 @@ function EnTerms() {
         the English and Chinese versions, the English version shall prevail.
       </p>
 
-      <h2>ARTICLE 18 — CONTACT INFORMATION</h2>
+      <h2>Article 18 — Contact Information</h2>
       <p>
         18.1 For any questions, concerns, or notices regarding this Agreement,
         please contact the Company at:
       </p>
-      <p>
-        Miracle Story (Shanghai) Intelligent Technology Co., Ltd.
-        <br />
+      <p class="company-block">
+        Miracle Story (Shanghai) Intelligent Technology Co., Ltd.<br />
         Email: <a href="mailto:support@xyzen.ai">support@xyzen.ai</a>
       </p>
-    </>
-  );
-}
 
-function ZhTerms() {
-  return (
-    <>
+      <hr />
+
+      <!-- ═══════════════════════════════════════════════════ -->
+      <!-- 中文版本                                             -->
+      <!-- ═══════════════════════════════════════════════════ -->
+      <div class="lang-label">中文</div>
       <h1>用户服务协议</h1>
-      <p className="meta">生效日期：{LAST_UPDATED}</p>
+      <p class="meta">生效日期：2026-03-02</p>
 
-      <p>
+      <p class="preamble">
         在访问或使用本服务之前，请您仔细阅读本用户服务协议（以下简称"本协议"）。本协议构成您与本公司（定义见下文）之间具有法律约束力的合同。访问或使用本服务，即视为您已阅读、理解并同意受本协议的约束。如您不同意本协议的全部条款和条件，您不得访问或使用本服务。
       </p>
 
@@ -630,18 +713,18 @@ function ZhTerms() {
       <h2>第五条 知识产权</h2>
       <p>
         5.1
-        <strong>公司知识产权。</strong>
-        本服务及其所有权利、所有权和利益，包括但不限于所有软件、算法、界面、文本、图形、徽标、商标和其他专有材料，均为公司及其许可方的专有财产并应始终保持。本协议中的任何内容不得被解释为授予用户对本服务的任何权利、所有权或利益，除本协议明确规定的有限使用权外。
+        <strong>公司知识产权。</strong
+        >本服务及其所有权利、所有权和利益，包括但不限于所有软件、算法、界面、文本、图形、徽标、商标和其他专有材料，均为公司及其许可方的专有财产并应始终保持。本协议中的任何内容不得被解释为授予用户对本服务的任何权利、所有权或利益，除本协议明确规定的有限使用权外。
       </p>
       <p>
         5.2
-        <strong>用户内容。</strong>
-        您保留对用户内容的所有所有权。通过向本服务提交用户内容，您特此授予公司一项全球性、非排他性、免版税、全额付清、可分许可、可转让的许可，以仅为提供和改进本服务之目的使用、复制、修改、分发和展示该等用户内容。
+        <strong>用户内容。</strong
+        >您保留对用户内容的所有所有权。通过向本服务提交用户内容，您特此授予公司一项全球性、非排他性、免版税、全额付清、可分许可、可转让的许可，以仅为提供和改进本服务之目的使用、复制、修改、分发和展示该等用户内容。
       </p>
       <p>
         5.3
-        <strong>AI 输出。</strong>
-        在适用法律和您可能对构成用户内容的底层提示词所享有的权利的约束下，公司不对通过您使用本服务生成的
+        <strong>AI 输出。</strong
+        >在适用法律和您可能对构成用户内容的底层提示词所享有的权利的约束下，公司不对通过您使用本服务生成的
         AI 输出主张所有权。您确认，类似或相同的 AI 输出可能会为其他用户生成。
       </p>
 
@@ -667,52 +750,43 @@ function ZhTerms() {
       <h2>第七条 费用、支付与退款</h2>
       <p>
         7.1
-        <strong>费用。</strong>
-        访问本服务的某些功能可能需要支付在购买时本服务上标明的费用。所有费用以结算时标明的币种计价并以该币种支付。公司保留随时修改定价的权利；但价格变更不影响现有订阅的当前计费周期。
+        <strong>费用。</strong
+        >访问本服务的某些功能可能需要支付在购买时本服务上标明的费用。所有费用以结算时标明的币种计价并以该币种支付。公司保留随时修改定价的权利；但价格变更不影响现有订阅的当前计费周期。
       </p>
       <p>
         7.2
-        <strong>支付。</strong>
-        支付应通过第三方支付服务提供商处理。您同意提供有效且最新的支付信息，并授权公司（或其支付处理方）从您指定的支付方式中扣除相应费用。
+        <strong>支付。</strong
+        >支付应通过第三方支付服务提供商处理。您同意提供有效且最新的支付信息，并授权公司（或其支付处理方）从您指定的支付方式中扣除相应费用。
       </p>
       <p>
         7.3
-        <strong>订阅续期。</strong>
-        除另有约定外，订阅应在每个计费周期结束时按当时适用的费率自动续期。您可在下一个计费日期之前随时取消订阅；取消应在当前计费周期结束时生效。
+        <strong>订阅续期。</strong
+        >除另有约定外，订阅应在每个计费周期结束时按当时适用的费率自动续期。您可在下一个计费日期之前随时取消订阅；取消应在当前计费周期结束时生效。
       </p>
+      <p>7.4 <strong>退款政策。</strong>除以下规定外，所有费用均不予退款：</p>
       <p>
-        7.4
-        <strong>退款政策。</strong>
-        除以下规定外，所有费用均不予退款：
-      </p>
-      <p>
-        （一）<em>订阅。</em>
-        订阅费用在适用计费周期开始后不予退款。除第
+        （一）<em>订阅。</em>订阅费用在适用计费周期开始后不予退款。除第
         7.4（三）条规定的情况外，不对部分计费周期进行按比例退款。
       </p>
       <p>
-        （二）<em>积分。</em>
-        已消费的积分不予退款。对于未使用的积分，您可在原始购买日期后七（7）个日历日内提交退款请求。
+        （二）<em>积分。</em>已消费的积分不予退款。对于未使用的积分，您可在原始购买日期后七（7）个日历日内提交退款请求。
       </p>
       <p>
-        （三）<em>服务中断。</em>
-        如因公司原因导致本服务持续超过七十二（72）小时实质性不可用或严重受损，您可就受影响期间提交按比例退款请求。
+        （三）<em>服务中断。</em>如因公司原因导致本服务持续超过七十二（72）小时实质性不可用或严重受损，您可就受影响期间提交按比例退款请求。
       </p>
       <p>
-        （四）<em>退款程序。</em>
-        所有退款请求应以书面形式发送至{" "}
-        <a href="mailto:support@xyzen.ai">support@xyzen.ai</a>
-        ，并应包含用户的账户信息、相关交易及退款请求的理由。公司应在十五（15）个工作日内审核并处理退款请求。经批准的退款将退回至原支付方式。
+        （四）<em>退款程序。</em>所有退款请求应以书面形式发送至
+        <a href="mailto:support@xyzen.ai">support@xyzen.ai</a
+        >，并应包含用户的账户信息、相关交易及退款请求的理由。公司应在十五（15）个工作日内审核并处理退款请求。经批准的退款将退回至原支付方式。
       </p>
       <p>
-        （五）<em>拒绝权。</em>
-        公司保留自行决定拒绝其认定为滥用、欺诈或其他不符合本条规定之退款请求的权利。
+        （五）<em>拒绝权。</em>公司保留自行决定拒绝其认定为滥用、欺诈或其他不符合本条规定之退款请求的权利。
       </p>
 
       <h2>第八条 账户注销与数据处理</h2>
       <p>
-        8.1 您可随时通过向{" "}
-        <a href="mailto:support@xyzen.ai">support@xyzen.ai</a>{" "}
+        8.1 您可随时通过向
+        <a href="mailto:support@xyzen.ai">support@xyzen.ai</a>
         提交书面请求来申请注销您的账户。
       </p>
       <p>8.2 经确认账户注销后：</p>
@@ -772,18 +846,18 @@ function ZhTerms() {
       <h2>第十二条 终止</h2>
       <p>
         12.1
-        <strong>公司终止。</strong>
-        公司可自行决定立即暂停或终止您的账户和对本服务的访问权限，无需事先通知或承担责任，理由包括但不限于违反本协议。
+        <strong>公司终止。</strong
+        >公司可自行决定立即暂停或终止您的账户和对本服务的访问权限，无需事先通知或承担责任，理由包括但不限于违反本协议。
       </p>
       <p>
         12.2
-        <strong>用户终止。</strong>
-        您可随时按照第八条的规定注销账户以终止本协议。
+        <strong>用户终止。</strong
+        >您可随时按照第八条的规定注销账户以终止本协议。
       </p>
       <p>
         12.3
-        <strong>终止效果。</strong>
-        协议终止后：（一）本协议授予您的所有权利和许可应立即终止；（二）您应立即停止使用本服务；及（三）本协议中依其性质应在终止后继续有效的条款应继续有效，包括但不限于第五条、第六条、第九条、第十条、第十一条、第十五条和第十八条。
+        <strong>终止效果。</strong
+        >协议终止后：（一）本协议授予您的所有权利和许可应立即终止；（二）您应立即停止使用本服务；及（三）本协议中依其性质应在终止后继续有效的条款应继续有效，包括但不限于第五条、第六条、第九条、第十条、第十一条、第十五条和第十八条。
       </p>
 
       <h2>第十三条 不可抗力</h2>
@@ -813,18 +887,16 @@ function ZhTerms() {
       <h2>第十五条 适用法律与争议解决</h2>
       <p>
         15.1
-        <strong>适用法律。</strong>
-        本协议应受中国香港特别行政区（"香港"）法律管辖并据其解释，不适用其法律冲突原则。
+        <strong>适用法律。</strong
+        >本协议应受中国香港特别行政区（"香港"）法律管辖并据其解释，不适用其法律冲突原则。
       </p>
       <p>
         15.2
-        <strong>协商。</strong>
-        因本协议或其违反、终止、执行、解释或有效性引起的或与之相关的任何争议、索赔或争论（"争议"），双方应首先在争议书面通知之日起不少于三十（30）个日历日内通过善意协商努力友好解决该等争议。
+        <strong>协商。</strong
+        >因本协议或其违反、终止、执行、解释或有效性引起的或与之相关的任何争议、索赔或争论（"争议"），双方应首先在争议书面通知之日起不少于三十（30）个日历日内通过善意协商努力友好解决该等争议。
       </p>
       <p>
-        15.3
-        <strong>管辖。</strong>
-        如争议未能在第 15.2
+        15.3 <strong>管辖。</strong>如争议未能在第 15.2
         条规定的期限内通过协商解决，任何一方均可将该争议提交至香港法院的专属管辖。
       </p>
 
@@ -845,74 +917,48 @@ function ZhTerms() {
       <h2>第十七条 一般条款</h2>
       <p>
         17.1
-        <strong>完整协议。</strong>
-        本协议连同隐私政策及本协议中引用的任何其他政策，构成您与公司之间就本协议标的事项达成的完整协议，并取代所有先前或同期的口头或书面通信、陈述或协议。
+        <strong>完整协议。</strong
+        >本协议连同隐私政策及本协议中引用的任何其他政策，构成您与公司之间就本协议标的事项达成的完整协议，并取代所有先前或同期的口头或书面通信、陈述或协议。
       </p>
       <p>
         17.2
-        <strong>可分割性。</strong>
-        如本协议的任何条款被有管辖权的法院认定为无效、违法或不可执行，其余条款应继续完全有效。无效或不可执行的条款应在保留双方原始意图的前提下作出最低限度的修改，使其有效且可执行。
+        <strong>可分割性。</strong
+        >如本协议的任何条款被有管辖权的法院认定为无效、违法或不可执行，其余条款应继续完全有效。无效或不可执行的条款应在保留双方原始意图的前提下作出最低限度的修改，使其有效且可执行。
       </p>
       <p>
         17.3
-        <strong>弃权。</strong>
-        任何一方未能行使本协议项下的任何权利或执行任何条款，不构成对该等权利或条款的弃权。对本协议任何条款的弃权仅在以书面形式作出并经弃权方签署的情况下方为有效。
+        <strong>弃权。</strong
+        >任何一方未能行使本协议项下的任何权利或执行任何条款，不构成对该等权利或条款的弃权。对本协议任何条款的弃权仅在以书面形式作出并经弃权方签署的情况下方为有效。
       </p>
       <p>
         17.4
-        <strong>转让。</strong>
-        未经公司事先书面同意，您不得转让、转移或委托本协议或您在本协议项下的任何权利或义务。公司可在合并、收购、重组或出售其全部或实质性全部资产时自由转让本协议。
+        <strong>转让。</strong
+        >未经公司事先书面同意，您不得转让、转移或委托本协议或您在本协议项下的任何权利或义务。公司可在合并、收购、重组或出售其全部或实质性全部资产时自由转让本协议。
       </p>
       <p>
         17.5
-        <strong>通知。</strong>
-        本协议项下要求或允许的所有通知应以书面形式作出，并在通过电子邮件送达时视为有效送达。向公司发出的通知应发送至{" "}
-        <a href="mailto:support@xyzen.ai">support@xyzen.ai</a>
-        。向您发出的通知应发送至与您账户关联的电子邮件地址。
+        <strong>通知。</strong
+        >本协议项下要求或允许的所有通知应以书面形式作出，并在通过电子邮件送达时视为有效送达。向公司发出的通知应发送至
+        <a href="mailto:support@xyzen.ai">support@xyzen.ai</a
+        >。向您发出的通知应发送至与您账户关联的电子邮件地址。
       </p>
       <p>
         17.6
-        <strong>无第三方受益人。</strong>
-        本协议仅为协议双方的利益而订立，不赋予任何第三方任何权利或救济。
+        <strong>无第三方受益人。</strong
+        >本协议仅为协议双方的利益而订立，不赋予任何第三方任何权利或救济。
       </p>
       <p>
         17.7
-        <strong>语言。</strong>
-        本协议以英文和中文签署。如英文版本与中文版本之间存在任何不一致或差异，以英文版本为准。
+        <strong>语言。</strong
+        >本协议以英文和中文签署。如英文版本与中文版本之间存在任何不一致或差异，以英文版本为准。
       </p>
 
       <h2>第十八条 联系方式</h2>
       <p>18.1 如对本协议有任何问题、关切或通知事宜，请通过以下方式联系公司：</p>
-      <p>
-        奇迹物语（上海）智能科技有限公司
-        <br />
+      <p class="company-block">
+        奇迹物语（上海）智能科技有限公司<br />
         电子邮件：<a href="mailto:support@xyzen.ai">support@xyzen.ai</a>
       </p>
-    </>
-  );
-}
-
-export function TermsPage() {
-  const { i18n } = useTranslation();
-  const isZh = i18n.language === "zh";
-
-  return (
-    <div className="fixed inset-0 z-50 overflow-y-auto bg-white dark:bg-neutral-950">
-      <div className="mx-auto max-w-3xl px-6 py-12">
-        <button
-          onClick={() => {
-            window.location.hash = "";
-          }}
-          className="mb-8 inline-flex items-center gap-1.5 text-[13px] text-neutral-500 transition-colors hover:text-neutral-800 dark:text-neutral-400 dark:hover:text-neutral-200"
-        >
-          <ArrowLeft className="h-4 w-4" />
-          {isZh ? "返回" : "Back"}
-        </button>
-
-        <article className="prose prose-neutral max-w-none dark:prose-invert prose-headings:font-semibold prose-h1:text-2xl prose-h2:mt-8 prose-h2:text-lg prose-p:text-[13px] prose-p:leading-relaxed prose-li:text-[13px] prose-a:text-indigo-500 prose-a:no-underline hover:prose-a:underline [&_.meta]:text-xs [&_.meta]:text-neutral-400">
-          {isZh ? <ZhTerms /> : <EnTerms />}
-        </article>
-      </div>
     </div>
-  );
-}
+  </body>
+</html>
