@@ -2,6 +2,12 @@
 
 All notable changes to Xyzen will be documented in this file.
 
+## [1.6.16](https://github.com/ScienceOL/Xyzen/compare/v1.6.15...v1.6.16) (2026-03-02)
+
+### 🐛 Bug Fixes
+
+* add sandbox backend, redemption codes, preferences settings, and UI improvements ([cab1b20](https://github.com/ScienceOL/Xyzen/commit/cab1b20239908b52b5bc37c68a47558f0027461b)), closes [#288](https://github.com/ScienceOL/Xyzen/issues/288)
+
 ## [1.6.15](https://github.com/ScienceOL/Xyzen/compare/v1.6.14...v1.6.15) (2026-03-01)
 
 ### 🐛 Bug Fixes
