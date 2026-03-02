@@ -2,6 +2,12 @@
 
 All notable changes to Xyzen will be documented in this file.
 
+## [1.6.17](https://github.com/ScienceOL/Xyzen/compare/v1.6.16...v1.6.17) (2026-03-02)
+
+### 🐛 Bug Fixes
+
+* increase sandbox timeout to 300s and update table to three-line style ([04c1066](https://github.com/ScienceOL/Xyzen/commit/04c1066a350aed9aac82fcbc45be02e21c188310))
+
 ## [1.6.16](https://github.com/ScienceOL/Xyzen/compare/v1.6.15...v1.6.16) (2026-03-02)
 
 ### 🐛 Bug Fixes
