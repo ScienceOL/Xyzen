@@ -32,7 +32,7 @@ class SandboxBashInput(BaseModel):
     )
     timeout: int | None = Field(
         default=None,
-        description="Command timeout in seconds. Defaults to 120.",
+        description="Command timeout in seconds. Defaults to 300.",
     )
 
 

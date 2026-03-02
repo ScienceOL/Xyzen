@@ -105,7 +105,7 @@ class SandboxConfig(BaseModel):
         description="Disk in GiB allocated per sandbox",
     )
     Timeout: int = Field(
-        default=120,
+        default=300,
         description="Command execution timeout in seconds",
     )
     WorkDir: str = Field(

@@ -231,32 +231,19 @@
     }
   }
 
-  /* 表格容器，处理移动端滚动 */
+  /* 表格 — 交由 prose.css 三线表样式控制，仅补充移动端布局 */
   table {
     display: table;
     width: 100%;
     max-width: none;
     margin: 0;
-    border-collapse: collapse;
     table-layout: auto;
-
-    tr {
-      border-top: 1px solid #d8dee4;
-    }
-
-    th {
-      font-weight: 600;
-      background-color: rgba(0, 0, 0, 0.02);
-    }
 
     th,
     td {
-      padding: 8px 16px;
-      border: 1px solid #d0d7de;
       white-space: normal;
       word-break: break-word;
 
-      /* 移动端更紧凑的内边距 */
       @media (max-width: 640px) {
         padding: 6px 10px;
         font-size: 0.875rem;
@@ -267,24 +254,6 @@
       display: block;
       width: max-content;
       min-width: 100%;
-    }
-  }
-
-  /* 深色模式表格样式 */
-  :global(.dark) & {
-    table {
-      th {
-        background-color: rgba(255, 255, 255, 0.05);
-      }
-
-      th,
-      td {
-        border-color: rgba(255, 255, 255, 0.1);
-      }
-
-      tr {
-        border-top-color: rgba(255, 255, 255, 0.1);
-      }
     }
   }
 }

@@ -125,69 +125,42 @@
   padding-right: 0.75rem;
 }
 
-/* Tables */
+/* Tables — three-line (三线表) style */
 .prose table {
   width: 100%;
   table-layout: auto;
   text-align: left;
   margin-top: 1.5rem;
   margin-bottom: 1.5rem;
-  border-collapse: separate;
-  border-spacing: 0;
-  font-size: 0.875rem;
+  border-collapse: collapse;
+  font-size: 0.8125rem;
+  border-top: 1.5px solid rgb(82 82 91); /* zinc-600 — top rule */
+  border-bottom: 1.5px solid rgb(82 82 91); /* zinc-600 — bottom rule */
 }
 
 .prose thead {
-  background: linear-gradient(
-    to bottom,
-    rgb(250 250 250),
-    rgb(244 244 245)
-  ); /* zinc-50 to zinc-100 */
-  border-bottom: 2px solid rgb(16 185 129); /* emerald-500 accent */
+  border-bottom: 1px solid rgb(161 161 170); /* zinc-400 — header rule */
 }
 
 .prose thead th {
   color: rgb(39 39 42); /* zinc-800 */
   font-weight: 600;
   vertical-align: middle;
-  padding: 0.875rem 1rem;
+  padding: 0.625rem 1rem;
   text-align: left;
-  letter-spacing: 0.025em;
-  font-size: 0.8125rem; /* slightly smaller */
-  text-transform: uppercase;
-}
-
-.prose thead th:first-child {
-  border-top-left-radius: 0.5rem;
-}
-
-.prose thead th:last-child {
-  border-top-right-radius: 0.5rem;
+  font-size: 0.8125rem;
 }
 
 .prose tbody tr {
-  border-bottom: 1px solid rgb(244 244 245); /* zinc-100 */
-  transition: background-color 0.15s ease;
-}
-
-.prose tbody tr:hover {
-  background-color: rgb(250 250 250); /* zinc-50 */
-}
-
-.prose tbody tr:last-child {
   border-bottom: none;
 }
 
-.prose tbody tr:last-child td:first-child {
-  border-bottom-left-radius: 0.5rem;
-}
-
-.prose tbody tr:last-child td:last-child {
-  border-bottom-right-radius: 0.5rem;
+.prose tbody tr:hover {
+  background-color: rgb(0 0 0 / 0.02);
 }
 
 .prose :is(tbody, tfoot) td {
-  padding: 0.875rem 1rem;
+  padding: 0.5rem 1rem;
   color: rgb(63 63 70); /* zinc-700 */
   vertical-align: middle;
 }
@@ -278,25 +251,21 @@
 }
 
 /* Dark mode tables */
+.dark .prose table {
+  border-top-color: rgb(161 161 170); /* zinc-400 */
+  border-bottom-color: rgb(161 161 170);
+}
+
 .dark .prose thead {
-  background: linear-gradient(
-    to bottom,
-    rgb(39 39 42),
-    rgb(24 24 27)
-  ); /* zinc-800 to zinc-900 */
-  border-bottom-color: rgb(16 185 129); /* emerald-500 accent */
+  border-bottom-color: rgb(113 113 122); /* zinc-500 */
 }
 
 .dark .prose thead th {
   color: rgb(244 244 245); /* zinc-100 */
 }
 
-.dark .prose tbody tr {
-  border-bottom-color: rgb(39 39 42); /* zinc-800 */
-}
-
 .dark .prose tbody tr:hover {
-  background-color: rgb(39 39 42 / 0.5); /* zinc-800/50 */
+  background-color: rgb(255 255 255 / 0.03);
 }
 
 .dark .prose tbody td {
