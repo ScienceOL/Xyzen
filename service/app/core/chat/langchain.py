@@ -38,6 +38,7 @@ from app.tools.builtin.subagent.schemas import parse_subagent_outcome
 
 if TYPE_CHECKING:
     from app.core.chat.interfaces import ChatPublisher
+    from app.core.prompts.builder import SystemPromptLayers
     from app.models.agent import Agent
 
 logger = logging.getLogger(__name__)
@@ -347,7 +348,7 @@ async def create_langchain_agent(
     provider_id: str | None,
     model_name: str | None,
     system_prompt: str,
-    prompt_layers: Any | None = None,
+    prompt_layers: "SystemPromptLayers | None" = None,
 ) -> tuple[CompiledStateGraph[Any, None, Any, Any], AgentEventContext, Any]:
     """Create and configure the LangChain agent using the agent factory.
 

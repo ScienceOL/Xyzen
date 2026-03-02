@@ -27,6 +27,7 @@ from app.agents.types import (
     NodeFunction,
     StateDict,
 )
+from app.agents.prompt_utils import has_jinja2_variables
 from app.agents.utils import extract_text_from_content, dedup_tool_calls
 from app.schemas.graph_config_legacy import (
     ConditionType,
@@ -44,6 +45,8 @@ if TYPE_CHECKING:
     from langchain_core.tools import BaseTool
     from langgraph.checkpoint.base import BaseCheckpointSaver
     from langgraph.store.base import BaseStore
+
+    from app.core.prompts.builder import SystemPromptLayers
 
 logger = logging.getLogger(__name__)
 
@@ -132,7 +135,7 @@ class GraphBuilder:
     _tool_node: ToolNode | None
     _store: "BaseStore | None"
     _checkpointer: "BaseCheckpointSaver | None"
-    _prompt_layers: Any | None
+    _prompt_layers: "SystemPromptLayers | None"
     _node_prompts: dict[str, str]
 
     def __init__(
@@ -143,7 +146,7 @@ class GraphBuilder:
         context: dict[str, Any] | None = None,
         store: "BaseStore | None" = None,
         checkpointer: "BaseCheckpointSaver | None" = None,
-        prompt_layers: Any | None = None,
+        prompt_layers: "SystemPromptLayers | None" = None,
         node_prompts: dict[str, str] | None = None,
     ) -> None:
         """
@@ -369,9 +372,8 @@ class GraphBuilder:
 
             # Determine whether to use layered SystemMessages or flat Jinja2 rendering
             original_node_prompt = self._node_prompts.get(config.id, "")
-            has_jinja2 = "{{" in original_node_prompt or "{%" in original_node_prompt
 
-            if self._prompt_layers and not has_jinja2:
+            if self._prompt_layers and not has_jinja2_variables(original_node_prompt):
                 # Multi-SystemMessage path: separate platform/agent/memory layers
                 from app.agents.prompt_utils import layers_to_system_messages
 

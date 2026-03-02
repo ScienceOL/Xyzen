@@ -41,6 +41,7 @@ if TYPE_CHECKING:
     from langchain_core.tools import BaseTool
     from langgraph.checkpoint.base import BaseCheckpointSaver
 
+    from app.core.prompts.builder import SystemPromptLayers
     from app.core.providers import ProviderManager
     from app.models.agent import Agent
     from app.models.sessions import Session
@@ -62,7 +63,7 @@ async def create_chat_agent(
     system_prompt: str,
     store: BaseStore | None = None,
     checkpointer: "BaseCheckpointSaver | None" = None,
-    prompt_layers: Any | None = None,
+    prompt_layers: "SystemPromptLayers | None" = None,
 ) -> tuple[CompiledStateGraph[Any, None, Any, Any], AgentEventContext]:
     """
     Create the appropriate agent for a chat session.
@@ -290,6 +291,25 @@ def _resolve_agent_config(
     return config_dict, DEFAULT_BUILTIN_AGENT, node_prompts
 
 
+def _get_node_list(config_dict: dict[str, Any]) -> list[dict[str, Any]]:
+    """Extract the node list from a config dict, handling both v2 and canonical shapes.
+
+    v2 shape: ``config_dict["nodes"]``
+    Canonical shape: ``config_dict["graph"]["nodes"]``
+
+    Returns an empty list if no node list is found.
+    """
+    node_list = config_dict.get("nodes")
+    if isinstance(node_list, list):
+        return node_list
+    graph = config_dict.get("graph")
+    if isinstance(graph, dict):
+        candidate = graph.get("nodes")
+        if isinstance(candidate, list):
+            return candidate
+    return []
+
+
 def _extract_node_prompts(config_dict: dict[str, Any]) -> dict[str, str]:
     """Extract original node-level prompts before inject_system_prompt() overwrites them.
 
@@ -302,15 +322,7 @@ def _extract_node_prompts(config_dict: dict[str, Any]) -> dict[str, str]:
     """
     prompts: dict[str, str] = {}
 
-    node_list = config_dict.get("nodes")
-    if not isinstance(node_list, list):
-        graph = config_dict.get("graph")
-        if isinstance(graph, dict):
-            candidate = graph.get("nodes")
-            if isinstance(candidate, list):
-                node_list = candidate
-
-    for node in node_list or []:
+    for node in _get_node_list(config_dict):
         if not isinstance(node, dict):
             continue
         node_id = node.get("id")
@@ -391,15 +403,7 @@ def inject_system_prompt(config_dict: dict[str, Any], system_prompt: str) -> dic
     llm_nodes_with_node_prompt = 0
     component_nodes_with_node_prompt = 0
 
-    node_list = config.get("nodes")
-    if not isinstance(node_list, list):
-        graph = config.get("graph")
-        if isinstance(graph, dict):
-            candidate_nodes = graph.get("nodes")
-            if isinstance(candidate_nodes, list):
-                node_list = candidate_nodes
-
-    for node in node_list or []:
+    for node in _get_node_list(config):
         if not isinstance(node, dict):
             continue
 
@@ -465,7 +469,7 @@ async def build_graph_agent(
     system_prompt: str,
     store: BaseStore | None = None,
     checkpointer: "BaseCheckpointSaver | None" = None,
-    prompt_layers: Any | None = None,
+    prompt_layers: "SystemPromptLayers | None" = None,
     node_prompts: dict[str, str] | None = None,
 ) -> tuple[DynamicCompiledGraph, dict[str, str]]:
     """
