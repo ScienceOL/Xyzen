@@ -31,3 +31,14 @@ def test_build_simple_react_graph_config_without_model_keeps_graph_clean() -> No
     assert graph_config["prompt_config"]["custom_instructions"] == ""
     llm_config = _main_llm_node(graph_config)["config"]
     assert llm_config.get("model_override") is None
+
+
+def test_build_simple_react_graph_config_strips_whitespace() -> None:
+    graph_config = _build_simple_react_graph_config(
+        prompt="  你是小智，请使用中文回答。  ",
+        model="  gpt-4o  ",
+    )
+
+    assert graph_config["prompt_config"]["custom_instructions"] == "你是小智，请使用中文回答。"
+    llm_config = _main_llm_node(graph_config)["config"]
+    assert llm_config["model_override"] == "gpt-4o"
