@@ -7,6 +7,7 @@ Supports backward compatibility with legacy agent.prompt field.
 
 from dataclasses import dataclass, field
 from abc import ABC, abstractmethod
+from enum import StrEnum
 import logging
 from typing import Any
 from uuid import UUID
@@ -38,6 +39,44 @@ class SystemPromptBuildResult:
 
     prompt: str
     provenance: dict[str, Any]
+
+
+class PromptLayerKind(StrEnum):
+    """Kind of prompt layer in the multi-SystemMessage structure."""
+
+    PLATFORM = "platform"
+    AGENT = "agent"
+    CORE_MEMORY = "core_memory"
+    AUTO_MEMORY = "auto_memory"
+
+
+@dataclass(frozen=True)
+class PromptLayer:
+    """A single prompt layer with a kind tag and content string."""
+
+    kind: PromptLayerKind
+    content: str
+
+
+@dataclass(frozen=True)
+class SystemPromptLayers:
+    """Collection of prompt layers with provenance metadata.
+
+    Separates static (PLATFORM, AGENT) from dynamic (CORE_MEMORY, AUTO_MEMORY)
+    content to enable future prompt caching.
+    """
+
+    layers: list[PromptLayer]
+    provenance: dict[str, Any]
+
+    def non_empty_layers(self) -> list[PromptLayer]:
+        """Return only layers with non-empty content."""
+        return [layer for layer in self.layers if layer.content.strip()]
+
+    def to_flat_string(self) -> str:
+        """Join all non-empty layer contents into a single string (backward compat)."""
+        parts = [layer.content.strip() for layer in self.layers if layer.content.strip()]
+        return "\n\n".join(parts)
 
 
 @dataclass(frozen=True)
@@ -120,28 +159,44 @@ def _build_prompt_layers(
     model_name: str | None,
     skills: list[SkillMetadata] | None = None,
     memory_ctx: MemoryContext | None = None,
-) -> tuple[str, str]:
-    """Build platform and agent prompt layers independently."""
+) -> list[PromptLayer]:
+    """Build prompt layers for the multi-SystemMessage structure.
 
-    agent_layer = PersonaBlock(config).build().strip()
+    Returns a list of PromptLayer objects:
+    - PLATFORM: MetaInstruction + Context + ToolInstruction + SkillMetadata + Format
+    - AGENT: PersonaBlock (custom instructions)
+    - CORE_MEMORY: Core memory profile (changes occasionally)
+    - AUTO_MEMORY: Auto-retrieved memories (changes every turn)
+
+    Image models only return a single AGENT layer.
+    """
+    agent_content = PersonaBlock(config).build().strip()
 
     if _is_image_model(model_name):
-        return "", agent_layer
+        return [PromptLayer(PromptLayerKind.AGENT, agent_content)]
 
     _mem = memory_ctx or MemoryContext()
+
+    # PLATFORM layer: static platform policy + tools + formatting
     platform_parts = [
         MetaInstructionBlock(config).build(),
         ContextBlock(config).build(),
-        # Memory Layer A: Core Memory (always-in-context user profile)
-        CoreMemoryPromptBlock(_mem.core_memory_text).build(),
-        # Memory Layer B: Auto-retrieved relevant memories
-        AutoRetrievedMemoriesBlock(_mem.auto_retrieved).build(),
         ToolInstructionBlock(config, agent).build(),
         SkillMetadataBlock(skills or []).build(),
         FormatBlock(config, model_name).build(),
     ]
-    platform_layer = _join_non_empty(platform_parts)
-    return platform_layer, agent_layer
+    platform_content = _join_non_empty(platform_parts)
+
+    # Memory layers (separated from platform for cacheability)
+    core_memory_content = CoreMemoryPromptBlock(_mem.core_memory_text).build().strip()
+    auto_memory_content = AutoRetrievedMemoriesBlock(_mem.auto_retrieved).build().strip()
+
+    return [
+        PromptLayer(PromptLayerKind.PLATFORM, platform_content),
+        PromptLayer(PromptLayerKind.AGENT, agent_content),
+        PromptLayer(PromptLayerKind.CORE_MEMORY, core_memory_content),
+        PromptLayer(PromptLayerKind.AUTO_MEMORY, auto_memory_content),
+    ]
 
 
 def _build_prompt_provenance(
@@ -178,6 +233,59 @@ def _build_prompt_provenance(
     }
 
 
+async def build_system_prompt_layers(
+    db: AsyncSession,
+    agent: Agent | None,
+    model_name: str | None,
+    memory_ctx: MemoryContext | None = None,
+) -> SystemPromptLayers:
+    """Build system prompt as layered structure for multi-SystemMessage injection.
+
+    Returns SystemPromptLayers with separate PLATFORM, AGENT, CORE_MEMORY,
+    and AUTO_MEMORY layers. Empty layers are preserved but can be filtered
+    via non_empty_layers().
+
+    Args:
+        db: Database session (for skill metadata loading)
+        agent: Agent configuration (may be None)
+        model_name: Model name for format customization
+        memory_ctx: Pre-fetched memory data (Core Memory + auto-retrieved)
+
+    Returns:
+        SystemPromptLayers with layer list and provenance summary
+    """
+    graph_config = agent.graph_config if agent else None
+    agent_prompt = agent.prompt if agent else None
+    prompt_config = get_prompt_config_from_graph_config(graph_config, agent_prompt)
+
+    skills: list[SkillMetadata] = []
+    if agent and agent.id:
+        skills = await _load_skill_metadata(db, agent.id)
+
+    layers = _build_prompt_layers(prompt_config, agent, model_name, skills=skills, memory_ctx=memory_ctx)
+    flat_prompt = _join_non_empty([layer.content for layer in layers if layer.content.strip()])
+
+    # Extract platform/agent content for provenance
+    platform_prompt = ""
+    agent_prompt_layer = ""
+    for layer in layers:
+        if layer.kind == PromptLayerKind.PLATFORM:
+            platform_prompt = layer.content
+        elif layer.kind == PromptLayerKind.AGENT:
+            agent_prompt_layer = layer.content
+
+    provenance = _build_prompt_provenance(
+        graph_config=graph_config,
+        agent_prompt=agent_prompt,
+        platform_prompt=platform_prompt,
+        agent_prompt_layer=agent_prompt_layer,
+        final_prompt=flat_prompt,
+        model_name=model_name,
+        memory_ctx=memory_ctx,
+    )
+    return SystemPromptLayers(layers=layers, provenance=provenance)
+
+
 async def build_system_prompt_with_provenance(
     db: AsyncSession,
     agent: Agent | None,
@@ -187,10 +295,8 @@ async def build_system_prompt_with_provenance(
     """
     Build system prompt for the agent using the modular builder.
 
-    Extracts PromptConfig from agent's graph_config with fallbacks:
-    1. graph_config.prompt_config (if present)
-    2. Default PromptConfig (if no config)
-    3. Backward compat: agent.prompt → custom_instructions
+    Facade over build_system_prompt_layers() that returns a flat string
+    for backward compatibility.
 
     Args:
         db: Database session (for skill metadata loading)
@@ -201,31 +307,11 @@ async def build_system_prompt_with_provenance(
     Returns:
         SystemPromptBuildResult with prompt text and provenance summary
     """
-    # Extract prompt config from graph_config (with backward compatibility)
-    graph_config = agent.graph_config if agent else None
-    agent_prompt = agent.prompt if agent else None
-    prompt_config = get_prompt_config_from_graph_config(graph_config, agent_prompt)
-
-    # Load skill metadata for prompt injection
-    skills: list[SkillMetadata] = []
-    if agent and agent.id:
-        skills = await _load_skill_metadata(db, agent.id)
-
-    platform_prompt, resolved_agent_prompt = _build_prompt_layers(
-        prompt_config, agent, model_name, skills=skills, memory_ctx=memory_ctx
+    prompt_layers = await build_system_prompt_layers(db, agent, model_name, memory_ctx=memory_ctx)
+    return SystemPromptBuildResult(
+        prompt=prompt_layers.to_flat_string(),
+        provenance=prompt_layers.provenance,
     )
-    final_prompt = _join_non_empty([platform_prompt, resolved_agent_prompt])
-
-    provenance = _build_prompt_provenance(
-        graph_config=graph_config,
-        agent_prompt=agent_prompt,
-        platform_prompt=platform_prompt,
-        agent_prompt_layer=resolved_agent_prompt,
-        final_prompt=final_prompt,
-        model_name=model_name,
-        memory_ctx=memory_ctx,
-    )
-    return SystemPromptBuildResult(prompt=final_prompt, provenance=provenance)
 
 
 async def _load_skill_metadata(db: AsyncSession, agent_id: UUID) -> list[SkillMetadata]:

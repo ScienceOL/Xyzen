@@ -62,6 +62,7 @@ async def create_chat_agent(
     system_prompt: str,
     store: BaseStore | None = None,
     checkpointer: "BaseCheckpointSaver | None" = None,
+    prompt_layers: Any | None = None,
 ) -> tuple[CompiledStateGraph[Any, None, Any, Any], AgentEventContext]:
     """
     Create the appropriate agent for a chat session.
@@ -117,8 +118,8 @@ async def create_chat_agent(
         sandbox_backend=session.sandbox_backend if session else None,
     )
 
-    # Resolve the agent configuration
-    resolved_config, agent_type_key = _resolve_agent_config(agent_config, system_prompt)
+    # Resolve the agent configuration and extract original node prompts
+    resolved_config, agent_type_key, node_prompts = _resolve_agent_config(agent_config, system_prompt)
 
     # Create event context for tracking
     _default_avatar = "https://api.dicebear.com/7.x/avataaars/svg?seed=default"
@@ -202,6 +203,8 @@ async def create_chat_agent(
         system_prompt,
         store=store,
         checkpointer=checkpointer,
+        prompt_layers=prompt_layers,
+        node_prompts=node_prompts,
     )
 
     # Populate node->component mapping for frontend rendering
@@ -216,7 +219,7 @@ async def create_chat_agent(
 def _resolve_agent_config(
     agent_config: "Agent | None",
     system_prompt: str,
-) -> tuple[dict[str, Any], str]:
+) -> tuple[dict[str, Any], str, dict[str, str]]:
     """
     Resolve which GraphConfig to use for an agent.
 
@@ -232,9 +235,10 @@ def _resolve_agent_config(
         system_prompt: System prompt to inject into the config
 
     Returns:
-        Tuple of (raw_config_dict, agent_type_key)
-        - raw_config_dict: GraphConfig as dict
+        Tuple of (raw_config_dict, agent_type_key, node_prompts)
+        - raw_config_dict: GraphConfig as dict (with system_prompt injected)
         - agent_type_key: Agent type for events (e.g., "react", "deep_research", "graph")
+        - node_prompts: Original node-level prompts extracted before injection
     """
     from app.agents.builtin import get_builtin_config, list_builtin_keys
 
@@ -261,11 +265,14 @@ def _resolve_agent_config(
                 agent_type_key = candidate
                 break
 
+        # Extract original node prompts BEFORE inject_system_prompt() overwrites them
+        node_prompts = _extract_node_prompts(raw_config)
+
         # Inject system_prompt into the agent's actual config (not a builtin replacement)
         if system_prompt:
             raw_config = inject_system_prompt(raw_config, system_prompt)
 
-        return raw_config, agent_type_key
+        return raw_config, agent_type_key, node_prompts
 
     # No agent config or no graph_config - use default builtin (react)
     builtin_config = get_builtin_config(DEFAULT_BUILTIN_AGENT)
@@ -273,10 +280,80 @@ def _resolve_agent_config(
         raise ValueError(f"Default builtin agent '{DEFAULT_BUILTIN_AGENT}' not found")
 
     config_dict = builtin_config.model_dump()
+
+    # Extract original node prompts BEFORE inject_system_prompt() overwrites them
+    node_prompts = _extract_node_prompts(config_dict)
+
     if system_prompt:
         config_dict = inject_system_prompt(config_dict, system_prompt)
 
-    return config_dict, DEFAULT_BUILTIN_AGENT
+    return config_dict, DEFAULT_BUILTIN_AGENT, node_prompts
+
+
+def _extract_node_prompts(config_dict: dict[str, Any]) -> dict[str, str]:
+    """Extract original node-level prompts before inject_system_prompt() overwrites them.
+
+    Walks the node list and captures:
+    - LLM nodes: prompt_template
+    - Component nodes: config_overrides.system_prompt
+
+    Returns:
+        dict mapping node_id → original prompt text (only non-empty entries)
+    """
+    prompts: dict[str, str] = {}
+
+    node_list = config_dict.get("nodes")
+    if not isinstance(node_list, list):
+        graph = config_dict.get("graph")
+        if isinstance(graph, dict):
+            candidate = graph.get("nodes")
+            if isinstance(candidate, list):
+                node_list = candidate
+
+    for node in node_list or []:
+        if not isinstance(node, dict):
+            continue
+        node_id = node.get("id")
+        if not isinstance(node_id, str):
+            continue
+
+        # v2 shape
+        if node.get("type") == "llm":
+            llm_cfg = node.get("llm_config")
+            if isinstance(llm_cfg, dict):
+                pt = llm_cfg.get("prompt_template")
+                if isinstance(pt, str) and pt.strip():
+                    prompts[node_id] = pt
+            continue
+        if node.get("type") == "component":
+            cc = node.get("component_config")
+            if isinstance(cc, dict):
+                overrides = cc.get("config_overrides")
+                if isinstance(overrides, dict):
+                    sp = overrides.get("system_prompt")
+                    if isinstance(sp, str) and sp.strip():
+                        prompts[node_id] = sp
+            continue
+
+        # canonical shape
+        if node.get("kind") == "llm":
+            cfg = node.get("config")
+            if isinstance(cfg, dict):
+                pt = cfg.get("prompt_template")
+                if isinstance(pt, str) and pt.strip():
+                    prompts[node_id] = pt
+            continue
+        if node.get("kind") == "component":
+            cfg = node.get("config")
+            if isinstance(cfg, dict):
+                overrides = cfg.get("config_overrides")
+                if isinstance(overrides, dict):
+                    sp = overrides.get("system_prompt")
+                    if isinstance(sp, str) and sp.strip():
+                        prompts[node_id] = sp
+            continue
+
+    return prompts
 
 
 def inject_system_prompt(config_dict: dict[str, Any], system_prompt: str) -> dict[str, Any]:
@@ -388,6 +465,8 @@ async def build_graph_agent(
     system_prompt: str,
     store: BaseStore | None = None,
     checkpointer: "BaseCheckpointSaver | None" = None,
+    prompt_layers: Any | None = None,
+    node_prompts: dict[str, str] | None = None,
 ) -> tuple[DynamicCompiledGraph, dict[str, str]]:
     """
     Build a graph agent from a canonical configuration.
@@ -423,6 +502,8 @@ async def build_graph_agent(
         tool_registry=tool_registry,
         store=store,
         checkpointer=checkpointer,
+        prompt_layers=prompt_layers,
+        node_prompts=node_prompts,
     )
     compiled_graph = await compiler.build()
     node_component_keys = compiler.get_node_component_keys()

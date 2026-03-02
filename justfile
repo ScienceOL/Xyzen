@@ -180,6 +180,12 @@ ps:
 restart +services:
     docker compose -f docker/docker-compose.base.yaml -f docker/docker-compose.dev.yaml --env-file docker/.env.dev restart {{ services }}
 
+# Restart app services (service + celery) and nginx.
+# Nginx caches upstream DNS at startup, so restarting service/celery without
+# nginx causes 502s because nginx still points to old container IPs.
+restart-app:
+    docker compose -f docker/docker-compose.base.yaml -f docker/docker-compose.dev.yaml --env-file docker/.env.dev restart service celery nginx
+
 # Rebuild and restart services
 rebuild *services='':
     docker compose -f docker/docker-compose.base.yaml -f docker/docker-compose.dev.yaml --env-file docker/.env.dev up -d --build {{ services }}

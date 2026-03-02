@@ -19,7 +19,10 @@ class CreateAgentInput(BaseModel):
     )
     model: str = Field(
         default="",
-        description="Model name (e.g. 'gpt-4o', 'claude-sonnet-4-20250514'). Leave empty to use the user's default model.",
+        description=(
+            "Preferred model name (e.g. 'gpt-4o', 'claude-sonnet-4-20250514'). "
+            "Applied to graph_config as llm.config.model_override during creation."
+        ),
     )
     tags: str = Field(
         default="",
@@ -29,7 +32,7 @@ class CreateAgentInput(BaseModel):
         default="",
         description=(
             "Advanced: full canonical GraphConfig v3 JSON string for custom graph agents. "
-            "Leave empty to create a standard ReAct agent (recommended for most use cases). "
+            "Leave empty to create a standard ReAct agent whose prompt/model are compiled into graph_config. "
             "Call get_agent_schema first to see the full spec."
         ),
     )
@@ -49,11 +52,11 @@ class UpdateAgentInput(BaseModel):
     )
     prompt: str = Field(
         default="",
-        description="New system prompt. Leave empty to keep current.",
+        description="DEPRECATED for updates. Modify graph_config.prompt_config.custom_instructions instead.",
     )
     model: str = Field(
         default="",
-        description="New model name. Leave empty to keep current.",
+        description="DEPRECATED for updates. Modify graph_config llm.config.model_override instead.",
     )
     tags: str = Field(
         default="",
