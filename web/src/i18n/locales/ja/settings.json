@@ -10,6 +10,7 @@
     "region": "サービスと地域",
     "redemption": "引き換え",
     "mcp": "MCPサーバー",
+    "preferences": "環境設定",
     "feedback": "フィードバック",
     "about": "このアプリについて"
   },
@@ -247,6 +248,19 @@
         "deleteFailed": "プロバイダーの削除に失敗しました",
         "defaultFailed": "デフォルトプロバイダーの設定に失敗しました"
       }
+    }
+  },
+  "preferences": {
+    "title": "環境設定",
+    "subtitle": "システム連携とプロンプトを管理",
+    "push": {
+      "label": "プッシュ通知",
+      "description": "エージェントの応答完了時に通知を受け取ります。",
+      "deniedHint": "通知がブロックされています。ブラウザの設定で通知を許可してください。",
+      "unsupportedHint": "このブラウザではプッシュ通知がサポートされていません。",
+      "enabled": "プッシュ通知を有効にしました",
+      "disabled": "プッシュ通知を無効にしました",
+      "enableFailed": "プッシュ通知の有効化に失敗しました"
     }
   },
   "redemption": {

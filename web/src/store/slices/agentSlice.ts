@@ -450,6 +450,22 @@ export const createAgentSlice: StateCreator<
     // Save previous state for rollback
     const previousAgents = get().agents;
 
+    // Compute diff: only send fields that actually changed
+    const existing = previousAgents.find((a) => a.id === agent.id);
+    const patch: Record<string, unknown> = {};
+    if (existing) {
+      for (const key of Object.keys(agent) as (keyof typeof agent)[]) {
+        if (key === "id") continue;
+        const oldVal = existing[key];
+        const newVal = agent[key];
+        if (oldVal !== newVal) {
+          patch[key] = newVal;
+        }
+      }
+    } else {
+      Object.assign(patch, agent);
+    }
+
     // Optimistic update: apply changes to local state immediately
     set((state) => {
       const idx = state.agents.findIndex((a) => a.id === agent.id);
@@ -464,7 +480,7 @@ export const createAgentSlice: StateCreator<
         {
           method: "PATCH",
           headers: createAuthHeaders(),
-          body: JSON.stringify(agent),
+          body: JSON.stringify(patch),
         },
       );
       if (!response.ok) {
@@ -602,6 +618,19 @@ export const createAgentSlice: StateCreator<
 
       // Update the session's avatar via Session API
       await sessionService.updateSession(sessionId, { avatar: avatarUrl });
+
+      // Also update the Agent record so notifications pick up the avatar
+      const response = await fetch(
+        `${get().backendUrl}/xyzen/api/v1/agents/${agentId}`,
+        {
+          method: "PATCH",
+          headers: createAuthHeaders(),
+          body: JSON.stringify({ avatar: avatarUrl }),
+        },
+      );
+      if (!response.ok) {
+        console.error("Failed to update agent avatar:", await response.text());
+      }
 
       updateLocalAvatar();
     } catch (error) {

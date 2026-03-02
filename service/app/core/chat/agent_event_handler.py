@@ -1,8 +1,9 @@
 """
-Agent Event Handler - Utilities for emitting agent execution events.
+Agent Event Context - Execution context for agent event emission.
 
-This module provides a clean interface for emitting structured agent
-execution events during graph-based agent execution.
+This module provides the ``AgentEventContext`` dataclass that tracks
+agent execution state and produces context dictionaries consumed by
+the ``LangGraphTracer``.
 """
 
 from __future__ import annotations
@@ -10,30 +11,8 @@ from __future__ import annotations
 import time
 import uuid
 from dataclasses import dataclass, field
-from typing import Any
 
-from app.schemas.agent_event_payloads import (
-    AgentEndData,
-    AgentErrorData,
-    AgentExecutionContext,
-    AgentStartData,
-    NodeEndData,
-    NodeStartData,
-    ProgressUpdateData,
-    SubagentEndData,
-    SubagentStartData,
-)
-from app.schemas.chat_event_payloads import (
-    AgentEndEvent,
-    AgentErrorEvent,
-    AgentStartEvent,
-    NodeEndEvent,
-    NodeStartEvent,
-    ProgressUpdateEvent,
-    SubagentEndEvent,
-    SubagentStartEvent,
-)
-from app.schemas.chat_event_types import ChatEventType
+from app.schemas.agent_event_payloads import AgentExecutionContext
 
 
 @dataclass
@@ -128,182 +107,6 @@ class AgentEventContext:
         self.current_phase = phase
 
 
-class AgentEventHandler:
-    """
-    Static utility class for creating agent execution events.
-
-    All methods return AgentEvent-typed envelopes that can be yielded
-    from the agent execution stream.
-    """
-
-    # === Agent Lifecycle ===
-
-    @staticmethod
-    def emit_agent_start(
-        ctx: AgentEventContext,
-        total_nodes: int | None = None,
-        estimated_duration_ms: int | None = None,
-    ) -> AgentStartEvent:
-        """Emit AGENT_START event."""
-        data: AgentStartData = {"context": ctx.to_context_dict()}
-        if total_nodes is not None:
-            data["total_nodes"] = total_nodes
-        if estimated_duration_ms is not None:
-            data["estimated_duration_ms"] = estimated_duration_ms
-
-        return {"type": ChatEventType.AGENT_START, "data": data}
-
-    @staticmethod
-    def emit_agent_end(
-        ctx: AgentEventContext,
-        status: str,
-        output_summary: str | None = None,
-    ) -> AgentEndEvent:
-        """Emit AGENT_END event."""
-        data: AgentEndData = {
-            "context": ctx.to_context_dict(),
-            "status": status,
-            "duration_ms": int((time.time() - ctx.started_at) * 1000),
-        }
-        if output_summary:
-            data["output_summary"] = output_summary
-
-        return {"type": ChatEventType.AGENT_END, "data": data}
-
-    @staticmethod
-    def emit_agent_error(
-        ctx: AgentEventContext,
-        error: Exception,
-        recoverable: bool = False,
-        node_id: str | None = None,
-    ) -> AgentErrorEvent:
-        """Emit AGENT_ERROR event."""
-        data: AgentErrorData = {
-            "context": ctx.to_context_dict(),
-            "error_type": type(error).__name__,
-            "error_message": str(error),
-            "recoverable": recoverable,
-        }
-        if node_id:
-            data["node_id"] = node_id
-
-        return {"type": ChatEventType.AGENT_ERROR, "data": data}
-
-    # === Node Events ===
-
-    @staticmethod
-    def emit_node_start(
-        ctx: AgentEventContext,
-        node_id: str,
-        node_name: str,
-        node_type: str,
-        input_summary: str | None = None,
-    ) -> NodeStartEvent:
-        """Emit NODE_START event."""
-        ctx.set_current_node(node_id)
-
-        data: NodeStartData = {
-            "node_id": node_id,
-            "node_name": node_name,
-            "node_type": node_type,
-            "context": ctx.to_context_dict(),
-        }
-        if input_summary:
-            data["input_summary"] = input_summary
-
-        return {"type": ChatEventType.NODE_START, "data": data}
-
-    @staticmethod
-    def emit_node_end(
-        ctx: AgentEventContext,
-        node_id: str,
-        node_name: str,
-        node_type: str,
-        status: str,
-        start_time: float,
-        output_summary: str | None = None,
-    ) -> NodeEndEvent:
-        """Emit NODE_END event."""
-        data: NodeEndData = {
-            "node_id": node_id,
-            "node_name": node_name,
-            "node_type": node_type,
-            "status": status,
-            "duration_ms": int((time.time() - start_time) * 1000),
-            "context": ctx.to_context_dict(),
-        }
-        if output_summary:
-            data["output_summary"] = output_summary
-
-        return {"type": ChatEventType.NODE_END, "data": data}
-
-    # === Subagent Events ===
-
-    @staticmethod
-    def emit_subagent_start(
-        ctx: AgentEventContext,
-        subagent_id: str,
-        subagent_name: str,
-        subagent_type: str = "graph",
-        input_summary: str | None = None,
-    ) -> SubagentStartEvent:
-        """Emit SUBAGENT_START event."""
-        data: SubagentStartData = {
-            "subagent_id": subagent_id,
-            "subagent_name": subagent_name,
-            "subagent_type": subagent_type,
-            "context": ctx.to_context_dict(),
-        }
-        if input_summary:
-            data["input_summary"] = input_summary
-
-        return {"type": ChatEventType.SUBAGENT_START, "data": data}
-
-    @staticmethod
-    def emit_subagent_end(
-        ctx: AgentEventContext,
-        subagent_id: str,
-        subagent_name: str,
-        status: str,
-        start_time: float,
-        output_summary: str | None = None,
-    ) -> SubagentEndEvent:
-        """Emit SUBAGENT_END event."""
-        data: SubagentEndData = {
-            "subagent_id": subagent_id,
-            "subagent_name": subagent_name,
-            "status": status,
-            "duration_ms": int((time.time() - start_time) * 1000),
-            "context": ctx.to_context_dict(),
-        }
-        if output_summary:
-            data["output_summary"] = output_summary
-
-        return {"type": ChatEventType.SUBAGENT_END, "data": data}
-
-    # === Progress Events ===
-
-    @staticmethod
-    def emit_progress(
-        ctx: AgentEventContext,
-        percent: int,
-        message: str,
-        details: dict[str, Any] | None = None,
-    ) -> ProgressUpdateEvent:
-        """Emit PROGRESS_UPDATE event."""
-        data: ProgressUpdateData = {
-            "progress_percent": max(0, min(100, percent)),
-            "message": message,
-            "context": ctx.to_context_dict(),
-        }
-        if details:
-            data["details"] = details
-
-        return {"type": ChatEventType.PROGRESS_UPDATE, "data": data}
-
-
-# Export
 __all__ = [
     "AgentEventContext",
-    "AgentEventHandler",
 ]

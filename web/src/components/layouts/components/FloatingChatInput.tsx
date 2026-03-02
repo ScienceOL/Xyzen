@@ -30,6 +30,8 @@ import {
   ToolbarActions,
   ToolSelector,
 } from "./ChatToolbar/index";
+import { KnowledgeButton } from "./ChatToolbar/KnowledgeButton";
+import { SandboxButton } from "./ChatToolbar/SandboxButton";
 import { TierSelector } from "./TierSelector";
 
 interface FloatingChatInputProps {
@@ -280,10 +282,7 @@ export const FloatingChatInput: React.FC<FloatingChatInputProps> = ({
                 mcpInfo={toolbar.currentMcpInfo}
                 allMcpServers={toolbar.mcpServers}
                 onOpenSettings={() => toolbar.openSettingsModal("mcp")}
-                sessionKnowledgeSetId={toolbar.currentChannelKnowledgeSetId}
-                onUpdateSessionKnowledge={toolbar.handleKnowledgeSetChange}
                 onAgentRefresh={toolbar.fetchAgents}
-                userPlan={toolbar.userPlan}
               />
             )}
 
@@ -313,10 +312,14 @@ export const FloatingChatInput: React.FC<FloatingChatInputProps> = ({
                     <ToolSelector
                       agent={toolbar.currentAgent}
                       onUpdateAgent={toolbar.updateAgent}
-                      hasKnowledgeSet={
-                        !!toolbar.currentAgent.knowledge_set_id ||
-                        !!toolbar.currentChannelKnowledgeSetId
-                      }
+                      buttonClassName={toolbarButtonClass}
+                    />
+                  )}
+
+                  {toolbar.activeChatChannel && toolbar.currentAgent && (
+                    <KnowledgeButton
+                      agent={toolbar.currentAgent}
+                      onUpdateAgent={toolbar.updateAgent}
                       sessionKnowledgeSetId={
                         toolbar.currentChannelKnowledgeSetId
                       }
@@ -324,7 +327,20 @@ export const FloatingChatInput: React.FC<FloatingChatInputProps> = ({
                         toolbar.handleKnowledgeSetChange
                       }
                       buttonClassName={toolbarButtonClass}
-                      userPlan={toolbar.userPlan}
+                    />
+                  )}
+
+                  {toolbar.activeChatChannel && toolbar.currentAgent && (
+                    <SandboxButton
+                      agent={toolbar.currentAgent}
+                      onUpdateAgent={toolbar.updateAgent}
+                      sessionSandboxBackend={
+                        toolbar.currentChannelSandboxBackend
+                      }
+                      onUpdateSessionSandboxBackend={
+                        toolbar.handleSandboxBackendChange
+                      }
+                      buttonClassName={toolbarButtonClass}
                     />
                   )}
 

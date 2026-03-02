@@ -11,6 +11,7 @@ from sqlmodel.ext.asyncio.session import AsyncSession
 
 from app.common.code.error_code import ErrCodeError, handle_auth_error
 from app.configs import configs
+from app.core.rate_limit import enforce_admin_rate_limit, enforce_redeem_rate_limit
 from app.core.redemption import RedemptionService
 from app.infra.database import get_session as get_db_session
 from app.middleware.auth import get_current_user
@@ -33,9 +34,11 @@ class GenerateCodeRequest(BaseModel):
     expires_at: Optional[datetime] = Field(default=None, description="Expiration time (None means no expiration)")
     description: Optional[str] = Field(default=None, description="Code description or notes")
     is_active: bool = Field(default=True, description="Whether the code is active")
-    code_type: str = Field(default="credits", description="Code type: 'credits' or 'subscription'")
+    code_type: str = Field(default="credits", description="Code type: 'credits', 'subscription', or 'full_access'")
     role_name: Optional[str] = Field(default=None, description="Target subscription role name (for subscription)")
-    duration_days: int = Field(default=30, gt=0, description="Subscription duration in days")
+    duration_days: int = Field(
+        default=30, gt=0, description="Duration in days (for subscription and full_access codes)"
+    )
 
 
 class RedemptionCodeResponse(BaseModel):
@@ -110,6 +113,7 @@ async def generate_redemption_code(
     request: GenerateCodeRequest,
     admin_secret: str = Header(..., alias="X-Admin-Secret"),
     db: AsyncSession = Depends(get_db_session),
+    _rate_limit: None = Depends(enforce_admin_rate_limit),
 ):
     """
     Generate a new redemption code (admin only).
@@ -188,6 +192,7 @@ async def list_redemption_codes(
     offset: int = 0,
     is_active: Optional[bool] = None,
     db: AsyncSession = Depends(get_db_session),
+    _rate_limit: None = Depends(enforce_admin_rate_limit),
 ):
     """
     List redemption codes (admin only).
@@ -317,6 +322,7 @@ async def deactivate_redemption_code(
     code_id: UUID,
     admin_secret: str = Header(..., alias="X-Admin-Secret"),
     db: AsyncSession = Depends(get_db_session),
+    _rate_limit: None = Depends(enforce_admin_rate_limit),
 ):
     """
     Deactivate a redemption code (admin only).
@@ -382,7 +388,7 @@ async def deactivate_redemption_code(
 @router.post("/redeem", response_model=RedeemCodeResponse)
 async def redeem_code(
     request: RedeemCodeRequest,
-    current_user: str = Depends(get_current_user),
+    current_user: str = Depends(enforce_redeem_rate_limit),
     db: AsyncSession = Depends(get_db_session),
 ):
     """

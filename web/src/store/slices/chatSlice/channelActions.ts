@@ -70,6 +70,8 @@ export function createChannelActions(
                   provider_id: session.provider_id,
                   model: session.model,
                   model_tier: session.model_tier,
+                  knowledge_set_id: session.knowledge_set_id,
+                  sandbox_backend: session.sandbox_backend,
                   connected: false,
                   error: null,
                 };
@@ -123,6 +125,10 @@ export function createChannelActions(
                 existing.model = incomingChannel.model;
               if (incomingChannel.model_tier !== undefined)
                 existing.model_tier = incomingChannel.model_tier;
+              if (incomingChannel.knowledge_set_id !== undefined)
+                existing.knowledge_set_id = incomingChannel.knowledge_set_id;
+              if (incomingChannel.sandbox_backend !== undefined)
+                existing.sandbox_backend = incomingChannel.sandbox_backend;
             }
           }
         });
@@ -195,6 +201,7 @@ export function createChannelActions(
           let sessionModel = undefined;
           let sessionModelTier = undefined;
           let sessionKnowledgeSetId = undefined;
+          let sessionSandboxBackend = undefined;
 
           for (const session of sessions) {
             const topic = session.topics.find((t) => t.id === topicId);
@@ -206,6 +213,7 @@ export function createChannelActions(
               sessionModel = session.model;
               sessionModelTier = session.model_tier;
               sessionKnowledgeSetId = session.knowledge_set_id;
+              sessionSandboxBackend = session.sandbox_backend;
               break;
             }
           }
@@ -221,6 +229,7 @@ export function createChannelActions(
               model: sessionModel,
               model_tier: sessionModelTier,
               knowledge_set_id: sessionKnowledgeSetId,
+              sandbox_backend: sessionSandboxBackend,
               connected: false,
               error: null,
             };
@@ -312,6 +321,7 @@ export function createChannelActions(
               model: session.model,
               model_tier: session.model_tier,
               knowledge_set_id: session.knowledge_set_id,
+              sandbox_backend: session.sandbox_backend,
               connected: false,
               error: null,
             };
@@ -342,6 +352,7 @@ export function createChannelActions(
               model: session.model,
               model_tier: session.model_tier,
               knowledge_set_id: session.knowledge_set_id,
+              sandbox_backend: session.sandbox_backend,
               connected: false,
               error: null,
             };
@@ -453,6 +464,7 @@ export function createChannelActions(
             model: existingSession.model,
             model_tier: existingSession.model_tier,
             knowledge_set_id: existingSession.knowledge_set_id,
+            sandbox_backend: existingSession.sandbox_backend,
             connected: false,
             error: null,
           };
@@ -709,6 +721,7 @@ export function createChannelActions(
         model?: string;
         model_tier?: "ultra" | "pro" | "standard" | "lite";
         knowledge_set_id?: string | null;
+        sandbox_backend?: string | null;
       },
     ) => {
       try {
@@ -725,6 +738,7 @@ export function createChannelActions(
               ch.model = updatedSession.model;
               ch.model_tier = updatedSession.model_tier;
               ch.knowledge_set_id = updatedSession.knowledge_set_id;
+              ch.sandbox_backend = updatedSession.sandbox_backend;
             }
           }
         });
@@ -764,6 +778,7 @@ export function createChannelActions(
           model: session?.model,
           model_tier: session?.model_tier,
           knowledge_set_id: session?.knowledge_set_id,
+          sandbox_backend: session?.sandbox_backend,
           connected: false,
           error: null,
         };

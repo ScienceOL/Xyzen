@@ -18,6 +18,7 @@ import { useWalletSync } from "@/hooks/useWalletSync";
 import { authService } from "@/service/authService";
 import { LAYOUT_STYLE, type InputPosition } from "@/store/slices/uiSlice/types";
 import { buildAuthorizeUrl } from "@/utils/authFlow";
+import { Toaster } from "@/components/ui/sonner";
 import { AppFullscreen } from "./AppFullscreen";
 import { AppSide } from "./AppSide";
 import { AuthLoadingScreen } from "./AuthLoadingScreen";
@@ -526,6 +527,7 @@ export function Xyzen({
   return (
     <QueryClientProvider client={queryClient}>
       {gatedContent}
+      <Toaster position="top-right" />
     </QueryClientProvider>
   );
 }

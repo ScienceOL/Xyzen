@@ -198,6 +198,7 @@ def create_sandbox_tools() -> dict[str, BaseTool]:
 def create_sandbox_tools_for_session(
     session_id: str,
     user_id: str | None = None,
+    sandbox_backend: str | None = None,
 ) -> list[BaseTool]:
     """
     Create sandbox tools bound to a specific session.
@@ -209,6 +210,7 @@ def create_sandbox_tools_for_session(
     Args:
         session_id: Session UUID string
         user_id: Current user ID (needed for sandbox_export/upload and Runner routing)
+        sandbox_backend: Per-session sandbox backend override
 
     Returns:
         List of BaseTool instances with session context bound
@@ -220,7 +222,7 @@ def create_sandbox_tools_for_session(
         if _manager_holder[0] is None:
             from app.infra.sandbox import get_sandbox_manager
 
-            _manager_holder[0] = await get_sandbox_manager(session_id, user_id=user_id)
+            _manager_holder[0] = await get_sandbox_manager(session_id, user_id=user_id, sandbox_backend=sandbox_backend)
         return _manager_holder[0]
 
     # Map each tool_id to its session-bound coroutine.

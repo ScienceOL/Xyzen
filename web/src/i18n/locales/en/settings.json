@@ -10,6 +10,7 @@
     "region": "Service & Region",
     "redemption": "Redemption",
     "mcp": "MCP Servers",
+    "preferences": "Preferences",
     "feedback": "Feedback",
     "about": "About"
   },
@@ -247,6 +248,19 @@
         "deleteFailed": "Failed to delete provider",
         "defaultFailed": "Failed to set default provider"
       }
+    }
+  },
+  "preferences": {
+    "title": "Preferences",
+    "subtitle": "Manage system integrations and prompts",
+    "push": {
+      "label": "Push Notifications",
+      "description": "Get notified when agents finish responding.",
+      "deniedHint": "Permission was blocked. Allow notifications in your browser settings.",
+      "unsupportedHint": "Push notifications are not supported in this browser.",
+      "enabled": "Push notifications enabled",
+      "disabled": "Push notifications disabled",
+      "enableFailed": "Failed to enable push notifications"
     }
   },
   "redemption": {

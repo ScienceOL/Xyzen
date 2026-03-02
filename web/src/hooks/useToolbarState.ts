@@ -37,8 +37,6 @@ export function useToolbarState() {
   // Subscription tier limit
   const subInfo = useSubscriptionInfo();
   const maxTier = subInfo?.maxTier ?? "lite";
-  const userPlan = subInfo?.userPlan ?? "free";
-
   // Fine-grained channel status (no messages)
   const channelStatus = useActiveChannelStatus();
   const activeChatChannel = channelStatus.channelId;
@@ -65,6 +63,7 @@ export function useToolbarState() {
   const currentSessionTier = channelStatus.model_tier;
   const currentChannelSessionId = channelStatus.sessionId;
   const currentChannelKnowledgeSetId = channelStatus.knowledge_set_id;
+  const currentChannelSandboxBackend = channelStatus.sandbox_backend;
 
   // State for new chat creation loading
   const [isCreatingNewChat, setIsCreatingNewChat] = useState(false);
@@ -84,6 +83,22 @@ export function useToolbarState() {
         });
       } catch (error) {
         console.error("Failed to update session tier:", error);
+      }
+    },
+    [currentChannelSessionId, updateSessionConfig],
+  );
+
+  // Sandbox backend change handler
+  const handleSandboxBackendChange = useCallback(
+    async (sandboxBackend: string | null) => {
+      if (!currentChannelSessionId) return;
+
+      try {
+        await updateSessionConfig(currentChannelSessionId, {
+          sandbox_backend: sandboxBackend,
+        });
+      } catch (error) {
+        console.error("Failed to update session sandbox backend:", error);
       }
     },
     [currentChannelSessionId, updateSessionConfig],
@@ -125,13 +140,13 @@ export function useToolbarState() {
     uploadedFiles,
     isUploading,
     maxTier,
-    userPlan,
     activeChatChannel,
     allAgents: agents,
     currentMcpInfo,
     currentAgent,
     currentSessionTier,
     currentChannelKnowledgeSetId,
+    currentChannelSandboxBackend,
     isMobile,
 
     // State
@@ -142,6 +157,7 @@ export function useToolbarState() {
     // Handlers
     handleTierChange,
     handleKnowledgeSetChange,
+    handleSandboxBackendChange,
     handleNewChat,
 
     // Store actions

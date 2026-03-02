@@ -238,16 +238,13 @@ async def chat_websocket(
                         continue
                     selected_options = response_data.get("selected_options")
                     text = response_data.get("text", "")
-                    timed_out = response_data.get("timed_out", False)
 
-                    # Look up thread_id from Redis
+                    # Look up thread_id from Redis (primary), DB fallback if Redis keys expired
                     r = None
+                    thread_id: str | None = None
                     try:
                         r = redis.from_url(configs.Redis.REDIS_URL, decode_responses=True)
                         thread_id = await r.get(f"question_thread:{connection_id}")
-                        if not thread_id:
-                            logger.warning(f"No thread_id found for question response on {connection_id}")
-                            continue
 
                         # Validate question_id matches the active question
                         active_qid = await r.get(f"question_active:{connection_id}")
@@ -257,29 +254,40 @@ async def chat_websocket(
                             )
                             continue
 
-                        # Check timeout
-                        timeout_key = f"question_timeout:{connection_id}:{question_id}"
-                        still_valid = await r.get(timeout_key)
-                        if not still_valid and not timed_out:
-                            logger.warning(f"Question {question_id} has timed out on {connection_id}")
-                            timed_out = True
-
                         # Clean up Redis keys
                         await r.delete(f"question_active:{connection_id}")
-                        await r.delete(timeout_key)
                         await r.delete(f"question_thread:{connection_id}")
                     except Exception as e:
                         logger.error(f"Failed to look up question state from Redis: {e}")
-                        continue
                     finally:
                         if r:
                             await r.aclose()
+
+                    # DB fallback: if Redis keys expired, recover thread_id from persisted message
+                    if not thread_id:
+                        try:
+                            messages = await message_repo.get_messages_by_topic(topic_id, order_by_created=True)
+                            for msg in reversed(messages):
+                                if msg.role == "assistant" and msg.user_question_data:
+                                    qd = msg.user_question_data
+                                    if qd.get("question_id") == question_id and qd.get("thread_id"):
+                                        thread_id = qd["thread_id"]
+                                        logger.info(
+                                            f"Recovered thread_id from DB for question {question_id} on {connection_id}"
+                                        )
+                                        break
+                        except Exception as e:
+                            logger.error(f"DB fallback for thread_id failed: {e}")
+
+                    if not thread_id:
+                        logger.warning(f"No thread_id found for question response on {connection_id}")
+                        continue
 
                     user_response = {
                         "question_id": question_id,
                         "selected_options": selected_options,
                         "text": text,
-                        "timed_out": timed_out,
+                        "timed_out": False,
                     }
 
                     # Generate new stream_id for the resumed response

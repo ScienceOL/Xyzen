@@ -6,6 +6,7 @@ import {
   ArrowLeftIcon,
   ChatBubbleLeftRightIcon,
   ChevronRightIcon,
+  Cog6ToothIcon,
   GiftIcon,
   GlobeAltIcon,
   InformationCircleIcon,
@@ -21,6 +22,7 @@ import {
   AccountSettings,
   FeedbackSettings,
   LanguageSettings,
+  PreferencesSettings,
   RedemptionSettings,
   RegionSettings,
   StyleSettings,
@@ -85,6 +87,11 @@ export function SettingsModal() {
       id: "mcp",
       label: t("settings.categories.mcp"),
       icon: ServerStackIcon,
+    },
+    {
+      id: "preferences",
+      label: t("settings.categories.preferences"),
+      icon: Cog6ToothIcon,
     },
     {
       id: "redemption",
@@ -209,6 +216,10 @@ export function SettingsModal() {
               {activeSettingsCategory === "account" && <AccountSettings />}
 
               {activeSettingsCategory === "mcp" && <McpSettings />}
+
+              {activeSettingsCategory === "preferences" && (
+                <PreferencesSettings />
+              )}
 
               {activeSettingsCategory === "region" && <RegionSettings />}
 

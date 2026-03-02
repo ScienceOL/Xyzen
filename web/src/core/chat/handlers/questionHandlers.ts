@@ -45,7 +45,7 @@ interface AskUserQuestionEvent {
   }>;
   multi_select?: boolean;
   allow_text_input: boolean;
-  timeout_seconds: number;
+  timeout_seconds?: number;
   stream_id: string;
   thread_id: string;
 }

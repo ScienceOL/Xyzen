@@ -3,12 +3,14 @@
  */
 import { PlusIcon } from "@heroicons/react/24/outline";
 import { motion } from "framer-motion";
+import { useTranslation } from "react-i18next";
 
 interface AddAgentButtonProps {
   onClick: () => void;
 }
 
 export function AddAgentButton({ onClick }: AddAgentButtonProps) {
+  const { t } = useTranslation();
   return (
     <motion.button
       onClick={onClick}
@@ -26,10 +28,10 @@ export function AddAgentButton({ onClick }: AddAgentButtonProps) {
         hover:border-neutral-300 dark:hover:border-neutral-600
         shadow-sm hover:shadow
         transition-all duration-200"
-      title="添加助手"
+      title={t("agents.add")}
     >
       <PlusIcon className="w-4 h-4" strokeWidth={2} />
-      <span>添加助手</span>
+      <span>{t("agents.add")}</span>
     </motion.button>
   );
 }

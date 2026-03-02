@@ -136,6 +136,10 @@ export function CodesList({
                     <span className="text-xs px-2 py-0.5 rounded bg-purple-100 dark:bg-purple-950/30 text-purple-600 dark:text-purple-400">
                       Subscription
                     </span>
+                  ) : code.code_type === "full_access" ? (
+                    <span className="text-xs px-2 py-0.5 rounded bg-indigo-100 dark:bg-indigo-950/30 text-indigo-600 dark:text-indigo-400">
+                      Full Access
+                    </span>
                   ) : (
                     <span className="text-xs px-2 py-0.5 rounded bg-blue-100 dark:bg-blue-950/30 text-blue-600 dark:text-blue-400">
                       Credits
@@ -175,6 +179,15 @@ export function CodesList({
                     </span>
                   </div>
                 </>
+              ) : code.code_type === "full_access" ? (
+                <div>
+                  <span className="text-neutral-500 dark:text-neutral-400">
+                    Duration:
+                  </span>{" "}
+                  <span className="font-medium text-neutral-900 dark:text-white">
+                    {code.duration_days} days
+                  </span>
+                </div>
               ) : (
                 <div>
                   <span className="text-neutral-500 dark:text-neutral-400">

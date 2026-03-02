@@ -37,9 +37,6 @@ interface MobileMoreMenuProps {
   mcpInfo: McpInfo | null;
   allMcpServers?: McpServer[];
   onOpenSettings?: () => void;
-  sessionKnowledgeSetId?: string | null;
-  onUpdateSessionKnowledge?: (knowledgeSetId: string | null) => Promise<void>;
-  userPlan?: string;
 }
 
 export function MobileMoreMenu({
@@ -50,9 +47,6 @@ export function MobileMoreMenu({
   mcpInfo,
   allMcpServers = [],
   onOpenSettings,
-  sessionKnowledgeSetId,
-  onUpdateSessionKnowledge,
-  userPlan,
 }: MobileMoreMenuProps) {
   const { t } = useTranslation();
   const [showMcpList, setShowMcpList] = useState(false);
@@ -181,12 +175,6 @@ export function MobileMoreMenu({
                   <ToolSelector
                     agent={agent}
                     onUpdateAgent={handleUpdateAgent}
-                    hasKnowledgeSet={
-                      !!agent.knowledge_set_id || !!sessionKnowledgeSetId
-                    }
-                    sessionKnowledgeSetId={sessionKnowledgeSetId}
-                    onUpdateSessionKnowledge={onUpdateSessionKnowledge}
-                    userPlan={userPlan}
                     displayMode="list"
                     showTooltip={false}
                   />

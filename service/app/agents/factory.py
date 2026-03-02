@@ -114,13 +114,15 @@ async def create_chat_agent(
         session_knowledge_set_id=session_knowledge_set_id,
         topic_id=topic_id,
         exclude_ask_user=_exclude_ask_user,
+        sandbox_backend=session.sandbox_backend if session else None,
     )
 
     # Resolve the agent configuration
     resolved_config, agent_type_key = _resolve_agent_config(agent_config, system_prompt)
 
     # Create event context for tracking
-    _avatar = (agent_config.avatar or "") if agent_config else ""
+    _default_avatar = "https://api.dicebear.com/7.x/avataaars/svg?seed=default"
+    _avatar = (agent_config.avatar or _default_avatar) if agent_config else _default_avatar
     event_ctx = AgentEventContext(
         agent_id=str(agent_config.id) if agent_config else "default",
         agent_name=agent_config.name if agent_config else "Default Agent",

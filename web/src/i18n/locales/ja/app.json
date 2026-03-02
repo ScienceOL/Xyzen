@@ -138,6 +138,9 @@
     "knowledgeSelected": "ナレッジベースが選択されています",
     "noKnowledgeSets": "利用可能なナレッジベースがありません",
     "noKnowledge": "なし",
+    "sandboxAutoDesc": "システム自動検出",
+    "runners": "ランナー",
+    "activeSandboxes": "アクティブサンドボックス",
     "image": "画像",
     "imageDesc": "画像を生成・読み取り",
     "video": "動画",
@@ -457,7 +460,11 @@
     "daysAgo": "{{count}}日前",
     "inMinutes": "{{count}}分後",
     "inHours": "{{count}}時間後",
-    "inDays": "{{count}}日後"
+    "inDays": "{{count}}日後",
+    "prompt": "プロンプト",
+    "status": "ステータス",
+    "error": "エラー",
+    "goToChat": "チャットへ移動"
   },
   "workspace": {
     "recommendations": {

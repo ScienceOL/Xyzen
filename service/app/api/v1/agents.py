@@ -442,7 +442,7 @@ async def update_agent(
         # Root agent: only allow name, description, avatar changes
         root_agent_repo = RootAgentRepository(db)
         if await root_agent_repo.is_root_agent(agent_id, user_id):
-            _allowed = {"name", "description", "avatar", "auto_explore_enabled"}
+            _allowed = {"name", "description", "avatar", "auto_explore_enabled", "graph_config"}
             forbidden = {
                 field
                 for field, value in agent_data.model_dump(exclude_unset=True).items()
@@ -454,12 +454,42 @@ async def update_agent(
                     detail=f"Root agent only allows editing: {', '.join(sorted(_allowed))}",
                 )
 
-        # Block config editing for non-editable agents
+        # Non-editable agents: only allow tool_filter changes in graph_config
         if not agent.config_editable and agent_data.graph_config is not None:
-            raise HTTPException(
-                status_code=403,
-                detail="This agent's configuration cannot be edited",
-            )
+            incoming_config = agent_data.graph_config
+            existing_config = agent.graph_config or {}
+
+            # Extract tool_filter from incoming config's LLM nodes
+            incoming_filter = None
+            for node in incoming_config.get("graph", {}).get("nodes") or []:
+                if node.get("kind") == "llm" and "tool_filter" in (node.get("config") or {}):
+                    incoming_filter = node["config"]["tool_filter"]
+                    break
+
+            if incoming_filter is None and any(
+                "tool_filter" in (n.get("config") or {})
+                for n in (incoming_config.get("graph", {}).get("nodes") or [])
+                if n.get("kind") == "llm"
+            ):
+                # tool_filter explicitly set to null (enable all)
+                incoming_filter = "CLEAR"
+
+            if incoming_filter is not None:
+                # Apply only tool_filter to existing config, keep everything else
+                import copy
+
+                merged = copy.deepcopy(existing_config)
+                for node in merged.get("graph", {}).get("nodes", []):
+                    if node.get("kind") == "llm":
+                        if "config" not in node:
+                            node["config"] = {}
+                        node["config"]["tool_filter"] = None if incoming_filter == "CLEAR" else incoming_filter
+                agent_data.graph_config = merged
+            else:
+                raise HTTPException(
+                    status_code=403,
+                    detail="This agent's configuration cannot be edited",
+                )
 
         if agent_data.provider_id is not None:
             provider_repo = ProviderRepository(db)

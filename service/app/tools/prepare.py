@@ -36,6 +36,7 @@ async def prepare_tools(
     session_knowledge_set_id: "UUID | None" = None,
     topic_id: "UUID | None" = None,
     exclude_ask_user: bool = False,
+    sandbox_backend: str | None = None,
 ) -> list[BaseTool]:
     """
     Prepare all tools for an agent based on configuration.
@@ -55,6 +56,7 @@ async def prepare_tools(
             If provided, overrides agent.knowledge_set_id for this session.
         topic_id: Current topic ID for memory tools (optional).
             Used to exclude current conversation from memory search results.
+        sandbox_backend: Per-session sandbox backend override (optional).
 
     Returns:
         List of LangChain BaseTool instances ready for agent use
@@ -81,6 +83,7 @@ async def prepare_tools(
         session_id,
         memory_store,
         exclude_ask_user=exclude_ask_user,
+        sandbox_backend=sandbox_backend,
     )
     langchain_tools.extend(builtin_tools)
 
@@ -106,6 +109,7 @@ def _load_all_builtin_tools(
     session_id: "UUID | None" = None,
     memory_store: "BaseStore | None" = None,
     exclude_ask_user: bool = False,
+    sandbox_backend: str | None = None,
 ) -> list[BaseTool]:
     """
     Load all available builtin tools.
@@ -219,6 +223,7 @@ def _load_all_builtin_tools(
             sandbox_tools = create_sandbox_tools_for_session(
                 session_id=str(session_id),
                 user_id=user_id,
+                sandbox_backend=sandbox_backend,
             )
             tools.extend(sandbox_tools)
 

@@ -793,12 +793,10 @@ async def handle_ask_user_question(ctx: ChatTaskContext, stream_event: dict[str,
     r = None
     try:
         r = aioredis.from_url(configs.Redis.REDIS_URL, decode_responses=True)
-        # Thread ID for resume
-        await r.setex(f"question_thread:{connection_id}", timeout_seconds + 60, thread_id)
-        # Active question ID for validation
-        await r.setex(f"question_active:{connection_id}", timeout_seconds + 60, question_id)
-        # Timeout key
-        await r.setex(f"question_timeout:{connection_id}:{question_id}", timeout_seconds, "1")
+        # Thread ID for resume (24h cache; DB fallback exists if expired)
+        await r.setex(f"question_thread:{connection_id}", 86400, thread_id)
+        # Active question ID for validation (24h cache)
+        await r.setex(f"question_active:{connection_id}", 86400, question_id)
     except Exception as e:
         logger.error(f"Failed to store question state in Redis: {e}")
     finally:

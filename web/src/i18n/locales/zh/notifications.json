@@ -23,5 +23,13 @@
     "deleteAllConfirm": "将永久删除所有已归档通知。",
     "confirmDelete": "删除"
   },
-  "empty": "暂无通知"
+  "empty": "暂无通知",
+  "system": {
+    "title": "系统",
+    "dismiss": "关闭",
+    "pwa": {
+      "title": "安装应用",
+      "body": "点击浏览器地址栏中的安装图标，获得更好的使用体验。"
+    }
+  }
 }

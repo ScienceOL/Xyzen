@@ -138,6 +138,9 @@
     "knowledgeSelected": "已选择知识库",
     "noKnowledgeSets": "暂无可用知识库",
     "noKnowledge": "无",
+    "sandboxAutoDesc": "系统自动检测",
+    "runners": "终端",
+    "activeSandboxes": "活跃沙盒",
     "image": "图片",
     "imageDesc": "生成和读取图片",
     "video": "视频",
@@ -457,7 +460,11 @@
     "daysAgo": "{{count}}天前",
     "inMinutes": "{{count}}分钟后",
     "inHours": "{{count}}小时后",
-    "inDays": "{{count}}天后"
+    "inDays": "{{count}}天后",
+    "prompt": "提示词",
+    "status": "状态",
+    "error": "错误",
+    "goToChat": "前往聊天"
   },
   "workspace": {
     "recommendations": {
