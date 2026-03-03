@@ -91,12 +91,11 @@ def upgrade() -> None:
                 "config": {
                     "daily_credits": 500,
                     "milestones": [
-                        {"consecutive_day": 2, "milestone_name": "standard_unlock", "access_days": 0},
-                        {"consecutive_day": 3, "milestone_name": "pro_unlock", "access_days": 0},
-                        {"consecutive_day": 5, "milestone_name": "ultra_unlock", "access_days": 30},
+                        {"consecutive_day": 1, "milestone_name": "pro_unlock", "access_days": 7, "tier": "pro"},
+                        {"consecutive_day": 3, "milestone_name": "ultra_unlock", "access_days": 30, "tier": "ultra"},
                     ],
                 },
-                "total_days": 30,
+                "total_days": 7,
                 "starts_at": "2024-01-01T00:00:00+00:00",
                 "ends_at": "2026-12-31T23:59:59+00:00",
                 "is_active": True,

@@ -133,12 +133,26 @@ class SubscriptionRepository:
         await self.db.refresh(sub)
         return sub
 
-    async def extend_full_model_access(self, user_id: str, days: int) -> UserSubscription | None:
-        """Extend full model-access pass by N days from now (or from current expiry if still active)."""
+    async def extend_full_model_access(self, user_id: str, days: int, tier: str = "ultra") -> UserSubscription | None:
+        """Extend model-access pass by N days from now (or from current expiry if still active).
+
+        If the requested tier is higher than the current model_access_tier,
+        it is upgraded. Lower tiers are silently ignored so that a Pro grant
+        does not downgrade an existing Ultra pass.
+        """
         sub = await self.get_user_subscription(user_id)
         if sub is None:
             return None
         now = datetime.now(timezone.utc)
+
+        tier_order = ["lite", "standard", "pro", "ultra"]
+        requested_idx = tier_order.index(tier) if tier in tier_order else 0
+        current_idx = tier_order.index(sub.model_access_tier) if sub.model_access_tier in tier_order else 0
+
+        # Only upgrade tier, never downgrade
+        if requested_idx >= current_idx:
+            sub.model_access_tier = tier
+
         base = (
             sub.full_model_access_expires_at
             if sub.full_model_access_expires_at and sub.full_model_access_expires_at > now

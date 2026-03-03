@@ -124,7 +124,7 @@ export function Xyzen({
       setActivePanel: s.setActivePanel,
     })),
   );
-  const { status } = useAuth();
+  const { status, user } = useAuth();
 
   // Initialize theme at the top level so it works for both layouts
   useTheme();
@@ -134,6 +134,7 @@ export function Xyzen({
     typeof window !== "undefined" ? window.innerWidth : 1920,
   );
   const [progress, setProgress] = useState(0);
+  const progressRef = useRef(0);
   const [initialLoadComplete, setInitialLoadComplete] = useState(false);
   const [currentHash, setCurrentHash] = useState(
     typeof window !== "undefined" ? window.location.hash : "",
@@ -145,6 +146,19 @@ export function Xyzen({
   );
   const [currentGiftIndex, setCurrentGiftIndex] = useState(0);
   const giftCheckedRef = useRef(false);
+  const prevUserIdRef = useRef(user?.id);
+
+  // Reset gift state when user changes (account switch without page reload)
+  useEffect(() => {
+    if (user?.id !== prevUserIdRef.current) {
+      prevUserIdRef.current = user?.id;
+      giftCheckedRef.current = false;
+      setShowGiftModal(false);
+      setGiftCampaigns([]);
+      setCurrentGiftIndex(0);
+      sessionStorage.removeItem("gift_dismissed");
+    }
+  }, [user?.id]);
 
   useEffect(() => {
     setMounted(true);
@@ -241,11 +255,10 @@ export function Xyzen({
           // 0. Fetch root agent ID first (fetchAgents needs it for default layout)
           await fetchRootAgentId();
 
-          // 1. Fetch all necessary data in parallel
+          // 1. Fetch essential data in parallel (chat history loads in background)
           await Promise.all([
             fetchAgents(),
             fetchMcpServers(),
-            fetchChatHistory(),
             resolveEdition(),
             resolveRegion(),
           ]);
@@ -289,7 +302,6 @@ export function Xyzen({
             }
           } else {
             // 3. If there is an active chat channel (persisted), try to connect to it
-            // We access the store directly to get the latest state after fetchChatHistory
             const state = useXyzen.getState();
             const currentActiveChannel = state.activeChatChannel;
 
@@ -305,6 +317,8 @@ export function Xyzen({
           console.error("Failed to load initial data:", error);
         } finally {
           setInitialLoadComplete(true);
+          // Load chat history in background — not needed for first render
+          void fetchChatHistory();
         }
       };
       void loadData();
@@ -410,51 +424,40 @@ export function Xyzen({
     });
   }, []);
 
-  // Unified progress bar logic
+  // Unified progress bar logic — ref-driven to avoid effect churn
   useEffect(() => {
-    // Target progress based on current state
-    let targetProgress = 0;
+    let target = 0;
+    if (status === "idle") target = 10;
+    else if (status === "loading") target = 30;
+    else if (status === "succeeded") target = initialLoadComplete ? 100 : 80;
+    else if (status === "failed") target = 100;
 
-    if (status === "idle") {
-      targetProgress = 10;
-    } else if (status === "loading") {
-      targetProgress = 30;
-    } else if (status === "succeeded") {
-      if (!initialLoadComplete) {
-        targetProgress = 80; // Data loading phase
-      } else {
-        targetProgress = 100; // All done
-      }
-    } else if (status === "failed") {
-      targetProgress = 100;
-    }
-
-    // If we are already at target, do nothing (unless it's 100, then we ensure it stays there)
-    if (progress >= targetProgress && targetProgress !== 100) {
-      return;
-    }
-
-    // If we reached 100, just set it and clear interval
-    if (targetProgress === 100) {
+    // Jump straight to 100 without animation
+    if (target === 100) {
+      progressRef.current = 100;
       setProgress(100);
       return;
     }
 
-    // Smoothly animate towards target
+    // Already at or past target — nothing to animate
+    if (progressRef.current >= target) return;
+
     const intervalId = window.setInterval(() => {
-      setProgress((prev) => {
-        if (prev >= targetProgress) return prev;
-        // Decelerate as we get closer
-        const remaining = targetProgress - prev;
-        const increment = Math.max(0.5, remaining * 0.1);
-        return Math.min(prev + increment, targetProgress);
-      });
-    }, 100);
+      const prev = progressRef.current;
+      if (prev >= target) {
+        window.clearInterval(intervalId);
+        return;
+      }
+      const increment = Math.max(1, (target - prev) * 0.15);
+      const next = Math.min(prev + increment, target);
+      progressRef.current = next;
+      setProgress(next);
+    }, 50);
 
     return () => {
       window.clearInterval(intervalId);
     };
-  }, [status, initialLoadComplete, progress]);
+  }, [status, initialLoadComplete]);
 
   const handleRetry = useCallback(() => {
     void autoLogin();

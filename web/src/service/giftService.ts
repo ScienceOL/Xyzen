@@ -6,6 +6,7 @@ export interface RewardData {
   credits: number;
   credit_type: string;
   full_model_access_days: number;
+  model_access_tier: string;
   milestone_reached: boolean;
   milestone_name: string;
 }
@@ -14,6 +15,7 @@ export interface Milestone {
   consecutive_day: number;
   milestone_name: string;
   access_days: number;
+  tier: string;
 }
 
 export interface CampaignStatusResponse {

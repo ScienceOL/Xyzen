@@ -27,6 +27,7 @@ class MilestoneConfig(BaseModel):
     consecutive_day: int
     milestone_name: str
     access_days: int = 0
+    tier: str = "ultra"
 
 
 class CampaignStatusResponse(BaseModel):
@@ -52,6 +53,7 @@ class RewardData(BaseModel):
     credits: int = 0
     credit_type: str = "free"
     full_model_access_days: int = 0
+    model_access_tier: str = "ultra"
     milestone_reached: bool = False
     milestone_name: str = ""
 

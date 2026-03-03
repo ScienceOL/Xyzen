@@ -11,6 +11,7 @@ class RewardResult:
     credits: int = 0
     credit_type: str = "free"
     full_model_access_days: int = 0
+    model_access_tier: str = "ultra"
     milestone_reached: bool = False
     milestone_name: str = ""
 
@@ -20,6 +21,7 @@ class RewardResult:
             "credits": self.credits,
             "credit_type": self.credit_type,
             "full_model_access_days": self.full_model_access_days,
+            "model_access_tier": self.model_access_tier,
             "milestone_reached": self.milestone_reached,
             "milestone_name": self.milestone_name,
         }

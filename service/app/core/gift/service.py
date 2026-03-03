@@ -171,12 +171,14 @@ class GiftService:
                 reference_id=str(campaign_id),
             )
 
-        # Apply full model access on milestone
+        # Apply model access on milestone
         if reward.milestone_reached and reward.full_model_access_days > 0:
-            await self.subscription_repo.extend_full_model_access(user_id, reward.full_model_access_days)
+            await self.subscription_repo.extend_full_model_access(
+                user_id, reward.full_model_access_days, tier=reward.model_access_tier
+            )
             logger.info(
-                f"User {user_id} unlocked full model access for {reward.full_model_access_days} days "
-                f"via gift campaign {campaign.name}"
+                f"User {user_id} unlocked {reward.model_access_tier} model access "
+                f"for {reward.full_model_access_days} days via gift campaign {campaign.name}"
             )
 
         # Record claim

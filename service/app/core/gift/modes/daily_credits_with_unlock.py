@@ -18,6 +18,7 @@ class DailyCreditsWithUnlockHandler(GiftModeHandler):
                     result.milestone_name = ms["milestone_name"]
                     if ms.get("access_days", 0) > 0:
                         result.full_model_access_days = ms["access_days"]
+                        result.model_access_tier = ms.get("tier", "ultra")
                     break
         else:
             # Legacy single-milestone fallback
