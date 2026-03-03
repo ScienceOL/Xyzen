@@ -2,6 +2,7 @@ import asyncio
 import json
 import logging
 import time
+from typing import Any, Mapping
 from uuid import UUID, uuid4
 
 import redis.asyncio as redis
@@ -44,6 +45,30 @@ class ConnectionManager:
 
 
 manager = ConnectionManager()
+
+
+async def publish_chat_channel_event(
+    connection_id: str,
+    payload: Mapping[str, Any],
+    redis_client: redis.Redis,
+    fallback_websocket: WebSocket | None = None,
+) -> None:
+    """Publish an event to the per-chat Redis channel with sender fallback."""
+    channel = f"chat:{connection_id}"
+    encoded_payload = json.dumps(payload, default=str, ensure_ascii=False)
+
+    try:
+        await redis_client.publish(channel, encoded_payload)
+    except Exception as e:
+        logger.error(f"Failed to publish chat event to Redis channel {channel}: {e}")
+
+        # Best-effort fallback for sender UX when Redis publish fails.
+        if fallback_websocket is not None:
+            try:
+                if fallback_websocket.client_state.value == 1:  # WebSocketState.CONNECTED
+                    await fallback_websocket.send_text(encoded_payload)
+            except Exception as fallback_error:
+                logger.error(f"Fallback websocket send failed for {connection_id}: {fallback_error}")
 
 
 async def set_abort_signal(connection_id: str, ttl_seconds: int = 60) -> None:
@@ -298,7 +323,12 @@ async def chat_websocket(
                         "type": ChatEventType.LOADING,
                         "data": {"message": "AI is thinking...", "stream_id": resume_stream_id},
                     }
-                    await websocket.send_text(json.dumps(loading_event))
+                    await publish_chat_channel_event(
+                        connection_id=connection_id,
+                        payload=loading_event,
+                        redis_client=presence_redis,
+                        fallback_websocket=websocket,
+                    )
 
                     # Dispatch resume task
                     resume_chat_from_interrupt.delay(
@@ -462,7 +492,12 @@ async def chat_websocket(
                 echo_data = json.loads(echo_model.model_dump_json())
                 if client_id:
                     echo_data["client_id"] = client_id
-                await websocket.send_text(json.dumps(echo_data, default=str))
+                await publish_chat_channel_event(
+                    connection_id=connection_id,
+                    payload=echo_data,
+                    redis_client=presence_redis,
+                    fallback_websocket=websocket,
+                )
 
                 # 5. Generate stream_id for this response lifecycle
                 stream_id = f"stream_{int(time.time() * 1000)}_{uuid4().hex[:8]}"
@@ -472,7 +507,12 @@ async def chat_websocket(
                     "type": ChatEventType.LOADING,
                     "data": {"message": "AI is thinking...", "stream_id": stream_id},
                 }
-                await websocket.send_text(json.dumps(loading_event))
+                await publish_chat_channel_event(
+                    connection_id=connection_id,
+                    payload=loading_event,
+                    redis_client=presence_redis,
+                    fallback_websocket=websocket,
+                )
 
                 # Commit user message before dispatching Celery task
                 # This ensures the Celery worker can see the message in its separate DB session
@@ -505,7 +545,12 @@ async def chat_websocket(
                     "type": ChatEventType.MESSAGE_ACK,
                     "data": ack_data,
                 }
-                await websocket.send_text(json.dumps(ack_event))
+                await publish_chat_channel_event(
+                    connection_id=connection_id,
+                    payload=ack_event,
+                    redis_client=presence_redis,
+                    fallback_websocket=websocket,
+                )
 
                 # 8. Topic Renaming - uses Redis pub/sub for cross-pod delivery
                 topic_refreshed = await topic_repo.get_topic_with_details(topic_id)
