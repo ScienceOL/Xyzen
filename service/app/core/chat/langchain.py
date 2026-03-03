@@ -135,6 +135,12 @@ async def get_ai_response_stream_langchain_legacy(
         )
 
         # Initialize stream context
+        provider_type_val = None
+        if provider_id:
+            provider_config = user_provider_manager.get_provider_config(provider_id)
+            if provider_config:
+                provider_type_val = provider_config.provider_type
+
         ctx = StreamContext(
             stream_id=stream_id or f"stream_{int(asyncio.get_event_loop().time() * 1000)}",
             db=db,
@@ -145,6 +151,7 @@ async def get_ai_response_stream_langchain_legacy(
             model_tier=model_tier,
             provider_id=provider_id,
             model_name=model_name,
+            provider_type=provider_type_val,
         )
 
         # Propagate stream_id to event context so all agent events include it
@@ -154,11 +161,58 @@ async def get_ai_response_stream_langchain_legacy(
         # Load conversation history
         history_messages = await load_conversation_history(db, topic)
 
+        # Check context window usage and emit context_usage event
+        from app.core.chat.context_manager import (
+            estimate_message_tokens,
+            get_context_budget,
+            truncate_history_if_needed,
+        )
+
+        estimated_tokens = estimate_message_tokens(history_messages)
+        budget = await get_context_budget(model_name or "", provider_id)
+        usage_percent = (estimated_tokens / budget.max_input_tokens * 100) if budget.max_input_tokens > 0 else 0
+        near_limit = estimated_tokens > budget.warning_threshold
+        critical = estimated_tokens > budget.critical_threshold
+
+        if near_limit:
+            yield StreamingEventHandler.create_context_usage_event(
+                stream_id=ctx.stream_id,
+                estimated_tokens=estimated_tokens,
+                max_tokens=budget.max_input_tokens,
+                usage_percent=usage_percent,
+                near_limit=near_limit,
+                critical=critical,
+            )
+
+        if critical:
+            history_messages = truncate_history_if_needed(history_messages, budget)
+
         # Process stream
         async for event in _process_agent_stream(langchain_agent, history_messages, ctx):
             yield event
 
+        # Record successful provider call for circuit breaker
+        if ctx.provider_type:
+            from app.core.providers.circuit_breaker import ProviderCircuitBreaker
+
+            await ProviderCircuitBreaker.record_success(ctx.provider_type)
+
     except Exception as e:
+        # Record provider failure for circuit breaker (only for provider-level errors)
+        if provider_id:
+            try:
+                from app.common.code.chat_error_code import classify_exception as _classify
+
+                classified = _classify(e)
+                if classified.code.category == "provider":
+                    _provider_config = user_provider_manager.get_provider_config(provider_id)
+                    if _provider_config:
+                        from app.core.providers.circuit_breaker import ProviderCircuitBreaker
+
+                        await ProviderCircuitBreaker.record_failure(_provider_config.provider_type)
+            except Exception:
+                pass  # Don't let circuit breaker errors mask the original error
+
         yield _handle_streaming_error(e, user_id, stream_id=stream_id)
     finally:
         await close_checkpointer(checkpointer)
@@ -809,6 +863,8 @@ async def _handle_updates_mode(
                     if tool_id in ctx.emitted_tool_result_ids:
                         logger.info(f"[ToolEvent] Skipping already emitted tool call: {tool_id}")
                         continue
+                    if tool_id:
+                        ctx.tool_call_started_at[tool_id] = asyncio.get_running_loop().time()
                     logger.info(f"[ToolEvent] >>> Emitting tool_call_request for {tool_name} (id={tool_id})")
                     yield ToolEventHandler.create_tool_request_event(
                         tool_call, stream_id=ctx.stream_id, model_tier=ctx.model_tier
@@ -825,6 +881,10 @@ async def _handle_updates_mode(
                         logger.info(f"[ToolEvent] Skipping historical tool response: {tool_call_id}")
                         continue
                     ctx.emitted_tool_result_ids.add(tool_call_id)
+                    duration_ms: int | None = None
+                    if tool_call_id in ctx.tool_call_started_at:
+                        start_time = ctx.tool_call_started_at.pop(tool_call_id)
+                        duration_ms = max(0, int((asyncio.get_running_loop().time() - start_time) * 1000))
                     # Get raw content before formatting (for cost calculation)
                     raw_content = msg.content
                     status, result, error = _resolve_tool_response(raw_content, tool_name)
@@ -835,6 +895,7 @@ async def _handle_updates_mode(
                         status=status,
                         raw_result=raw_content,
                         error=error,
+                        duration_ms=duration_ms,
                         stream_id=ctx.stream_id,
                         model_tier=ctx.model_tier,
                     )

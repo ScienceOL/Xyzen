@@ -28,6 +28,13 @@ class ExtractionGateConfig(BaseModel):
     LongConversationChars: int = Field(default=800, description="Character threshold for long-conversation fallback")
 
 
+class ScheduledTasksConfig(BaseModel):
+    DailyCatchupEnabled: bool = Field(default=True, description="Enable daily catch-up memory extraction")
+    DailyCatchupMaxTopicsPerUser: int = Field(default=50, description="Max unextracted topics to process per user")
+    DailyCatchupMaxMessagesPerBatch: int = Field(default=100, description="Max messages per batch extraction call")
+    WeeklyResynthesisEnabled: bool = Field(default=True, description="Enable weekly core memory resynthesis")
+
+
 class MemoryConfig(BaseModel):
     Enabled: bool = Field(default=True, description="Enable cross-thread memory store")
     NamespacePrefix: str = Field(default="memories", description="Root namespace prefix for memory store")
@@ -42,4 +49,7 @@ class MemoryConfig(BaseModel):
     )
     ExtractionGate: ExtractionGateConfig = Field(
         default_factory=ExtractionGateConfig, description="Heuristic gate for background memory extraction"
+    )
+    ScheduledTasks: ScheduledTasksConfig = Field(
+        default_factory=ScheduledTasksConfig, description="Periodic memory management tasks"
     )

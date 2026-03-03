@@ -2,6 +2,7 @@ from typing import List
 from uuid import UUID
 
 from fastapi import APIRouter, Depends, HTTPException
+from pydantic import BaseModel
 from sqlmodel.ext.asyncio.session import AsyncSession
 
 from app.api.v1.sessions import get_current_user
@@ -256,3 +257,77 @@ async def get_topic_token_stats(
     """Get aggregated token usage stats for a topic."""
     stats_repo = SessionStatsRepository(db)
     return await stats_repo.get_topic_token_stats(topic.id)
+
+
+class CompactResponse(BaseModel):
+    new_topic_id: UUID
+    summary_preview: str
+
+
+@router.post("/{topic_id}/compact", response_model=CompactResponse)
+async def compact_topic(
+    topic: TopicModel = Depends(get_authorized_topic),
+    user: str = Depends(get_current_user),
+    db: AsyncSession = Depends(get_session),
+) -> CompactResponse:
+    """Compact a topic by summarizing conversation and creating a new topic.
+
+    Generates an LLM summary of the conversation, creates a new topic in the
+    same session with the summary as the first system message.
+    """
+    from langchain_core.messages import AIMessage, HumanMessage, SystemMessage
+
+    from app.core.chat.context_manager import generate_conversation_summary
+    from app.core.providers import get_user_provider_manager
+    from app.models.message import MessageCreate
+
+    message_repo = MessageRepository(db)
+    topic_repo = TopicRepository(db)
+
+    # Load all messages from the topic
+    messages = await message_repo.get_messages_by_topic(topic.id, order_by_created=True)
+    if not messages:
+        raise HTTPException(status_code=400, detail="No messages to compact")
+
+    # Convert DB messages to LangChain BaseMessage for the summary generator
+    lc_messages = []
+    for msg in messages:
+        if msg.role == "user":
+            lc_messages.append(HumanMessage(content=msg.content))
+        elif msg.role == "assistant":
+            lc_messages.append(AIMessage(content=msg.content))
+        elif msg.role == "system":
+            lc_messages.append(SystemMessage(content=msg.content))
+
+    # Generate summary
+    user_provider_manager = await get_user_provider_manager(user, db)
+    summary = await generate_conversation_summary(
+        messages=lc_messages,
+        user_id=user,
+        user_provider_manager=user_provider_manager,
+    )
+
+    # Create new topic in the same session
+    old_name = topic.name[:80] if topic.name else "Chat"
+    new_topic = await topic_repo.create_topic(
+        TopicCreate(
+            name=f"Continued: {old_name}",
+            session_id=topic.session_id,
+        )
+    )
+
+    # Create an assistant message with the conversation summary
+    # Using "assistant" role so the LLM treats it as conversation context.
+    # "system" role mid-conversation is ignored by many providers.
+    await message_repo.create_message(
+        MessageCreate(
+            role="assistant",
+            content=f"[Conversation Summary]\n\n{summary}",
+            topic_id=new_topic.id,
+        )
+    )
+
+    await db.commit()
+
+    preview = summary[:200] + "..." if len(summary) > 200 else summary
+    return CompactResponse(new_topic_id=new_topic.id, summary_preview=preview)

@@ -39,6 +39,9 @@ FALLBACK_MODEL_COST_RATES: dict[str, dict[str, float]] = {
     # --- Anthropic (via GPUGeek) ---
     "Vendor2/Claude-4.6-Opus": {"input": 5.0e-6, "output": 25.0e-6},
     "Vendor2/Claude-4.5-Sonnet": {"input": 3.0e-6, "output": 15.0e-6},
+    # --- Anthropic (via Bedrock) — same models, same rates ---
+    "us.anthropic.claude-opus-4-6-v1": {"input": 5.0e-6, "output": 25.0e-6},
+    "us.anthropic.claude-sonnet-4-5-20250929-v1:0": {"input": 3.0e-6, "output": 15.0e-6},
     # --- Google Vertex ---
     "gemini-3.1-pro-preview": {"input": 2.0e-6, "output": 12.0e-6},
     "gemini-3-flash-preview": {"input": 0.5e-6, "output": 3.0e-6},
@@ -152,6 +155,7 @@ async def _resolve_cost_rates(
     """
     try:
         from app.core.model_registry.service import (
+            BEDROCK_TO_MODELSDEV,
             GPUGEEK_TO_MODELSDEV,
             INTERNAL_TO_MODELSDEV,
             ModelsDevService,
@@ -161,10 +165,13 @@ async def _resolve_cost_rates(
         modelsdev_provider: str | None = None
         modelsdev_model_id: str = model_name
 
-        # GPUGeek模型需要显式映射
+        # GPUGeek / Bedrock 模型需要显式映射
         gpugeek_mapping = GPUGEEK_TO_MODELSDEV.get(model_name)
+        bedrock_mapping = BEDROCK_TO_MODELSDEV.get(model_name)
         if gpugeek_mapping:
             modelsdev_provider, modelsdev_model_id = gpugeek_mapping
+        elif bedrock_mapping:
+            modelsdev_provider, modelsdev_model_id = bedrock_mapping
         elif provider:
             modelsdev_provider = INTERNAL_TO_MODELSDEV.get(provider)
 

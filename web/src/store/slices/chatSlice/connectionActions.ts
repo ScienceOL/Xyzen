@@ -26,6 +26,7 @@ import {
   handleToolCallRequest,
   handleToolCallResponse,
   handleTopicUpdated,
+  handleContextUsage,
 } from "@/core/chat/handlers";
 import xyzenService from "@/service/xyzenService";
 import type { MessageEventCallback } from "@/service/xyzenService";
@@ -274,6 +275,11 @@ export function createConnectionActions(
             case "token_usage": {
               const { total_tokens } = event.data;
               channel.tokenUsage = total_tokens;
+              break;
+            }
+
+            case "context_usage": {
+              handleContextUsage(channel, event.data);
               break;
             }
           }

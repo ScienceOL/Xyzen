@@ -13,12 +13,31 @@ server:
   limiter: false
   public_instance: false
 
+# Network reliability: increase timeouts and add retries to reduce
+# transient failures that cascade into engine suspensions.
+outgoing:
+  request_timeout: 8.0
+  max_request_timeout: 15.0
+  retries: 2
+  pool_maxsize: 30
+  keepalive_expiry: 10.0
+  enable_http2: true
+
 search:
   safe_search: 0
   autocomplete: "wikipedia"
   formats:
     - html
     - json
+  # Reduce suspension aggression so engines recover faster after transient errors.
+  ban_time_on_fail: 10
+  max_ban_time_on_fail: 60
+  suspended_times:
+    SearxEngineAccessDenied: 60
+    SearxEngineCaptcha: 300
+    SearxEngineTooManyRequests: 60
+    cf_SearxEngineCaptcha: 3600
+    cf_SearxEngineAccessDenied: 3600
 
 ui:
   default_locale: "en"
@@ -32,50 +51,61 @@ ui:
 engines:
   # Disabled - prone to CAPTCHA issues
   - name: duckduckgo
-    engine: duckduckgo
     disabled: true
 
-  # Reliable search engines
+  - name: duckduckgo news
+    disabled: true
+
+  # General search engines (with increased timeouts)
   - name: google
-    engine: google
-    shortcut: go
+    timeout: 6.0
     use_mobile_ui: false
 
   - name: bing
-    engine: bing
-    shortcut: bi
+    timeout: 5.0
 
   - name: brave
-    engine: brave
-    shortcut: br
+    timeout: 6.0
 
   - name: qwant
-    engine: qwant
-    shortcut: qw
+    timeout: 5.0
+
+  # News engines - explicitly enabled with higher timeouts
+  - name: google news
+    timeout: 6.0
+
+  - name: bing news
+    timeout: 6.0
+
+  - name: brave.news
+    timeout: 6.0
+
+  - name: qwant news
+    timeout: 6.0
+
+  - name: yahoo news
+    timeout: 6.0
+
+  - name: wikinews
+    timeout: 6.0
 
   # Knowledge sources (stable, rarely rate-limit)
   - name: wikipedia
-    engine: wikipedia
     shortcut: wp
 
   - name: wikidata
-    engine: wikidata
     shortcut: wd
 
   - name: arxiv
-    engine: arxiv
     shortcut: ar
 
   # Code search
   - name: github
-    engine: github
     shortcut: gh
 
   # Academic
   - name: google scholar
-    engine: google_scholar
     shortcut: gs
 
   - name: semantic scholar
-    engine: semantic_scholar
     shortcut: ss

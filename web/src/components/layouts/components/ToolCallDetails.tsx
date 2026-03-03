@@ -246,6 +246,16 @@ function SandboxPreviewCard({ parsed }: { parsed: unknown }) {
   );
 }
 
+const formatDuration = (ms?: number): string => {
+  if (ms === undefined) return "";
+  if (ms < 1000) return `${ms}ms`;
+  const seconds = ms / 1000;
+  if (seconds < 60) return `${seconds.toFixed(1)}s`;
+  const minutes = Math.floor(seconds / 60);
+  const remainingSeconds = (seconds % 60).toFixed(0);
+  return `${minutes}m ${remainingSeconds}s`;
+};
+
 export default function ToolCallDetails({
   toolCall,
   showSectionTitles = true,
@@ -443,6 +453,12 @@ export default function ToolCallDetails({
 
       {showTimestamp && (
         <div className="text-xs text-neutral-500 dark:text-neutral-400 mt-2">
+          {toolCall.duration_ms !== undefined && (
+            <div>
+              {t("app.chat.toolCall.duration", { defaultValue: "Duration" })}:{" "}
+              {formatDuration(toolCall.duration_ms)}
+            </div>
+          )}
           {t("app.chat.toolCall.executedAt", { defaultValue: "Executed at" })}:{" "}
           {new Date(toolCall.timestamp).toLocaleTimeString()}
         </div>

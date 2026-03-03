@@ -245,6 +245,7 @@ describe("groupToolMessagesWithAssistant", () => {
           toolCallId: "tc-1",
           status: "completed",
           result: "Search results here",
+          duration_ms: 1234,
         }),
         created_at: "2024-01-01T00:00:01Z",
         status: "completed",
@@ -259,6 +260,7 @@ describe("groupToolMessagesWithAssistant", () => {
       success: true,
       data: "Search results here",
     });
+    expect(result[0].toolCalls![0].duration_ms).toBe(1234);
   });
 
   it("handles tool call errors", () => {
@@ -445,5 +447,37 @@ describe("reconstructAgentExecutionFromMetadata", () => {
 
     expect(result).toBeDefined();
     expect(result?.status).toBe("completed");
+  });
+
+  it("restores tool call duration from metadata", () => {
+    const result = reconstructAgentExecutionFromMetadata({
+      execution_id: "exec-with-tools",
+      agent_id: "agent-1",
+      agent_name: "Agent",
+      agent_type: "react",
+      status: "completed",
+      node_outputs: {
+        response: "Done",
+      },
+      node_order: ["response"],
+      node_names: {
+        response: "Response",
+      },
+      tool_calls: {
+        response: [
+          {
+            id: "tc-1",
+            name: "search",
+            arguments: { query: "abc" },
+            status: "completed",
+            timestamp: 1735689600000,
+            duration_ms: 980,
+          },
+        ],
+      },
+    });
+
+    expect(result).toBeDefined();
+    expect(result?.phases[0].toolCalls?.[0].duration_ms).toBe(980);
   });
 });

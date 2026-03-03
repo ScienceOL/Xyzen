@@ -79,6 +79,7 @@
   "toolbar": {
     "newChat": "New Chat",
     "newChatCreating": "Creating...",
+    "newChatWithSummary": "Continue with Summary",
     "uploadFile": "Upload File",
     "resizeHint": "Drag to adjust input height",
     "history": "History",
@@ -194,6 +195,13 @@
     "escToStop": "Stop",
     "enterToSend": "Send",
     "shiftEnterForNewline": "New line"
+  },
+  "contextUsage": {
+    "warning": "Context is {{percent}}% full. Consider starting a new chat to maintain quality.",
+    "critical": "Context is nearly full. Some older messages have been truncated.",
+    "newChatButton": "Start new chat with summary",
+    "compacting": "Generating summary...",
+    "compactSuccess": "New chat created with conversation summary"
   },
   "dragDrop": {
     "dropHere": "Drop files here",

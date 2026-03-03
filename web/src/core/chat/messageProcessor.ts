@@ -256,6 +256,7 @@ export function groupToolMessagesWithAssistant(messages: Message[]): Message[] {
         timestamp: parsed.timestamp
           ? new Date(parsed.timestamp).toISOString()
           : msg.created_at,
+        duration_ms: parsed.duration_ms,
       };
 
       // If we have a reconstructed execution timeline, attach tool calls to it.
@@ -329,6 +330,7 @@ export function groupToolMessagesWithAssistant(messages: Message[]): Message[] {
         arguments: {},
         status: (parsed.status as ToolCall["status"]) || "completed",
         timestamp: msg.created_at,
+        duration_ms: parsed.duration_ms,
       };
 
       const toolMessage: Message = {
@@ -360,6 +362,9 @@ export function groupToolMessagesWithAssistant(messages: Message[]): Message[] {
     if (parsed.error) {
       toolCall.error = parsed.error;
       toolCall.status = "failed";
+    }
+    if (parsed.duration_ms !== undefined) {
+      toolCall.duration_ms = parsed.duration_ms;
     }
   }
 
@@ -525,6 +530,7 @@ export function reconstructAgentExecutionFromMetadata(
           result?: unknown;
           error?: string;
           timestamp: number;
+          duration_ms?: number;
         }>
       >
     | undefined;
@@ -570,6 +576,7 @@ export function reconstructAgentExecutionFromMetadata(
         result: tc.result ? normalizeToolResult(tc.result) : undefined,
         error: tc.error,
         timestamp: new Date(tc.timestamp).toISOString(),
+        duration_ms: tc.duration_ms,
       }));
 
       phases.push({
@@ -602,6 +609,7 @@ export function reconstructAgentExecutionFromMetadata(
         result: tc.result ? normalizeToolResult(tc.result) : undefined,
         error: tc.error,
         timestamp: new Date(tc.timestamp).toISOString(),
+        duration_ms: tc.duration_ms,
       }));
 
       phases.push({

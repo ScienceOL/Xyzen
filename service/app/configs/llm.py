@@ -51,6 +51,19 @@ class LLMProviderConfig(BaseModel):
                 config_json["vertex_sa"] = vertex_sa
                 config_json["vertex_project"] = self.project
 
+        elif provider == ProviderType.BEDROCK:
+            raw_key = self.key.get_secret_value()
+            if raw_key and ":" in raw_key:
+                access_key_id, secret_access_key = raw_key.split(":", 1)
+                config_json["bedrock_access_key_id"] = access_key_id
+                config_json["bedrock_secret_access_key"] = secret_access_key
+            elif raw_key:
+                # Key without colon separator — only access key ID, no secret.
+                # Bedrock will fall back to boto3's credential chain (env/instance role).
+                config_json["bedrock_access_key_id"] = raw_key
+            if self.project:
+                config_json["bedrock_region"] = self.project
+
         return config_json
 
 
@@ -82,6 +95,7 @@ class LLMConfig(BaseModel):
     googlevertex: LLMProviderConfig = Field(default_factory=LLMProviderConfig, description="Google Vertex config")
     gpugeek: LLMProviderConfig = Field(default_factory=LLMProviderConfig, description="GPUGeek config")
     qwen: LLMProviderConfig = Field(default_factory=LLMProviderConfig, description="Qwen config")
+    bedrock: LLMProviderConfig = Field(default_factory=LLMProviderConfig, description="AWS Bedrock config")
 
     # Legacy single-provider fields
     provider: ProviderType | None = Field(default=None, description="(Legacy) Provider type")
@@ -117,6 +131,8 @@ class LLMConfig(BaseModel):
                 return ProviderType.GPUGEEK.value
             if s == "qwen":
                 return ProviderType.QWEN.value
+            if s == "bedrock":
+                return ProviderType.BEDROCK.value
             return s
 
         return [ProviderType(normalize(item)) for item in items]
@@ -150,6 +166,8 @@ class LLMConfig(BaseModel):
                 return self.gpugeek
             case ProviderType.QWEN:
                 return self.qwen
+            case ProviderType.BEDROCK:
+                return self.bedrock
 
     def iter_enabled(self) -> list[tuple[ProviderType, LLMProviderConfig]]:
         """Return enabled provider configs.

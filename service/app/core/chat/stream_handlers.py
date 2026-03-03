@@ -19,6 +19,7 @@ from langchain_core.messages import AIMessage
 from app.core.chat.token_usage import normalize_token_usage
 from app.schemas.chat_event_payloads import (
     CitationData,
+    ContextUsageData,
     ErrorData,
     GeneratedFileInfo,
     GeneratedFilesData,
@@ -41,6 +42,7 @@ if TYPE_CHECKING:
     from sqlmodel.ext.asyncio.session import AsyncSession
 
     from app.core.chat.agent_event_handler import AgentEventContext
+    from app.schemas.provider import ProviderType
     from app.models.file import File
 
 logger = logging.getLogger(__name__)
@@ -81,6 +83,8 @@ class StreamContext:
     historical_tool_call_ids: set[str] = field(default_factory=set)
     # Set of tool call IDs that we've emitted results for (to skip duplicates)
     emitted_tool_result_ids: set[str] = field(default_factory=set)
+    # Tool call start timestamps keyed by tool_call_id
+    tool_call_started_at: dict[str, float] = field(default_factory=dict)
     # Cache token tracking
     total_cache_creation_tokens: int = 0
     total_cache_read_tokens: int = 0
@@ -93,6 +97,8 @@ class StreamContext:
     model_tier: str | None = None
     provider_id: str | None = None
     model_name: str | None = None
+    # Provider type for circuit breaker tracking
+    provider_type: "ProviderType | None" = None
 
 
 class ToolEventHandler:
@@ -133,6 +139,7 @@ class ToolEventHandler:
         status: str = ToolCallStatus.COMPLETED,
         raw_result: str | dict | list | None = None,
         error: str | None = None,
+        duration_ms: int | None = None,
         stream_id: str = "",
         model_tier: str | None = None,
     ) -> StreamingEvent:
@@ -160,6 +167,8 @@ class ToolEventHandler:
             data["raw_result"] = raw_result
         if error:
             data["error"] = error
+        if duration_ms is not None:
+            data["duration_ms"] = duration_ms
         if model_tier:
             data["model_tier"] = model_tier
         return {"type": ChatEventType.TOOL_CALL_RESPONSE, "data": data}
@@ -265,6 +274,26 @@ class StreamingEventHandler:
         if occurred_at is not None:
             data["occurred_at"] = occurred_at
         return {"type": ChatEventType.ERROR, "data": data}
+
+    @staticmethod
+    def create_context_usage_event(
+        stream_id: str,
+        estimated_tokens: int,
+        max_tokens: int,
+        usage_percent: float,
+        near_limit: bool,
+        critical: bool,
+    ) -> StreamingEvent:
+        """Create context usage event."""
+        data: ContextUsageData = {
+            "estimated_tokens": estimated_tokens,
+            "max_tokens": max_tokens,
+            "usage_percent": round(usage_percent, 1),
+            "near_limit": near_limit,
+            "critical": critical,
+            "stream_id": stream_id,
+        }
+        return {"type": ChatEventType.CONTEXT_USAGE, "data": data}
 
 
 class ThinkingEventHandler:

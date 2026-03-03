@@ -65,6 +65,14 @@ const getPillStyle = (status: ToolCall["status"], hasResultError: boolean) => {
   }
 };
 
+const formatDuration = (ms?: number): string => {
+  if (ms === undefined) return "";
+  if (ms < 1000) return `${ms}ms`;
+  const seconds = ms / 1000;
+  if (seconds < 10) return `${seconds.toFixed(1)}s`;
+  return `${Math.round(seconds)}s`;
+};
+
 /**
  * ToolCallPill displays a tool call in a compact capsule/pill format.
  *
@@ -122,6 +130,13 @@ function ToolCallPill({
 
         {/* Status Indicator */}
         <StatusIndicator status={effectiveStatus} />
+
+        {toolCall.duration_ms !== undefined &&
+          (effectiveStatus === "completed" || effectiveStatus === "failed") && (
+            <span className="text-[10px] font-medium text-neutral-500 dark:text-neutral-400">
+              {formatDuration(toolCall.duration_ms)}
+            </span>
+          )}
       </motion.button>
 
       {showDetails && (

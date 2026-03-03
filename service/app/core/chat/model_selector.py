@@ -55,11 +55,11 @@ def _get_available_provider_types(user_provider_manager: "ProviderManager") -> s
     return available_types
 
 
-def _filter_candidates_by_availability(
+async def _filter_candidates_by_availability(
     tier: ModelTier,
     available_types: set[ProviderType],
 ) -> tuple[list[TierModelCandidate], TierModelCandidate | None]:
-    """Filter tier candidates to only those with available providers.
+    """Filter tier candidates to only those with available and healthy providers.
 
     Args:
         tier: The model tier
@@ -68,19 +68,30 @@ def _filter_candidates_by_availability(
     Returns:
         Tuple of (available_candidates, fallback_candidate)
     """
+    from app.core.providers.circuit_breaker import ProviderCircuitBreaker
+
     candidates_map = get_tier_candidates()
     candidates = candidates_map.get(tier, candidates_map[ModelTier.STANDARD])
     available_candidates: list[TierModelCandidate] = []
     fallback: TierModelCandidate | None = None
 
+    # Batch health check: query each unique provider type once
+    unique_types = {c.provider_type for c in candidates if c.provider_type in available_types}
+    health_map: dict[ProviderType, bool] = {}
+    for pt in unique_types:
+        health_map[pt] = await ProviderCircuitBreaker.is_available(pt)
+
     for candidate in candidates:
+        provider_healthy = health_map.get(candidate.provider_type, False)
         logger.debug(
             f"Checking candidate {candidate.model}: provider={candidate.provider_type.value}, "
-            f"in_available={candidate.provider_type in available_types}, is_fallback={candidate.is_fallback}"
+            f"in_available={candidate.provider_type in available_types}, "
+            f"healthy={provider_healthy}, is_fallback={candidate.is_fallback}"
         )
-        if candidate.provider_type in available_types:
+        if candidate.provider_type in available_types and provider_healthy:
             if candidate.is_fallback:
-                fallback = candidate
+                if fallback is None or candidate.priority < fallback.priority:
+                    fallback = candidate
             else:
                 available_candidates.append(candidate)
 
@@ -137,15 +148,25 @@ async def select_model_for_tier(
     # Get available providers
     available_types = _get_available_provider_types(user_provider_manager)
 
-    # Filter candidates by availability
-    available_candidates, fallback = _filter_candidates_by_availability(tier, available_types)
+    # Filter candidates by availability and health
+    available_candidates, fallback = await _filter_candidates_by_availability(tier, available_types)
 
-    # If no candidates available, use fallback
+    # If no candidates available, use fallback (already health-filtered)
     if not available_candidates:
         if fallback:
             logger.warning(f"No candidates available for tier {tier.value}, using fallback: {fallback.model}")
             return fallback.model
         else:
+            # Last resort: pick any candidate from the tier, preferring healthy providers
+            all_candidates = get_tier_candidates().get(tier, get_tier_candidates()[ModelTier.STANDARD])
+            for c in sorted(all_candidates, key=lambda x: x.priority):
+                if c.provider_type in available_types:
+                    logger.warning(
+                        f"No healthy candidates for tier {tier.value}, "
+                        f"using best available (ignoring health): {c.model}"
+                    )
+                    return c.model
+            # Absolute last resort: first candidate regardless of availability
             fallback_candidate = get_fallback_model_for_tier(tier)
             logger.warning(
                 f"No candidates or fallback available for tier {tier.value}, "

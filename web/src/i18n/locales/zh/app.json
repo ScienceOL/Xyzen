@@ -78,6 +78,7 @@
   "toolbar": {
     "newChat": "新对话",
     "newChatCreating": "创建中...",
+    "newChatWithSummary": "携带摘要继续",
     "uploadFile": "上传文件",
     "resizeHint": "拖动调整输入框高度",
     "history": "历史记录",
@@ -192,6 +193,13 @@
     "escToStop": "停止",
     "enterToSend": "发送",
     "shiftEnterForNewline": "换行"
+  },
+  "contextUsage": {
+    "warning": "上下文已使用 {{percent}}%，建议开启新对话以保持回复质量。",
+    "critical": "上下文接近上限，部分早期消息已被截断。",
+    "newChatButton": "携带摘要开始新对话",
+    "compacting": "正在生成摘要...",
+    "compactSuccess": "已创建包含对话摘要的新对话"
   },
   "dragDrop": {
     "dropHere": "将文件拖放到此处",

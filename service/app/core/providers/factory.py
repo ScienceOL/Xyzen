@@ -56,6 +56,9 @@ class ChatModelFactory:
             case ProviderType.QWEN:
                 logger.info(f"Creating Qwen model {model}")
                 llm = self._create_qwen(model, credentials, runtime_kwargs)
+            case ProviderType.BEDROCK:
+                logger.info(f"Creating Bedrock model {model}")
+                llm = self._create_bedrock(model, credentials, runtime_kwargs)
 
         return ModelInstance(llm=llm, config=config)
 
@@ -194,6 +197,37 @@ class ChatModelFactory:
             **runtime_kwargs,
         )
 
+        return llm
+
+    def _create_bedrock(self, model: str, credentials: LLMCredentials, runtime_kwargs: dict[str, Any]) -> BaseChatModel:
+        """Create Bedrock model via ChatBedrockConverse (Converse API).
+
+        Supports Anthropic Claude models and other Bedrock-hosted models.
+        Uses explicit AWS credentials to avoid environment variable leaking.
+        """
+        from langchain_aws import ChatBedrockConverse
+
+        region_name = credentials.get("bedrock_region", "us-west-2")
+
+        kwargs: dict[str, Any] = {
+            "model": model,
+            "region_name": region_name,
+        }
+
+        access_key_id = credentials.get("bedrock_access_key_id")
+        secret_access_key = credentials.get("bedrock_secret_access_key")
+        if access_key_id:
+            kwargs["aws_access_key_id"] = access_key_id
+        if secret_access_key:
+            kwargs["aws_secret_access_key"] = secret_access_key
+
+        endpoint = credentials.get("api_endpoint")
+        if endpoint:
+            kwargs["endpoint_url"] = endpoint
+
+        kwargs.update(runtime_kwargs)
+
+        llm = ChatBedrockConverse(**kwargs)
         return llm
 
     def create_embedding(
