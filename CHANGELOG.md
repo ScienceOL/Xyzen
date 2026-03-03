@@ -2,6 +2,12 @@
 
 All notable changes to Xyzen will be documented in this file.
 
+## [1.6.18](https://github.com/ScienceOL/Xyzen/compare/v1.6.17...v1.6.18) (2026-03-03)
+
+### 🐛 Bug Fixes
+
+* redesign skills list cards with modern UI, sort button, and improved actions ([860d421](https://github.com/ScienceOL/Xyzen/commit/860d421c5fcce46f5840a037b7498722f0b42efb)), closes [#291](https://github.com/ScienceOL/Xyzen/issues/291)
+
 ## [1.6.17](https://github.com/ScienceOL/Xyzen/compare/v1.6.16...v1.6.17) (2026-03-02)
 
 ### 🐛 Bug Fixes
