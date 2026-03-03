@@ -68,18 +68,36 @@ class SessionService:
 
         return False
 
+    async def _resolve_default_knowledge_set_id(self, user_id: str) -> "UUID":
+        """Return the user's Default knowledge set ID, creating it if needed."""
+        from app.repos.knowledge_set import KnowledgeSetRepository
+
+        ks_repo = KnowledgeSetRepository(self.db)
+        default_ks = await ks_repo.get_or_create_default_knowledge_set(user_id)
+        return default_ks.id
+
     async def create_session_with_default_topic(self, session_data: SessionCreate, user_id: str) -> SessionRead:
         agent_uuid = await self._resolve_agent_uuid_for_create(session_data.agent_id)
 
         existing_session = await self.session_repo.get_session_by_user_and_agent(user_id, agent_uuid)
         if existing_session:
+            # Backfill knowledge_set_id for sessions created before auto-default
+            if not existing_session.knowledge_set_id:
+                existing_session.knowledge_set_id = await self._resolve_default_knowledge_set_id(user_id)
+                self.db.add(existing_session)
+
             existing_topics = await self.topic_repo.get_topics_by_session(existing_session.id, order_by_updated=True)
             if not existing_topics:
                 await self.topic_repo.create_topic(
                     TopicCreate(name=DEFAULT_TOPIC_TITLE, session_id=existing_session.id)
                 )
-                await self.db.commit()
+            await self.db.commit()
             return SessionRead(**existing_session.model_dump())
+
+        # Auto-populate knowledge_set_id with Default KB if not provided
+        effective_knowledge_set_id = session_data.knowledge_set_id or await self._resolve_default_knowledge_set_id(
+            user_id
+        )
 
         validated = SessionCreate(
             name=session_data.name,
@@ -88,6 +106,7 @@ class SessionService:
             agent_id=agent_uuid,
             provider_id=session_data.provider_id,
             model=session_data.model,
+            knowledge_set_id=effective_knowledge_set_id,
             spatial_layout=session_data.spatial_layout,
         )
 
@@ -139,8 +158,19 @@ class SessionService:
         if not session:
             raise ErrCode.SESSION_NOT_FOUND.with_messages("No session found for this user-agent combination")
 
+        needs_commit = False
+
+        # Backfill knowledge_set_id for sessions created before auto-default
+        if not session.knowledge_set_id:
+            session.knowledge_set_id = await self._resolve_default_knowledge_set_id(user_id)
+            self.db.add(session)
+            needs_commit = True
+
         # Clamp tier if it exceeds subscription limit
         if await self.clamp_session_model_tier(session, user_id):
+            needs_commit = True
+
+        if needs_commit:
             await self.db.commit()
 
         # Fetch topics ordered by updated_at descending (most recent first)
@@ -154,12 +184,21 @@ class SessionService:
     async def get_sessions_with_topics(self, user_id: str) -> list[SessionReadWithTopics]:
         sessions = await self.session_repo.get_sessions_by_user_ordered_by_activity(user_id)
 
-        # Clamp all sessions in one pass, commit once if any changed
-        any_clamped = False
+        needs_commit = False
+
+        # Backfill knowledge_set_id for sessions created before auto-default
+        for session in sessions:
+            if not session.knowledge_set_id:
+                session.knowledge_set_id = await self._resolve_default_knowledge_set_id(user_id)
+                self.db.add(session)
+                needs_commit = True
+
+        # Clamp all sessions in one pass
         for session in sessions:
             if await self.clamp_session_model_tier(session, user_id):
-                any_clamped = True
-        if any_clamped:
+                needs_commit = True
+
+        if needs_commit:
             await self.db.commit()
 
         sessions_with_topics: list[SessionReadWithTopics] = []
