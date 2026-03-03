@@ -1,15 +1,15 @@
 import { ChevronDownIcon } from "lucide-react";
 
 import {
-  AccordionContent as AccordionContentPrimitive,
-  AccordionHeader as AccordionHeaderPrimitive,
-  AccordionItem as AccordionItemPrimitive,
   Accordion as AccordionPrimitive,
+  AccordionItem as AccordionItemPrimitive,
+  AccordionHeader as AccordionHeaderPrimitive,
   AccordionTrigger as AccordionTriggerPrimitive,
-  type AccordionContentProps as AccordionContentPrimitiveProps,
-  type AccordionItemProps as AccordionItemPrimitiveProps,
+  AccordionContent as AccordionContentPrimitive,
   type AccordionProps as AccordionPrimitiveProps,
+  type AccordionItemProps as AccordionItemPrimitiveProps,
   type AccordionTriggerProps as AccordionTriggerPrimitiveProps,
+  type AccordionContentProps as AccordionContentPrimitiveProps,
 } from "@/components/animate-ui/primitives/radix/accordion";
 import { cn } from "@/lib/utils";
 
@@ -74,11 +74,11 @@ function AccordionContent({
 
 export {
   Accordion,
-  AccordionContent,
   AccordionItem,
   AccordionTrigger,
-  type AccordionContentProps,
-  type AccordionItemProps,
+  AccordionContent,
   type AccordionProps,
+  type AccordionItemProps,
   type AccordionTriggerProps,
+  type AccordionContentProps,
 };

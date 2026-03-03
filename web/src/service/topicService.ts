@@ -19,6 +19,11 @@ export interface TokenStats {
   total_tokens: number;
 }
 
+export interface CompactResponse {
+  new_topic_id: string;
+  summary_preview: string;
+}
+
 class TopicService {
   async createTopic(data: TopicCreate): Promise<TopicRead> {
     return http.post("/xyzen/api/v1/topics/", data);
@@ -41,6 +46,16 @@ class TopicService {
 
   async getTokenStats(topicId: string): Promise<TokenStats> {
     return http.get(`/xyzen/api/v1/topics/${topicId}/token-stats`);
+  }
+
+  async compactTopic(
+    topicId: string,
+    upToMessageId?: string,
+  ): Promise<CompactResponse> {
+    return http.post(
+      `/xyzen/api/v1/topics/${topicId}/compact`,
+      upToMessageId ? { up_to_message_id: upToMessageId } : {},
+    );
   }
 }
 

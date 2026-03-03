@@ -5,6 +5,7 @@ from uuid import UUID
 from sqlmodel import col, select
 from sqlmodel.ext.asyncio.session import AsyncSession
 
+from app.models.sessions import Session
 from app.models.topic import Topic, TopicCreate, TopicUpdate
 
 logger = logging.getLogger(__name__)
@@ -168,3 +169,38 @@ class TopicRepository:
         self.db.add(topic)
         await self.db.flush()
         return topic
+
+    async def get_active_user_ids_since(self, since: datetime) -> list[str]:
+        """Return distinct user_ids that have unextracted topics updated since *since*."""
+        stmt = (
+            select(Session.user_id)
+            .join(Topic, Topic.session_id == Session.id)  # type: ignore[arg-type]
+            .where(
+                Topic.memory_extracted_at.is_(None),  # type: ignore[union-attr]
+                col(Topic.updated_at) >= since,
+            )
+            .distinct()
+        )
+        result = await self.db.exec(stmt)
+        return list(result.all())
+
+    async def get_unextracted_topics_since(
+        self,
+        user_id: str,
+        since: datetime,
+        limit: int = 50,
+    ) -> list[Topic]:
+        """Return unextracted topics for a user updated since *since*, newest first."""
+        stmt = (
+            select(Topic)
+            .join(Session, Topic.session_id == Session.id)  # type: ignore[arg-type]
+            .where(
+                Session.user_id == user_id,
+                Topic.memory_extracted_at.is_(None),  # type: ignore[union-attr]
+                col(Topic.updated_at) >= since,
+            )
+            .order_by(col(Topic.updated_at).desc())
+            .limit(limit)
+        )
+        result = await self.db.exec(stmt)
+        return list(result.all())

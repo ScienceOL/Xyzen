@@ -223,6 +223,77 @@ class MemoryService:
             logger.warning("Auto-retrieval failed for user %s", user_id, exc_info=True)
             return []
 
+    # ------------------------------------------------------------------
+    # Batch helpers (for periodic tasks)
+    # ------------------------------------------------------------------
+
+    async def list_all_memories(self, user_id: str) -> list[str]:
+        """List all memory content strings for a user.
+
+        Used by weekly resynthesis to build context from the full corpus.
+        Paginates through the store since asearch has a limit parameter.
+        """
+        if not self._store:
+            return []
+        namespace = (configs.Memory.NamespacePrefix, user_id)
+        results: list[str] = []
+        offset = 0
+        page_size = 100
+        try:
+            while True:
+                items = await self._store.asearch(namespace, limit=page_size, offset=offset)
+                if not items:
+                    break
+                for item in items:
+                    raw = item.value.get("content", item.value)
+                    if isinstance(raw, dict):
+                        raw = raw.get("content", str(raw))
+                    text = str(raw).strip()
+                    if text:
+                        results.append(text)
+                if len(items) < page_size:
+                    break
+                offset += page_size
+            return results
+        except Exception:
+            logger.warning("list_all_memories failed for user %s", user_id, exc_info=True)
+            return results  # Return whatever we collected so far
+
+    async def get_user_ids_with_memories(self) -> list[str]:
+        """Discover user_ids that have memories stored.
+
+        Uses alist_namespaces to enumerate child namespaces under the root prefix.
+        Logs a warning if the limit is reached (some users may be missed).
+        """
+        if not self._store:
+            return []
+        prefix = (configs.Memory.NamespacePrefix,)
+        _NAMESPACE_LIMIT = 1000
+        try:
+            namespaces = await self._store.alist_namespaces(
+                prefix=prefix,
+                max_depth=2,
+                limit=_NAMESPACE_LIMIT,
+            )
+            if len(namespaces) >= _NAMESPACE_LIMIT:
+                logger.warning(
+                    "User namespace enumeration hit limit=%d, some users may be missed",
+                    _NAMESPACE_LIMIT,
+                )
+            # Namespaces are tuples like ("memories", "user_id_123")
+            user_ids: list[str] = []
+            seen: set[str] = set()
+            for ns in namespaces:
+                if len(ns) >= 2:
+                    uid = ns[1]
+                    if uid not in seen:
+                        seen.add(uid)
+                        user_ids.append(uid)
+            return user_ids
+        except Exception:
+            logger.warning("get_user_ids_with_memories failed", exc_info=True)
+            return []
+
 
 def _build_connection_string() -> str:
     """Build a plain postgresql:// connection string from config."""

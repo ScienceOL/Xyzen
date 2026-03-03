@@ -119,6 +119,7 @@ class SessionRepository:
             agent_id=agent_id,
             provider_id=session_data.provider_id,
             model=session_data.model,
+            knowledge_set_id=session_data.knowledge_set_id,
             spatial_layout=getattr(session_data, "spatial_layout", None),
         )
         self.db.add(session)

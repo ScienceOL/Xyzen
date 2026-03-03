@@ -92,6 +92,10 @@ class UserSubscriptionBase(SQLModel):
         sa_column=Column(TIMESTAMP(timezone=True), nullable=True),
         description="When full model-access pass expires (null = not active)",
     )
+    model_access_tier: str = Field(
+        default="ultra",
+        description="Tier granted by the model-access pass (lite/standard/pro/ultra)",
+    )
 
 
 class UserSubscription(UserSubscriptionBase, table=True):

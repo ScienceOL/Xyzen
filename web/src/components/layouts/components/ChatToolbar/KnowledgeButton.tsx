@@ -97,9 +97,25 @@ export function KnowledgeButton({
       const newGraphConfig = updateKnowledgeEnabled(agent, false);
       await onUpdateAgent({ ...agent, graph_config: newGraphConfig });
     } else {
-      // Turn on: just enable the tool (user still needs to pick a knowledge set)
+      // Turn on: enable tool and auto-select Default KB if none selected
       const newGraphConfig = updateKnowledgeEnabled(agent, true);
       await onUpdateAgent({ ...agent, graph_config: newGraphConfig });
+
+      if (!effectiveKnowledgeSetId && onUpdateSessionKnowledge) {
+        let sets = knowledgeSets;
+        if (sets.length === 0) {
+          try {
+            sets = await knowledgeSetService.listKnowledgeSets();
+            setKnowledgeSets(sets);
+          } catch {
+            return;
+          }
+        }
+        const defaultKs = sets.find((ks) => ks.name === "Default") ?? sets[0];
+        if (defaultKs) {
+          await onUpdateSessionKnowledge(defaultKs.id);
+        }
+      }
     }
   };
 

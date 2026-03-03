@@ -2,6 +2,8 @@
   "titles": {
     "recents": "最近",
     "allFiles": "すべてのファイル",
+    "images": "画像",
+    "documents": "ドキュメント",
     "myKnowledge": "マイナレッジ",
     "knowledgeBase": "ナレッジベース",
     "trash": "ゴミ箱"

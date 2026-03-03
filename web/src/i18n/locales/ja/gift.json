@@ -1,0 +1,32 @@
+{
+  "giftBox": {
+    "title": "デイリーギフト",
+    "tapToOpen": "タップしてギフトを開こう！",
+    "claiming": "開封中...",
+    "enjoy": "報酬をお楽しみください！",
+    "streak": "{{current}} / {{total}} 日目",
+    "credits": "+{{amount}} クレジット",
+    "dailyCredits": "毎日 +500 クレジット",
+    "dismiss": "閉じる",
+    "openGift": "ギフトを開く",
+    "consecutiveDays": "{{days}}日連続",
+    "completed": "すべてのギフトを受け取りました！",
+    "fullModelAccess": "Ultraモードが{{days}}日間解放されました！",
+    "tierStandard": "スタンダード",
+    "tierPro": "プロ",
+    "tierUltra": "Ultra",
+    "unlocked": "解放済み",
+    "locked": "未解放",
+    "dayN": "{{day}}日目",
+    "ultraAccess": "30日間フルアクセス"
+  },
+  "milestones": {
+    "standard_unlock": "スタンダード解放！",
+    "pro_unlock": "プロ解放！",
+    "ultra_unlock": "Ultra解放！"
+  },
+  "beta2024": {
+    "title": "ベータ特典",
+    "description": "毎日クレジットを受け取り、Ultraモードを解放しよう！"
+  }
+}

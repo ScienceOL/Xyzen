@@ -47,11 +47,14 @@ class RunnerConnectionRegistry:
     def __init__(self) -> None:
         self._connections: dict[str, RunnerConnection] = {}
 
-    def register(self, user_id: str, conn: RunnerConnection) -> None:
+    def register(self, user_id: str, conn: RunnerConnection) -> RunnerConnection | None:
+        old = self._connections.get(user_id)
         self._connections[user_id] = conn
+        return old if old is not conn else None
 
-    def unregister(self, user_id: str) -> None:
-        self._connections.pop(user_id, None)
+    def unregister(self, user_id: str, conn: RunnerConnection) -> None:
+        if self._connections.get(user_id) is conn:
+            del self._connections[user_id]
 
     def get(self, user_id: str) -> RunnerConnection | None:
         return self._connections.get(user_id)
@@ -66,11 +69,13 @@ async def _set_presence(r: aioredis.Redis, user_id: str, runner_id: str) -> None
     await r.setex(f"{RUNNER_ONLINE_PREFIX}{user_id}", PRESENCE_TTL, runner_id)
 
 
-async def _clear_presence(user_id: str) -> None:
-    """Remove the runner presence key from Redis."""
+async def _clear_presence(user_id: str, runner_id: str) -> None:
+    """Remove the runner presence key from Redis, only if it belongs to the given runner."""
     r = aioredis.from_url(configs.Redis.REDIS_URL, decode_responses=True)
     try:
-        await r.delete(f"{RUNNER_ONLINE_PREFIX}{user_id}")
+        current = await r.get(f"{RUNNER_ONLINE_PREFIX}{user_id}")
+        if current == runner_id:
+            await r.delete(f"{RUNNER_ONLINE_PREFIX}{user_id}")
     finally:
         await r.aclose()
 
@@ -229,7 +234,12 @@ async def runner_websocket(
         runner_id=runner_id,
         websocket=websocket,
     )
-    runner_registry.register(user_id, conn)
+    old_conn = runner_registry.register(user_id, conn)
+    if old_conn:
+        try:
+            await old_conn.websocket.close(code=4002, reason="Replaced by new runner connection")
+        except Exception:
+            pass
 
     # Redis connection for presence and Pub/Sub
     r = aioredis.from_url(configs.Redis.REDIS_URL, decode_responses=True)
@@ -321,8 +331,8 @@ async def runner_websocket(
         logger.error(f"Runner {runner_id} error: {e}", exc_info=True)
     finally:
         cancel_event.set()
-        runner_registry.unregister(user_id)
-        await _clear_presence(user_id)
+        runner_registry.unregister(user_id, conn)
+        await _clear_presence(user_id, runner_id)
         await broadcast_user_event(
             user_id,
             "runner_status",

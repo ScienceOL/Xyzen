@@ -76,6 +76,11 @@ async def list_knowledge_sets(
     """
     try:
         knowledge_set_repo = KnowledgeSetRepository(db)
+
+        # Ensure default knowledge set exists before listing
+        await knowledge_set_repo.get_or_create_default_knowledge_set(user_id)
+        await db.commit()
+
         knowledge_sets = await knowledge_set_repo.get_knowledge_sets_by_user(
             user_id=user_id,
             include_deleted=include_deleted,

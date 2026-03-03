@@ -111,7 +111,7 @@ export function KnowledgeFilePanel({
 
   // ── Navigation state ──────────────────────────────────────────────
   const [folderId, setFolderId] = useState<string | null>(null);
-  const [viewMode, setViewMode] = useState<ViewMode>("list");
+  const [viewMode] = useState<ViewMode>("list");
   const [breadcrumbs, setBreadcrumbs] = useState<Folder[]>([]);
   const [knowledgeSetName, setKnowledgeSetName] = useState<string | null>(null);
 
@@ -720,8 +720,6 @@ export function KnowledgeFilePanel({
       {showToolbar && (
         <KnowledgeToolbar
           title={title}
-          viewMode={viewMode}
-          onViewModeChange={setViewMode}
           onSearch={(q) => console.log("Search", q)}
           onUpload={handleUploadClick}
           onUploadFolder={handleFolderUploadClick}

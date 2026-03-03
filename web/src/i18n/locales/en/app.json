@@ -26,7 +26,9 @@
       "confirmExecute": "Confirm",
       "status": "Status",
       "tool": "Tool",
-      "node": "Node"
+      "node": "Node",
+      "toolCallCount_one": "{{count}} tool call",
+      "toolCallCount_other": "{{count}} tool calls"
     },
     "agent": {
       "stopped": "Generation stopped",
@@ -67,11 +69,17 @@
     "foldersLabel": "folders",
     "sourceBuiltin": "Source: builtin",
     "sourceUser": "Source: user",
-    "updatedAt": "Updated"
+    "updatedAt": "Updated",
+    "search": "Search skills...",
+    "noResults": "No skills found.",
+    "selectSkill": "Select a skill to browse its resources",
+    "sortByName": "Sort by name",
+    "sortByDate": "Sort by date"
   },
   "toolbar": {
     "newChat": "New Chat",
     "newChatCreating": "Creating...",
+    "newChatWithSummary": "Continue with Summary",
     "uploadFile": "Upload File",
     "resizeHint": "Drag to adjust input height",
     "history": "History",
@@ -188,6 +196,13 @@
     "enterToSend": "Send",
     "shiftEnterForNewline": "New line"
   },
+  "contextUsage": {
+    "warning": "Context is {{percent}}% full. Consider starting a new chat to maintain quality.",
+    "critical": "Context is nearly full. Some older messages have been truncated.",
+    "newChatButton": "Start new chat with summary",
+    "compacting": "Generating summary...",
+    "compactSuccess": "New chat created with conversation summary"
+  },
   "dragDrop": {
     "dropHere": "Drop files here",
     "dropFiles": "Drop your files",
@@ -278,7 +293,8 @@
     "deleteStillStreaming": "Message is still streaming",
     "deleteNotSaved": "Message has not been saved to server yet",
     "deleteFailed": "Failed to delete message",
-    "editFailed": "Failed to edit message"
+    "editFailed": "Failed to edit message",
+    "summarizeFromHere": "Summarize to here"
   },
   "authStatus": {
     "checking": "Checking authentication...",
@@ -323,6 +339,7 @@
       "availableModels": "Model Reference",
       "imageGen": "Image Generation",
       "betaSpecial": "Beta Special",
+      "primary": "Primary",
       "disclaimer": "* Models listed are for capability reference only and do not guarantee the actual model used."
     },
     "speedLabels": {
@@ -465,7 +482,22 @@
     "prompt": "Prompt",
     "status": "Status",
     "error": "Error",
-    "goToChat": "Go to chat"
+    "goToChat": "Go to chat",
+    "groupToday": "Today",
+    "groupYesterday": "Yesterday",
+    "groupWeek": "This Week",
+    "groupMonth": "This Month",
+    "groupEarlier": "Earlier",
+    "filterStatusAll": "All Status",
+    "filterStatusActive": "Active",
+    "filterStatusCompleted": "Completed",
+    "filterStatusFailed": "Failed",
+    "filterStatusCancelled": "Cancelled",
+    "filterStatusPaused": "Paused",
+    "filterTypeAll": "All Types",
+    "filterTypeOnce": "One-time",
+    "filterTypeRecurring": "Recurring",
+    "emptyFiltered": "No tasks match the current filters."
   },
   "workspace": {
     "recommendations": {
@@ -565,7 +597,11 @@
     "countUnit": "times",
     "noCheckInToday": "You haven’t checked in today. Check in now! 🎉",
     "noRecordForDay": "No records for this day 📅",
-    "checkInFailed": "Check-in failed, please try again later"
+    "checkInFailed": "Check-in failed, please try again later",
+    "checkInSuccessFirst": "Checked in! Earned {{points}} points. Start your check-in journey~",
+    "checkInSuccessEarly": "{{days}}-day streak! Earned {{points}} points. Keep it up~",
+    "checkInSuccessAlmost": "Awesome! {{days}}-day streak, earned {{points}} points! Max reward is just one day away~",
+    "checkInSuccessMax": "Amazing! {{days}}-day streak, earned {{points}} points! Persistence is victory~"
   },
   "consumption": {
     "title": "Usage Analytics",

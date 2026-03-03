@@ -112,6 +112,7 @@ class ToolCallResponseData(TypedDict):
     result: dict[str, Any]  # Structured JSON: {success, data, error?, truncated?}
     raw_result: NotRequired[str | dict | list]  # Raw result for cost calculation
     error: NotRequired[str]
+    duration_ms: NotRequired[int]
     stream_id: str
     model_tier: NotRequired[str]
 
@@ -240,6 +241,17 @@ class AskUserQuestionData(TypedDict):
     timeout_seconds: int
     stream_id: str
     thread_id: str
+
+
+class ContextUsageData(TypedDict):
+    """Data payload for CONTEXT_USAGE event."""
+
+    estimated_tokens: int
+    max_tokens: int
+    usage_percent: float
+    near_limit: bool
+    critical: bool
+    stream_id: str
 
 
 # =============================================================================
@@ -380,6 +392,13 @@ class AskUserQuestionEvent(TypedDict):
     data: AskUserQuestionData
 
 
+class ContextUsageEvent(TypedDict):
+    """Full event structure for context usage."""
+
+    type: Literal[ChatEventType.CONTEXT_USAGE]
+    data: ContextUsageData
+
+
 class AgentStartEvent(TypedDict):
     """Full event structure for agent start."""
 
@@ -461,6 +480,7 @@ StreamingEvent = (
     | ThinkingEndEvent
     | StreamAbortedEvent
     | AskUserQuestionEvent
+    | ContextUsageEvent
     | AgentStartEvent
     | AgentEndEvent
     | AgentErrorEvent
@@ -508,6 +528,7 @@ __all__ = [
     "StreamAbortedData",
     "QuestionOptionData",
     "AskUserQuestionData",
+    "ContextUsageData",
     # Event types
     "StreamingStartEvent",
     "StreamingChunkEvent",
@@ -528,6 +549,7 @@ __all__ = [
     "ThinkingEndEvent",
     "StreamAbortedEvent",
     "AskUserQuestionEvent",
+    "ContextUsageEvent",
     "AgentStartData",
     "AgentEndData",
     "AgentErrorData",

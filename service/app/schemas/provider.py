@@ -19,6 +19,7 @@ class ProviderType(StrEnum):
     GOOGLE_VERTEX = "google_vertex"
     GPUGEEK = "gpugeek"
     QWEN = "qwen"
+    BEDROCK = "bedrock"
 
 
 class LLMCredentials(TypedDict):
@@ -33,6 +34,11 @@ class LLMCredentials(TypedDict):
     # Vertex
     vertex_sa: NotRequired[dict]
     vertex_project: NotRequired[str]
+
+    # Bedrock
+    bedrock_access_key_id: NotRequired[str]
+    bedrock_secret_access_key: NotRequired[str]
+    bedrock_region: NotRequired[str]
 
 
 class RuntimeProviderConfig(BaseModel):
@@ -69,5 +75,13 @@ class RuntimeProviderConfig(BaseModel):
             creds["vertex_sa"] = self.extra_config["vertex_sa"]
         if "vertex_project" in self.extra_config:
             creds["vertex_project"] = self.extra_config["vertex_project"]
+
+        # Bedrock
+        if "bedrock_access_key_id" in self.extra_config:
+            creds["bedrock_access_key_id"] = self.extra_config["bedrock_access_key_id"]
+        if "bedrock_secret_access_key" in self.extra_config:
+            creds["bedrock_secret_access_key"] = self.extra_config["bedrock_secret_access_key"]
+        if "bedrock_region" in self.extra_config:
+            creds["bedrock_region"] = self.extra_config["bedrock_region"]
 
         return creds

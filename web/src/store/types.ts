@@ -39,6 +39,9 @@ export interface ToolCall {
   result?: ToolCallResult;
   error?: string;
   timestamp: string;
+  duration_ms?: number;
+  /** streamedContent.length when this tool call was requested (for interleaved rendering) */
+  contentOffset?: number;
 }
 
 export interface MessageAttachment {
@@ -240,6 +243,14 @@ export interface ChatChannel {
   aborting?: boolean;
   // Latest context usage tokens for this topic (not cumulative historical spend)
   tokenUsage?: number;
+  // Context window usage tracking
+  contextUsage?: {
+    estimatedTokens: number;
+    maxTokens: number;
+    usagePercent: number;
+    nearLimit: boolean;
+    critical: boolean;
+  };
 }
 
 export interface ChatHistoryItem {

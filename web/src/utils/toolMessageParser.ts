@@ -14,6 +14,7 @@ interface ParsedToolEvent {
   result?: unknown;
   error?: string;
   timestamp?: number;
+  duration_ms?: number;
 }
 
 /**
@@ -64,6 +65,7 @@ export function toolEventToToolCall(event: ParsedToolEvent): ToolCall | null {
         : undefined,
       error: event.error,
       timestamp: new Date().toISOString(),
+      duration_ms: event.duration_ms,
     };
   }
 
@@ -101,6 +103,9 @@ export function groupToolEvents(
         if (event.error) {
           existing.error = event.error;
           existing.status = "failed";
+        }
+        if (event.duration_ms !== undefined) {
+          existing.duration_ms = event.duration_ms;
         }
       } else {
         // Create new entry for orphaned response

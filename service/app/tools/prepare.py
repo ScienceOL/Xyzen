@@ -74,11 +74,20 @@ async def prepare_tools(
             memory_svc = await get_or_initialize_memory_service()
             memory_store = memory_svc.store if memory_svc else None
 
-    # 1. Load all available builtin tools
+    # 1. Resolve effective knowledge_set_id (fallback to default)
+    effective_knowledge_set_id = session_knowledge_set_id or (agent.knowledge_set_id if agent else None)
+    if not effective_knowledge_set_id and user_id:
+        from app.repos.knowledge_set import KnowledgeSetRepository
+
+        ks_repo = KnowledgeSetRepository(db)
+        default_ks = await ks_repo.get_or_create_default_knowledge_set(user_id)
+        effective_knowledge_set_id = default_ks.id
+
+    # 2. Load all available builtin tools
     builtin_tools = _load_all_builtin_tools(
         agent,
         user_id,
-        session_knowledge_set_id,
+        effective_knowledge_set_id,
         topic_id,
         session_id,
         memory_store,
@@ -87,11 +96,11 @@ async def prepare_tools(
     )
     langchain_tools.extend(builtin_tools)
 
-    # 2. Load MCP tools (custom user MCPs)
+    # 3. Load MCP tools (custom user MCPs)
     mcp_tools = await _load_mcp_tools(db, agent, session_id)
     langchain_tools.extend(mcp_tools)
 
-    # 3. Load skill tools (requires DB query + session binding)
+    # 4. Load skill tools (requires DB query + session binding)
     skill_tools = await _load_skill_tools(db, agent, session_id, user_id)
     langchain_tools.extend(skill_tools)
 

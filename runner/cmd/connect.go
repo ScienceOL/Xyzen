@@ -43,8 +43,13 @@ The connection automatically reconnects with exponential backoff if interrupted.
 
 		// Check for updates (best-effort)
 		if info := updater.CheckForUpdate(version); info != nil {
-			curl := fmt.Sprintf("sudo curl -fsSL %s -o /usr/local/bin/xyzen && sudo chmod +x /usr/local/bin/xyzen", info.DownloadURL)
-			ui.UpdateNotice(version, info.Latest, curl)
+			var installCmd string
+			if runtime.GOOS == "windows" {
+				installCmd = fmt.Sprintf("Invoke-WebRequest -Uri %s -OutFile xyzen.exe", info.DownloadURL)
+			} else {
+				installCmd = fmt.Sprintf("sudo curl -fsSL %s -o /usr/local/bin/xyzen && sudo chmod +x /usr/local/bin/xyzen", info.DownloadURL)
+			}
+			ui.UpdateNotice(version, info.Latest, installCmd)
 		}
 
 		cfg, err := config.Load(flagToken, flagURL, flagWorkDir, flagKeepAwake)

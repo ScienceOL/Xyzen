@@ -18,6 +18,40 @@ class KnowledgeSetRepository:
     def __init__(self, db: AsyncSession):
         self.db = db
 
+    async def get_or_create_default_knowledge_set(self, user_id: str) -> KnowledgeSet:
+        """
+        Return the user's "Default" knowledge set, creating it if it doesn't exist.
+
+        Concurrency note: there is no unique constraint on (user_id, name), so
+        concurrent calls may insert duplicates.  We always ORDER BY created_at ASC
+        LIMIT 1 so every caller converges to the same row.
+        """
+        statement = (
+            select(KnowledgeSet)
+            .where(
+                KnowledgeSet.user_id == user_id,
+                KnowledgeSet.name == "Default",
+                col(KnowledgeSet.is_deleted).is_(False),
+            )
+            .order_by(col(KnowledgeSet.created_at).asc())
+            .limit(1)
+        )
+        result = await self.db.exec(statement)
+        existing = result.first()
+        if existing:
+            return existing
+
+        logger.debug(f"Creating default knowledge set for user: {user_id}")
+        knowledge_set = KnowledgeSet(
+            user_id=user_id,
+            name="Default",
+            description="Default knowledge set",
+        )
+        self.db.add(knowledge_set)
+        await self.db.flush()
+        await self.db.refresh(knowledge_set)
+        return knowledge_set
+
     async def create_knowledge_set(self, knowledge_set_data: KnowledgeSetCreate, user_id: str) -> KnowledgeSet:
         """
         Creates a new knowledge set record.

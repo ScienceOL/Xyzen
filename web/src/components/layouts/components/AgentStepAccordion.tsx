@@ -4,6 +4,7 @@ import type { ExecutionStatus, PhaseExecution } from "@/types/agentEvents";
 import { AnimatePresence, motion } from "framer-motion";
 import { ChevronDown } from "lucide-react";
 import { useEffect, useState } from "react";
+import InterleavedContent from "./InterleavedContent";
 import ToolCallPill from "./ToolCallPill";
 
 interface AgentStepAccordionProps {
@@ -102,18 +103,25 @@ export default function AgentStepAccordion({
             className="overflow-hidden"
           >
             <div className="pl-7 pr-2 pb-3 pt-0.5">
-              {/* Tool Calls as Pills */}
-              {toolCalls.length > 0 && (
-                <div className="flex flex-wrap gap-1.5 mb-2.5">
-                  {toolCalls.map((toolCall) => (
-                    <ToolCallPill key={toolCall.id} toolCall={toolCall} />
-                  ))}
-                </div>
-              )}
-
-              {/* Dynamic Content Renderer */}
-              {(phase.streamedContent || phase.outputSummary) && (
-                <ContentRenderer phase={phase} isActive={isActive} />
+              {CustomRenderer ? (
+                <>
+                  {/* Custom renderers keep pills separate */}
+                  {toolCalls.length > 0 && (
+                    <div className="flex flex-wrap gap-1.5 mb-2.5">
+                      {toolCalls.map((tc) => (
+                        <ToolCallPill key={tc.id} toolCall={tc} />
+                      ))}
+                    </div>
+                  )}
+                  {(phase.streamedContent || phase.outputSummary) && (
+                    <ContentRenderer phase={phase} isActive={isActive} />
+                  )}
+                </>
+              ) : (
+                <InterleavedContent
+                  content={phase.streamedContent || phase.outputSummary || ""}
+                  toolCalls={toolCalls}
+                />
               )}
             </div>
           </motion.div>

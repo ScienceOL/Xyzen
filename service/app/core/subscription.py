@@ -94,13 +94,11 @@ class SubscriptionService:
         sub = await self.repo.get_user_subscription(user_id)
         purchased_slots = sub.purchased_sandbox_slots if sub else 0
 
-        # Full model-access pass overrides max_model_tier to "ultra"
+        # Model-access pass overrides max_model_tier to the granted tier
         effective_model_tier = role.max_model_tier
         if sub and sub.full_model_access_expires_at:
-            from datetime import datetime, timezone
-
             if sub.full_model_access_expires_at > datetime.now(timezone.utc):
-                effective_model_tier = "ultra"
+                effective_model_tier = sub.model_access_tier
 
         return UserLimits(
             storage_limit_bytes=role.storage_limit_bytes,

@@ -2,8 +2,18 @@ import { autoLogin, handleRelinkCallback } from "@/core/auth";
 import { useAuth } from "@/hooks/useAuth";
 import { useXyzen } from "@/store";
 import { QueryClient, QueryClientProvider } from "@tanstack/react-query";
-import React, { Suspense, useCallback, useEffect, useState } from "react";
+import React, {
+  Suspense,
+  useCallback,
+  useEffect,
+  useRef,
+  useState,
+} from "react";
 import { useShallow } from "zustand/react/shallow";
+import {
+  giftService,
+  type CampaignStatusResponse,
+} from "@/service/giftService";
 
 import AuthErrorScreen from "@/app/auth/AuthErrorScreen";
 import SharedAgentDetailPage from "@/app/marketplace/SharedAgentDetailPage";
@@ -19,6 +29,7 @@ import { authService } from "@/service/authService";
 import { LAYOUT_STYLE, type InputPosition } from "@/store/slices/uiSlice/types";
 import { buildAuthorizeUrl } from "@/utils/authFlow";
 import { Toaster } from "@/components/ui/sonner";
+import { GiftBoxModal } from "@/components/features/GiftBoxModal";
 import { AppFullscreen } from "./AppFullscreen";
 import { AppSide } from "./AppSide";
 import { AuthLoadingScreen } from "./AuthLoadingScreen";
@@ -113,7 +124,7 @@ export function Xyzen({
       setActivePanel: s.setActivePanel,
     })),
   );
-  const { status } = useAuth();
+  const { status, user } = useAuth();
 
   // Initialize theme at the top level so it works for both layouts
   useTheme();
@@ -123,11 +134,31 @@ export function Xyzen({
     typeof window !== "undefined" ? window.innerWidth : 1920,
   );
   const [progress, setProgress] = useState(0);
+  const progressRef = useRef(0);
   const [initialLoadComplete, setInitialLoadComplete] = useState(false);
   const [currentHash, setCurrentHash] = useState(
     typeof window !== "undefined" ? window.location.hash : "",
   );
   const [showAuthScreen, setShowAuthScreen] = useState(false);
+  const [showGiftModal, setShowGiftModal] = useState(false);
+  const [giftCampaigns, setGiftCampaigns] = useState<CampaignStatusResponse[]>(
+    [],
+  );
+  const [currentGiftIndex, setCurrentGiftIndex] = useState(0);
+  const giftCheckedRef = useRef(false);
+  const prevUserIdRef = useRef(user?.id);
+
+  // Reset gift state when user changes (account switch without page reload)
+  useEffect(() => {
+    if (user?.id !== prevUserIdRef.current) {
+      prevUserIdRef.current = user?.id;
+      giftCheckedRef.current = false;
+      setShowGiftModal(false);
+      setGiftCampaigns([]);
+      setCurrentGiftIndex(0);
+      sessionStorage.removeItem("gift_dismissed");
+    }
+  }, [user?.id]);
 
   useEffect(() => {
     setMounted(true);
@@ -224,11 +255,10 @@ export function Xyzen({
           // 0. Fetch root agent ID first (fetchAgents needs it for default layout)
           await fetchRootAgentId();
 
-          // 1. Fetch all necessary data in parallel
+          // 1. Fetch essential data in parallel (chat history loads in background)
           await Promise.all([
             fetchAgents(),
             fetchMcpServers(),
-            fetchChatHistory(),
             resolveEdition(),
             resolveRegion(),
           ]);
@@ -272,7 +302,6 @@ export function Xyzen({
             }
           } else {
             // 3. If there is an active chat channel (persisted), try to connect to it
-            // We access the store directly to get the latest state after fetchChatHistory
             const state = useXyzen.getState();
             const currentActiveChannel = state.activeChatChannel;
 
@@ -288,6 +317,8 @@ export function Xyzen({
           console.error("Failed to load initial data:", error);
         } finally {
           setInitialLoadComplete(true);
+          // Load chat history in background — not needed for first render
+          void fetchChatHistory();
         }
       };
       void loadData();
@@ -303,6 +334,44 @@ export function Xyzen({
     activateChannel,
     setActivePanel,
   ]);
+
+  // Check for unclaimed gift campaigns after initial load
+  useEffect(() => {
+    if (!initialLoadComplete || status !== "succeeded") return;
+    if (giftCheckedRef.current) return;
+    if (sessionStorage.getItem("gift_dismissed")) return;
+    giftCheckedRef.current = true;
+
+    giftService
+      .getActiveCampaigns()
+      .then((campaigns) => {
+        const unclaimed = campaigns.filter(
+          (c) => !c.claimed_today && !c.completed,
+        );
+        if (unclaimed.length > 0) {
+          setGiftCampaigns(unclaimed);
+          setCurrentGiftIndex(0);
+          setShowGiftModal(true);
+        }
+      })
+      .catch(() => {
+        // Silently fail — gift check is non-critical
+      });
+  }, [initialLoadComplete, status]);
+
+  const handleGiftClaimed = useCallback(() => {
+    // Advance to next unclaimed campaign or close
+    if (currentGiftIndex < giftCampaigns.length - 1) {
+      setCurrentGiftIndex((prev) => prev + 1);
+    } else {
+      setShowGiftModal(false);
+    }
+  }, [currentGiftIndex, giftCampaigns.length]);
+
+  const handleGiftDismiss = useCallback(() => {
+    sessionStorage.setItem("gift_dismissed", "1");
+    setShowGiftModal(false);
+  }, []);
 
   // Handle #/chat/{topicId} deep-link while app is already running
   // (e.g. from SW notification_click postMessage or in-app hash navigation)
@@ -355,51 +424,40 @@ export function Xyzen({
     });
   }, []);
 
-  // Unified progress bar logic
+  // Unified progress bar logic — ref-driven to avoid effect churn
   useEffect(() => {
-    // Target progress based on current state
-    let targetProgress = 0;
+    let target = 0;
+    if (status === "idle") target = 10;
+    else if (status === "loading") target = 30;
+    else if (status === "succeeded") target = initialLoadComplete ? 100 : 80;
+    else if (status === "failed") target = 100;
 
-    if (status === "idle") {
-      targetProgress = 10;
-    } else if (status === "loading") {
-      targetProgress = 30;
-    } else if (status === "succeeded") {
-      if (!initialLoadComplete) {
-        targetProgress = 80; // Data loading phase
-      } else {
-        targetProgress = 100; // All done
-      }
-    } else if (status === "failed") {
-      targetProgress = 100;
-    }
-
-    // If we are already at target, do nothing (unless it's 100, then we ensure it stays there)
-    if (progress >= targetProgress && targetProgress !== 100) {
-      return;
-    }
-
-    // If we reached 100, just set it and clear interval
-    if (targetProgress === 100) {
+    // Jump straight to 100 without animation
+    if (target === 100) {
+      progressRef.current = 100;
       setProgress(100);
       return;
     }
 
-    // Smoothly animate towards target
+    // Already at or past target — nothing to animate
+    if (progressRef.current >= target) return;
+
     const intervalId = window.setInterval(() => {
-      setProgress((prev) => {
-        if (prev >= targetProgress) return prev;
-        // Decelerate as we get closer
-        const remaining = targetProgress - prev;
-        const increment = Math.max(0.5, remaining * 0.1);
-        return Math.min(prev + increment, targetProgress);
-      });
-    }, 100);
+      const prev = progressRef.current;
+      if (prev >= target) {
+        window.clearInterval(intervalId);
+        return;
+      }
+      const increment = Math.max(1, (target - prev) * 0.15);
+      const next = Math.min(prev + increment, target);
+      progressRef.current = next;
+      setProgress(next);
+    }, 50);
 
     return () => {
       window.clearInterval(intervalId);
     };
-  }, [status, initialLoadComplete, progress]);
+  }, [status, initialLoadComplete]);
 
   const handleRetry = useCallback(() => {
     void autoLogin();
@@ -543,6 +601,14 @@ export function Xyzen({
     <QueryClientProvider client={queryClient}>
       {gatedContent}
       <Toaster position="top-right" />
+      {showGiftModal && giftCampaigns[currentGiftIndex] && (
+        <GiftBoxModal
+          campaign={giftCampaigns[currentGiftIndex]}
+          isOpen={showGiftModal}
+          onClose={handleGiftDismiss}
+          onClaimed={handleGiftClaimed}
+        />
+      )}
     </QueryClientProvider>
   );
 }

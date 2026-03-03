@@ -372,8 +372,8 @@ export function FocusedView({
                           title={ceoAgentData.name}
                           className={`relative rounded-full p-0.5 transition-all duration-200 ${
                             isSelected
-                              ? "ring-2 ring-amber-500/60 shadow-sm"
-                              : "hover:ring-2 hover:ring-amber-400/30"
+                              ? "ring-2 ring-[#c9a84c]/50 shadow-sm"
+                              : "hover:ring-2 hover:ring-[#c9a84c]/25"
                           }`}
                         >
                           <img
@@ -382,9 +382,9 @@ export function FocusedView({
                               "https://api.dicebear.com/7.x/avataaars/svg?seed=default"
                             }
                             alt={ceoAgentData.name}
-                            className="w-9 h-9 rounded-full border border-amber-300/40 dark:border-amber-500/30 object-cover"
+                            className="w-9 h-9 rounded-full border border-[#c9a84c]/30 dark:border-amber-500/30 object-cover"
                           />
-                          <div className="absolute -bottom-0.5 -right-0.5 flex h-3.5 w-3.5 items-center justify-center rounded-full bg-amber-500 ring-[1px] ring-white/80 dark:ring-neutral-900/80">
+                          <div className="absolute -bottom-0.5 -right-0.5 flex h-3.5 w-3.5 items-center justify-center rounded-full bg-blue-500 ring-[1px] ring-white/80 dark:ring-neutral-900/80">
                             <Crown className="h-2 w-2 text-white" />
                           </div>
                           {isBusy && (
@@ -430,12 +430,12 @@ export function FocusedView({
                           }}
                           className={`relative flex items-center gap-3 p-2 rounded-lg cursor-pointer transition-all duration-200 overflow-hidden ${
                             isSelected
-                              ? "bg-amber-50/80 dark:bg-amber-900/20 shadow-sm ring-1 ring-amber-300/30 dark:ring-amber-500/20"
-                              : "hover:bg-amber-50/50 dark:hover:bg-amber-900/10"
+                              ? "bg-amber-50/60 dark:bg-amber-900/20 shadow-sm ring-1 ring-[#c9a84c]/20 dark:ring-amber-500/20"
+                              : "hover:bg-amber-50/40 dark:hover:bg-amber-900/10"
                           }`}
                         >
-                          {/* Thin gold accent line at top */}
-                          <div className="pointer-events-none absolute inset-x-0 top-0 h-px bg-gradient-to-r from-transparent via-amber-400/40 to-transparent" />
+                          {/* Thin blue-gold accent line at top */}
+                          <div className="pointer-events-none absolute inset-x-0 top-0 h-px bg-gradient-to-r from-[#c9a84c]/20 via-blue-400/25 to-[#c9a84c]/20" />
                           {/* Avatar with crown badge */}
                           <div className="relative shrink-0">
                             <img
@@ -444,9 +444,9 @@ export function FocusedView({
                                 "https://api.dicebear.com/7.x/avataaars/svg?seed=default"
                               }
                               alt={ceoAgentData.name}
-                              className="w-10 h-10 rounded-full border border-amber-300/30 dark:border-amber-500/20 object-cover"
+                              className="w-10 h-10 rounded-full border border-[#c9a84c]/25 dark:border-amber-500/20 object-cover"
                             />
-                            <div className="absolute -bottom-0.5 -right-0.5 flex h-4 w-4 items-center justify-center rounded-full bg-amber-500 ring-[1.5px] ring-white/80 dark:ring-neutral-900/80">
+                            <div className="absolute -bottom-0.5 -right-0.5 flex h-4 w-4 items-center justify-center rounded-full bg-blue-500 ring-[1.5px] ring-white/80 dark:ring-neutral-900/80">
                               <Crown className="h-2.5 w-2.5 text-white" />
                             </div>
                           </div>
@@ -456,7 +456,7 @@ export function FocusedView({
                               <div className="truncate text-sm font-semibold text-neutral-800 dark:text-neutral-200">
                                 {ceoAgentData.name}
                               </div>
-                              <span className="shrink-0 rounded-sm bg-amber-500/10 px-1 py-px text-[8px] font-medium uppercase tracking-wider text-amber-600 dark:text-amber-400">
+                              <span className="shrink-0 rounded-sm bg-blue-500/10 px-1 py-px text-[8px] font-medium uppercase tracking-wider text-blue-600 dark:text-amber-400">
                                 {t("agents.rootAgent.badge")}
                               </span>
                               {isBusy && (
@@ -469,7 +469,7 @@ export function FocusedView({
                               )}
                             </div>
                             {ceoAgentData.role && (
-                              <div className="truncate text-[10px] text-amber-600/70 dark:text-amber-400/60">
+                              <div className="truncate text-[10px] text-stone-500 dark:text-amber-400/60">
                                 {ceoAgentData.role}
                               </div>
                             )}
@@ -484,7 +484,7 @@ export function FocusedView({
               {nonCeoAgents.length > 0 &&
                 (collapsed ? (
                   <div className="flex justify-center py-1">
-                    <div className="w-6 border-t border-amber-300/20 dark:border-amber-500/10" />
+                    <div className="w-6 border-t border-[#c9a84c]/15 dark:border-amber-500/10" />
                   </div>
                 ) : (
                   <div className="mx-4 my-1 border-t border-neutral-100 dark:border-neutral-800" />

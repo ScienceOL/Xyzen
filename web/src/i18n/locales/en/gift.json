@@ -1,0 +1,32 @@
+{
+  "giftBox": {
+    "title": "Daily Gift",
+    "tapToOpen": "Tap to open your gift!",
+    "claiming": "Opening...",
+    "enjoy": "Enjoy your reward!",
+    "streak": "Day {{current}} / {{total}}",
+    "credits": "+{{amount}} Credits",
+    "dailyCredits": "+500 Credits Daily",
+    "dismiss": "Dismiss",
+    "openGift": "Open Gift",
+    "consecutiveDays": "{{days}}-day streak",
+    "completed": "All gifts claimed!",
+    "fullModelAccess": "Ultra Mode Unlocked for {{days}} days!",
+    "tierStandard": "Standard",
+    "tierPro": "Pro",
+    "tierUltra": "Ultra",
+    "unlocked": "Unlocked",
+    "locked": "Locked",
+    "dayN": "Day {{day}}",
+    "ultraAccess": "30 days full access"
+  },
+  "milestones": {
+    "standard_unlock": "Standard Unlocked!",
+    "pro_unlock": "Pro Unlocked!",
+    "ultra_unlock": "Ultra Unlocked!"
+  },
+  "beta2024": {
+    "title": "Beta Rewards",
+    "description": "Claim daily credits and unlock Ultra mode!"
+  }
+}

@@ -348,6 +348,13 @@ export function handleToolCallRequest(
         if (!targetPhase.toolCalls) {
           targetPhase.toolCalls = [];
         }
+        // Record content offset for interleaved rendering
+        const contentOffset = targetPhase.streamedContent?.length ?? 0;
+        (toolCall as { contentOffset?: number }).contentOffset = contentOffset;
+        // Insert paragraph separator so text reads naturally around tool calls
+        if (contentOffset > 0 && targetPhase.streamedContent) {
+          targetPhase.streamedContent += "\n\n";
+        }
         targetPhase.toolCalls.push(toolCall);
         console.log(
           `ChatSlice: Added tool call ${toolCallData.name} to phase ${targetPhase.id}`,
@@ -394,6 +401,7 @@ export function handleToolCallResponse(
       original_length?: number;
     };
     error?: string;
+    duration_ms?: number;
   },
 ): void {
   // First check agent execution phases for the tool call
@@ -419,6 +427,9 @@ export function handleToolCallResponse(
             if (responseData.error) {
               toolCall.error = responseData.error;
             }
+            if (responseData.duration_ms !== undefined) {
+              toolCall.duration_ms = responseData.duration_ms;
+            }
             break;
           }
         }
@@ -441,6 +452,9 @@ export function handleToolCallResponse(
           }
           if (responseData.error) {
             toolCall.error = responseData.error;
+          }
+          if (responseData.duration_ms !== undefined) {
+            toolCall.duration_ms = responseData.duration_ms;
           }
         }
       });
@@ -544,4 +558,28 @@ export function handleGeneratedFiles(
       ...newAttachments,
     ];
   }
+}
+
+// ---------------------------------------------------------------------------
+// context_usage
+// ---------------------------------------------------------------------------
+
+export function handleContextUsage(
+  channel: ChatChannel,
+  eventData: {
+    estimated_tokens: number;
+    max_tokens: number;
+    usage_percent: number;
+    near_limit: boolean;
+    critical: boolean;
+    stream_id: string;
+  },
+): void {
+  channel.contextUsage = {
+    estimatedTokens: eventData.estimated_tokens,
+    maxTokens: eventData.max_tokens,
+    usagePercent: eventData.usage_percent,
+    nearLimit: eventData.near_limit,
+    critical: eventData.critical,
+  };
 }

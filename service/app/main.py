@@ -12,6 +12,7 @@ from fastmcp.server.http import create_streamable_http_app
 from app.api import root_router
 from app.configs import configs
 from app.core.logger import LOGGING_CONFIG
+from app.core.telemetry import init_telemetry, instrument_fastapi_app
 
 # from app.middleware.auth.casdoor import casdoor_mcp_auth
 from app.infra.database import create_db_and_tables
@@ -202,6 +203,10 @@ app = FastAPI(
     openapi_url="/xyzen/api/openapi.json",
     redirect_slashes=False,
 )
+
+# Initialize OpenTelemetry tracing (before middleware)
+init_telemetry()
+instrument_fastapi_app(app)
 
 # Add CORS middleware
 app.add_middleware(

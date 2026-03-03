@@ -31,7 +31,7 @@ export function ToolbarActions({
 
   return (
     <>
-      {/* New Chat Button — distinctive dashed circle */}
+      {/* New Chat Button */}
       <Tooltip>
         <TooltipTrigger asChild>
           <button

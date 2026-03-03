@@ -1,4 +1,5 @@
 from celery import Celery
+from celery.schedules import crontab
 from celery.signals import worker_process_init, worker_ready
 
 from app.configs import configs
@@ -27,6 +28,14 @@ celery_app.conf.update(
             "task": "sandbox_cleanup",
             "schedule": 600.0,  # every 10 minutes
         },
+        "daily-memory-catchup": {
+            "task": "daily_memory_catchup",
+            "schedule": crontab(hour=3, minute=0),  # 3:00 AM daily
+        },
+        "weekly-core-memory-resynthesis": {
+            "task": "weekly_core_memory_resynthesis",
+            "schedule": crontab(hour=4, minute=0, day_of_week=1),  # Monday 4:00 AM
+        },
     },
 )
 
@@ -42,6 +51,15 @@ def init_worker_process(**kwargs: object) -> None:
     from app.tools.registry import register_builtin_tools
 
     register_builtin_tools()
+
+    # Initialize OpenTelemetry tracing for Celery workers
+    if configs.Telemetry.Enabled:
+        from opentelemetry.instrumentation.celery import CeleryInstrumentor
+
+        from app.core.telemetry import init_telemetry
+
+        init_telemetry(service_name_override="xyzen-celery")
+        CeleryInstrumentor().instrument()
 
     # Bootstrap Novu so the worker has the real API key
     import asyncio

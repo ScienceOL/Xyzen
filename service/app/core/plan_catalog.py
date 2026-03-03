@@ -258,8 +258,8 @@ _GLOBAL_CATALOG = RegionCatalog(
     full_access_pass_rates=[
         FullAccessPassRate(
             currency="USD",
-            amount=680,  # $6.80
-            display_price="$6.80",
+            amount=100,  # $1.00
+            display_price="$1.00",
             duration_days=30,
             display_rate="subscription.fullAccess.rateIntl",
         ),
@@ -361,8 +361,8 @@ _CHINA_CATALOG = RegionCatalog(
     full_access_pass_rates=[
         FullAccessPassRate(
             currency="CNY",
-            amount=4800,  # ¥48
-            display_price="¥48",
+            amount=700,  # ¥7
+            display_price="¥7",
             duration_days=30,
             display_rate="subscription.fullAccess.rateChina",
         ),

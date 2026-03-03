@@ -87,7 +87,11 @@ export default function AgentExecutionTimeline({
                   <AgentStepAccordion
                     phase={phaseForDisplay}
                     isActive={isActive}
-                    toolCalls={phase.toolCalls}
+                    toolCalls={
+                      isFinalPhase && phase.status === "completed"
+                        ? []
+                        : phase.toolCalls
+                    }
                   />
                 </motion.div>
               );
