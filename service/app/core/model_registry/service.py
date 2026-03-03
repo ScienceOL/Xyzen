@@ -29,6 +29,7 @@ INTERNAL_TO_MODELSDEV: dict[str, str] = {
     "qwen": "alibaba",
     "anthropic": "anthropic",
     "deepseek": "deepseek",
+    "bedrock": "anthropic",
 }
 
 # Reverse mapping from models.dev to internal ProviderType
@@ -111,6 +112,25 @@ GPUGEEK_TO_MODELSDEV: dict[str, tuple[str, str]] = {
     "DeepSeek/DeepSeek-V3-0324": ("deepseek", "deepseek-chat"),
     "DeepSeek/DeepSeek-V3.1-0821": ("deepseek", "deepseek-chat"),
     "DeepSeek/DeepSeek-R1-671B": ("deepseek", "deepseek-reasoner"),
+}
+
+
+# Manually configured model list for AWS Bedrock provider
+BEDROCK_MODELS: list[str] = [
+    "us.anthropic.claude-opus-4-6-v1",
+    "us.anthropic.claude-sonnet-4-5-20250929-v1:0",
+    "us.anthropic.claude-opus-4-5-20251101-v1:0",
+    "us.anthropic.claude-sonnet-4-20250514-v1:0",
+    "us.anthropic.claude-3-7-sonnet-20250219-v1:0",
+]
+
+# Mapping from Bedrock model names to models.dev (provider_id, model_id)
+BEDROCK_TO_MODELSDEV: dict[str, tuple[str, str]] = {
+    "us.anthropic.claude-opus-4-6-v1": ("anthropic", "claude-opus-4-6"),
+    "us.anthropic.claude-sonnet-4-5-20250929-v1:0": ("anthropic", "claude-sonnet-4-5-20250929"),
+    "us.anthropic.claude-opus-4-5-20251101-v1:0": ("anthropic", "claude-opus-4-5-20251101"),
+    "us.anthropic.claude-sonnet-4-20250514-v1:0": ("anthropic", "claude-sonnet-4-20250514"),
+    "us.anthropic.claude-3-7-sonnet-20250219-v1:0": ("anthropic", "claude-3-7-sonnet-latest"),
 }
 
 
@@ -522,6 +542,66 @@ class ModelsDevService:
         return models
 
     @classmethod
+    async def get_bedrock_models(cls) -> list[ModelInfo]:
+        """Get Bedrock models with pricing looked up from models.dev."""
+        models: list[ModelInfo] = []
+
+        for bedrock_model in BEDROCK_MODELS:
+            mapping = BEDROCK_TO_MODELSDEV.get(bedrock_model)
+
+            model_info = ModelInfo(
+                key=bedrock_model,
+                name=bedrock_model.split(".")[-1].rsplit("-v", 1)[0] if "." in bedrock_model else bedrock_model,
+                max_tokens=4096,
+                max_input_tokens=200000,
+                max_output_tokens=4096,
+                input_cost_per_token=0.0,
+                output_cost_per_token=0.0,
+                litellm_provider="bedrock",
+                mode="chat",
+                supports_function_calling=True,
+                supports_parallel_function_calling=True,
+                supports_vision=True,
+                supports_reasoning=False,
+            )
+
+            if mapping:
+                provider_id, model_id = mapping
+                try:
+                    source_info = await cls.get_model_info_for_key(model_id, provider_id)
+                    if source_info:
+                        model_info = ModelInfo(
+                            key=bedrock_model,
+                            name=source_info.name or bedrock_model,
+                            max_tokens=source_info.max_tokens,
+                            max_input_tokens=source_info.max_input_tokens,
+                            max_output_tokens=source_info.max_output_tokens,
+                            input_cost_per_token=source_info.input_cost_per_token,
+                            output_cost_per_token=source_info.output_cost_per_token,
+                            litellm_provider="bedrock",
+                            mode="chat",
+                            supports_function_calling=source_info.supports_function_calling,
+                            supports_parallel_function_calling=source_info.supports_parallel_function_calling,
+                            supports_vision=source_info.supports_vision,
+                            supports_audio_input=source_info.supports_audio_input,
+                            supports_audio_output=source_info.supports_audio_output,
+                            supports_reasoning=source_info.supports_reasoning,
+                            supports_structured_output=source_info.supports_structured_output,
+                            supports_web_search=source_info.supports_web_search,
+                            model_family=source_info.model_family,
+                            knowledge_cutoff=source_info.knowledge_cutoff,
+                            release_date=source_info.release_date,
+                            open_weights=source_info.open_weights,
+                        )
+                        logger.debug(f"Mapped Bedrock {bedrock_model} -> {provider_id}/{model_id}")
+                except Exception as e:
+                    logger.warning(f"Failed to get pricing for {bedrock_model}: {e}")
+
+            models.append(model_info)
+
+        return models
+
+    @classmethod
     async def get_models_by_provider_type(
         cls,
         provider_type: str,
@@ -542,6 +622,10 @@ class ModelsDevService:
         # Handle GPUGeek specially
         if provider_type == "gpugeek":
             return await cls.get_gpugeek_models()
+
+        # Handle Bedrock specially
+        if provider_type == "bedrock":
+            return await cls.get_bedrock_models()
 
         # Map internal provider type to models.dev provider ID
         modelsdev_id = INTERNAL_TO_MODELSDEV.get(provider_type)
@@ -647,7 +731,7 @@ class ModelsDevService:
             Dictionary mapping internal provider type to list of ModelInfo
         """
         if provider_types is None:
-            provider_types = ["openai", "azure_openai", "google", "google_vertex", "gpugeek", "qwen"]
+            provider_types = ["openai", "azure_openai", "google", "google_vertex", "gpugeek", "qwen", "bedrock"]
 
         result: dict[str, list[ModelInfo]] = {}
 

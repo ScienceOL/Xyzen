@@ -135,6 +135,12 @@ async def get_ai_response_stream_langchain_legacy(
         )
 
         # Initialize stream context
+        provider_type_val = None
+        if provider_id:
+            provider_config = user_provider_manager.get_provider_config(provider_id)
+            if provider_config:
+                provider_type_val = provider_config.provider_type
+
         ctx = StreamContext(
             stream_id=stream_id or f"stream_{int(asyncio.get_event_loop().time() * 1000)}",
             db=db,
@@ -145,6 +151,7 @@ async def get_ai_response_stream_langchain_legacy(
             model_tier=model_tier,
             provider_id=provider_id,
             model_name=model_name,
+            provider_type=provider_type_val,
         )
 
         # Propagate stream_id to event context so all agent events include it
@@ -184,7 +191,28 @@ async def get_ai_response_stream_langchain_legacy(
         async for event in _process_agent_stream(langchain_agent, history_messages, ctx):
             yield event
 
+        # Record successful provider call for circuit breaker
+        if ctx.provider_type:
+            from app.core.providers.circuit_breaker import ProviderCircuitBreaker
+
+            await ProviderCircuitBreaker.record_success(ctx.provider_type)
+
     except Exception as e:
+        # Record provider failure for circuit breaker (only for provider-level errors)
+        if provider_id:
+            try:
+                from app.common.code.chat_error_code import classify_exception as _classify
+
+                classified = _classify(e)
+                if classified.code.category == "provider":
+                    _provider_config = user_provider_manager.get_provider_config(provider_id)
+                    if _provider_config:
+                        from app.core.providers.circuit_breaker import ProviderCircuitBreaker
+
+                        await ProviderCircuitBreaker.record_failure(_provider_config.provider_type)
+            except Exception:
+                pass  # Don't let circuit breaker errors mask the original error
+
         yield _handle_streaming_error(e, user_id, stream_id=stream_id)
     finally:
         await close_checkpointer(checkpointer)

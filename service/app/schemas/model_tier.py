@@ -59,6 +59,14 @@ _GLOBAL_TIER_MODEL_CANDIDATES: dict[ModelTier, list[TierModelCandidate]] = {
             capabilities=["reasoning", "creative", "coding"],
             description="Best for coding and choose this for most tasks. Exceptional in complex coding, agentic tasks, and reasoning; highly reliable for software engineering.",
         ),
+        TierModelCandidate(
+            model="us.anthropic.claude-opus-4-6-v1",
+            provider_type=ProviderType.BEDROCK,
+            is_fallback=True,
+            priority=100,
+            capabilities=["reasoning", "creative", "coding"],
+            description="Bedrock fallback. Same model as above via AWS Bedrock.",
+        ),
         # TierModelCandidate(
         #     model="qwen3-max",
         #     provider_type=ProviderType.QWEN,
@@ -89,6 +97,13 @@ _GLOBAL_TIER_MODEL_CANDIDATES: dict[ModelTier, list[TierModelCandidate]] = {
             priority=98,
             # capabilities=["reasoning", "creative", "coding"],
             description="Just use this for detail report generation tasks, such as business reports, market analysis or research papers, never use this for other tasks.",
+        ),
+        TierModelCandidate(
+            model="us.anthropic.claude-sonnet-4-5-20250929-v1:0",
+            provider_type=ProviderType.BEDROCK,
+            is_fallback=True,
+            priority=99,
+            description="Bedrock fallback. Same model as above via AWS Bedrock.",
         ),
         # TierModelCandidate(
         #     model="gpt-5.2",

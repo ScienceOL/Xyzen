@@ -42,6 +42,7 @@ if TYPE_CHECKING:
     from sqlmodel.ext.asyncio.session import AsyncSession
 
     from app.core.chat.agent_event_handler import AgentEventContext
+    from app.schemas.provider import ProviderType
     from app.models.file import File
 
 logger = logging.getLogger(__name__)
@@ -96,6 +97,8 @@ class StreamContext:
     model_tier: str | None = None
     provider_id: str | None = None
     model_name: str | None = None
+    # Provider type for circuit breaker tracking
+    provider_type: "ProviderType | None" = None
 
 
 class ToolEventHandler:
