@@ -467,11 +467,13 @@ describe("handleToolCallResponse", () => {
       toolCallId: "tc-1",
       status: "completed",
       result: { success: true, data: { answer: "42" } },
+      duration_ms: 1280,
     });
 
     const tc = channel.messages[0].agentExecution!.phases[0].toolCalls![0];
     expect(tc.status).toBe("completed");
     expect(tc.result).toEqual({ success: true, data: { answer: "42" } });
+    expect(tc.duration_ms).toBe(1280);
   });
 
   it("updates standalone tool call message", () => {
@@ -495,10 +497,12 @@ describe("handleToolCallResponse", () => {
       toolCallId: "tc-1",
       status: "failed",
       error: "Not found",
+      duration_ms: 420,
     });
 
     expect(channel.messages[0].toolCalls![0].status).toBe("failed");
     expect(channel.messages[0].toolCalls![0].error).toBe("Not found");
+    expect(channel.messages[0].toolCalls![0].duration_ms).toBe(420);
   });
 
   it("stores failed status and error on tool call in agent phase", () => {

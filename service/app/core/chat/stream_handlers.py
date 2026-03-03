@@ -81,6 +81,8 @@ class StreamContext:
     historical_tool_call_ids: set[str] = field(default_factory=set)
     # Set of tool call IDs that we've emitted results for (to skip duplicates)
     emitted_tool_result_ids: set[str] = field(default_factory=set)
+    # Tool call start timestamps keyed by tool_call_id
+    tool_call_started_at: dict[str, float] = field(default_factory=dict)
     # Cache token tracking
     total_cache_creation_tokens: int = 0
     total_cache_read_tokens: int = 0
@@ -133,6 +135,7 @@ class ToolEventHandler:
         status: str = ToolCallStatus.COMPLETED,
         raw_result: str | dict | list | None = None,
         error: str | None = None,
+        duration_ms: int | None = None,
         stream_id: str = "",
         model_tier: str | None = None,
     ) -> StreamingEvent:
@@ -160,6 +163,8 @@ class ToolEventHandler:
             data["raw_result"] = raw_result
         if error:
             data["error"] = error
+        if duration_ms is not None:
+            data["duration_ms"] = duration_ms
         if model_tier:
             data["model_tier"] = model_tier
         return {"type": ChatEventType.TOOL_CALL_RESPONSE, "data": data}

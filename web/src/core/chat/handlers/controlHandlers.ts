@@ -394,6 +394,7 @@ export function handleToolCallResponse(
       original_length?: number;
     };
     error?: string;
+    duration_ms?: number;
   },
 ): void {
   // First check agent execution phases for the tool call
@@ -419,6 +420,9 @@ export function handleToolCallResponse(
             if (responseData.error) {
               toolCall.error = responseData.error;
             }
+            if (responseData.duration_ms !== undefined) {
+              toolCall.duration_ms = responseData.duration_ms;
+            }
             break;
           }
         }
@@ -441,6 +445,9 @@ export function handleToolCallResponse(
           }
           if (responseData.error) {
             toolCall.error = responseData.error;
+          }
+          if (responseData.duration_ms !== undefined) {
+            toolCall.duration_ms = responseData.duration_ms;
           }
         }
       });

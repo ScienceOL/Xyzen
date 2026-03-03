@@ -508,6 +508,8 @@ async def handle_tool_call_response(ctx: ChatTaskContext, stream_event: dict[str
                 tc["result"] = resp.get("result")
                 if resp.get("error"):
                     tc["error"] = resp.get("error")
+                if isinstance(resp.get("duration_ms"), int):
+                    tc["duration_ms"] = resp.get("duration_ms")
             except (KeyError, IndexError):
                 pass  # fallback: stale index
 

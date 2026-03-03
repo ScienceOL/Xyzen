@@ -39,6 +39,7 @@ export interface ToolCall {
   result?: ToolCallResult;
   error?: string;
   timestamp: string;
+  duration_ms?: number;
 }
 
 export interface MessageAttachment {

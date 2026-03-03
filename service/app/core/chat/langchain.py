@@ -809,6 +809,8 @@ async def _handle_updates_mode(
                     if tool_id in ctx.emitted_tool_result_ids:
                         logger.info(f"[ToolEvent] Skipping already emitted tool call: {tool_id}")
                         continue
+                    if tool_id:
+                        ctx.tool_call_started_at[tool_id] = asyncio.get_running_loop().time()
                     logger.info(f"[ToolEvent] >>> Emitting tool_call_request for {tool_name} (id={tool_id})")
                     yield ToolEventHandler.create_tool_request_event(
                         tool_call, stream_id=ctx.stream_id, model_tier=ctx.model_tier
@@ -825,6 +827,10 @@ async def _handle_updates_mode(
                         logger.info(f"[ToolEvent] Skipping historical tool response: {tool_call_id}")
                         continue
                     ctx.emitted_tool_result_ids.add(tool_call_id)
+                    duration_ms: int | None = None
+                    if tool_call_id in ctx.tool_call_started_at:
+                        start_time = ctx.tool_call_started_at.pop(tool_call_id)
+                        duration_ms = max(0, int((asyncio.get_running_loop().time() - start_time) * 1000))
                     # Get raw content before formatting (for cost calculation)
                     raw_content = msg.content
                     status, result, error = _resolve_tool_response(raw_content, tool_name)
@@ -835,6 +841,7 @@ async def _handle_updates_mode(
                         status=status,
                         raw_result=raw_content,
                         error=error,
+                        duration_ms=duration_ms,
                         stream_id=ctx.stream_id,
                         model_tier=ctx.model_tier,
                     )

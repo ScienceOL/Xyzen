@@ -100,6 +100,7 @@ export type ChatEvent =
         status: string;
         result?: ToolCallResult;
         error?: string;
+        duration_ms?: number;
       };
     }
   | {

@@ -112,6 +112,7 @@ class ToolCallResponseData(TypedDict):
     result: dict[str, Any]  # Structured JSON: {success, data, error?, truncated?}
     raw_result: NotRequired[str | dict | list]  # Raw result for cost calculation
     error: NotRequired[str]
+    duration_ms: NotRequired[int]
     stream_id: str
     model_tier: NotRequired[str]
 
