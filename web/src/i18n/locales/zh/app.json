@@ -291,7 +291,8 @@
     "deleteStillStreaming": "消息仍在生成中",
     "deleteNotSaved": "消息尚未保存到服务器",
     "deleteFailed": "删除消息失败",
-    "editFailed": "编辑消息失败"
+    "editFailed": "编辑消息失败",
+    "summarizeFromHere": "从此处总结"
   },
   "authStatus": {
     "checking": "检查认证状态...",

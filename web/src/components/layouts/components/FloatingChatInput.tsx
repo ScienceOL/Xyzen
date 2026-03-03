@@ -304,9 +304,7 @@ export const FloatingChatInput: React.FC<FloatingChatInputProps> = ({
               <div className="flex flex-wrap items-center gap-1">
                 <ToolbarActions
                   onNewChat={toolbar.handleNewChat}
-                  onCompactChat={toolbar.handleCompactChat}
                   isCreatingNewChat={toolbar.isCreatingNewChat}
-                  hasActiveChat={!!toolbar.activeChatChannel}
                   isUploading={toolbar.isUploading}
                   buttonClassName={toolbarButtonClass}
                 />

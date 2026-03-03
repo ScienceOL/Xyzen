@@ -291,7 +291,8 @@
     "deleteStillStreaming": "メッセージはまだ生成中です",
     "deleteNotSaved": "メッセージはまだサーバーに保存されていません",
     "deleteFailed": "メッセージの削除に失敗しました",
-    "editFailed": "メッセージの編集に失敗しました"
+    "editFailed": "メッセージの編集に失敗しました",
+    "summarizeFromHere": "ここまで要約"
   },
   "authStatus": {
     "checking": "認証状態を確認中...",

@@ -259,6 +259,10 @@ async def get_topic_token_stats(
     return await stats_repo.get_topic_token_stats(topic.id)
 
 
+class CompactRequest(BaseModel):
+    up_to_message_id: UUID | None = None
+
+
 class CompactResponse(BaseModel):
     new_topic_id: UUID
     summary_preview: str
@@ -266,6 +270,7 @@ class CompactResponse(BaseModel):
 
 @router.post("/{topic_id}/compact", response_model=CompactResponse)
 async def compact_topic(
+    body: CompactRequest | None = None,
     topic: TopicModel = Depends(get_authorized_topic),
     user: str = Depends(get_current_user),
     db: AsyncSession = Depends(get_session),
@@ -288,6 +293,14 @@ async def compact_topic(
     messages = await message_repo.get_messages_by_topic(topic.id, order_by_created=True)
     if not messages:
         raise HTTPException(status_code=400, detail="No messages to compact")
+
+    # Optionally truncate to a specific message (inclusive)
+    if body and body.up_to_message_id:
+        cutoff_idx = next((i for i, m in enumerate(messages) if m.id == body.up_to_message_id), None)
+        if cutoff_idx is not None:
+            messages = messages[: cutoff_idx + 1]
+        else:
+            raise HTTPException(status_code=404, detail="Message not found in topic")
 
     # Convert DB messages to LangChain BaseMessage for the summary generator
     lc_messages = []

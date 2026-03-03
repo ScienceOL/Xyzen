@@ -12,7 +12,9 @@ import {
   TrashIcon,
   ArrowPathIcon,
   ExclamationCircleIcon,
+  DocumentTextIcon,
 } from "@heroicons/react/24/outline";
+import { topicService } from "@/service/topicService";
 import { AnimatePresence, motion } from "framer-motion";
 import { useCallback, useEffect, useMemo, useRef, useState, memo } from "react";
 import { useTranslation } from "react-i18next";
@@ -56,6 +58,7 @@ function ChatBubble({ message }: ChatBubbleProps) {
     submitEditMessage,
     deleteMessage,
     retryMessage,
+    activateChannel,
   } = useXyzen(
     useShallow((s) => ({
       confirmToolCall: s.confirmToolCall,
@@ -65,6 +68,7 @@ function ChatBubble({ message }: ChatBubbleProps) {
       submitEditMessage: s.submitEditMessage,
       deleteMessage: s.deleteMessage,
       retryMessage: s.retryMessage,
+      activateChannel: s.activateChannel,
     })),
   );
 
@@ -278,6 +282,32 @@ function ChatBubble({ message }: ChatBubbleProps) {
   const handleDeleteClick = async () => {
     await deleteMessage(message.id);
   };
+
+  // Summarize-to-here state
+  // dbId is set after message_saved during streaming; for history messages, id IS the DB UUID.
+  const messageDbId = message.dbId || message.id;
+  const [isSummarizing, setIsSummarizing] = useState(false);
+  const canSummarize =
+    !isMessageSending &&
+    !channelResponding &&
+    !isMessageLoading &&
+    !isMessageStreaming;
+
+  const handleSummarizeFromHere = useCallback(async () => {
+    if (isSummarizing || !activeChatChannel) return;
+    setIsSummarizing(true);
+    try {
+      const result = await topicService.compactTopic(
+        activeChatChannel,
+        messageDbId,
+      );
+      activateChannel(result.new_topic_id);
+    } catch (e) {
+      console.error("Failed to summarize:", e);
+    } finally {
+      setIsSummarizing(false);
+    }
+  }, [isSummarizing, activeChatChannel, messageDbId, activateChannel]);
 
   // Show date when message is older than 1 day, otherwise just time
   const formattedTime = useMemo(() => {
@@ -564,6 +594,20 @@ function ChatBubble({ message }: ChatBubbleProps) {
                 className={toolbarButtonStyles}
                 title={t("app.message.copy")}
               />
+              {canSummarize && (
+                <button
+                  onClick={handleSummarizeFromHere}
+                  disabled={isSummarizing}
+                  className={toolbarButtonStyles}
+                  title={t("app.message.summarizeFromHere")}
+                >
+                  {isSummarizing ? (
+                    <ArrowPathIcon className="h-3.5 w-3.5 animate-spin" />
+                  ) : (
+                    <DocumentTextIcon className="h-3.5 w-3.5" />
+                  )}
+                </button>
+              )}
               {canDelete && (
                 <button
                   onClick={handleDeleteClick}
@@ -631,6 +675,20 @@ function ChatBubble({ message }: ChatBubbleProps) {
               className={toolbarButtonStyles}
               title={t("app.message.copy")}
             />
+            {canSummarize && (
+              <button
+                onClick={handleSummarizeFromHere}
+                disabled={isSummarizing}
+                className={toolbarButtonStyles}
+                title={t("app.message.summarizeFromHere")}
+              >
+                {isSummarizing ? (
+                  <ArrowPathIcon className="h-3.5 w-3.5 animate-spin" />
+                ) : (
+                  <DocumentTextIcon className="h-3.5 w-3.5" />
+                )}
+              </button>
+            )}
             {canDelete && (
               <button
                 onClick={handleDeleteClick}

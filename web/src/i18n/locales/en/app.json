@@ -293,7 +293,8 @@
     "deleteStillStreaming": "Message is still streaming",
     "deleteNotSaved": "Message has not been saved to server yet",
     "deleteFailed": "Failed to delete message",
-    "editFailed": "Failed to edit message"
+    "editFailed": "Failed to edit message",
+    "summarizeFromHere": "Summarize to here"
   },
   "authStatus": {
     "checking": "Checking authentication...",

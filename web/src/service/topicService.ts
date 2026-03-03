@@ -48,8 +48,14 @@ class TopicService {
     return http.get(`/xyzen/api/v1/topics/${topicId}/token-stats`);
   }
 
-  async compactTopic(topicId: string): Promise<CompactResponse> {
-    return http.post(`/xyzen/api/v1/topics/${topicId}/compact`, {});
+  async compactTopic(
+    topicId: string,
+    upToMessageId?: string,
+  ): Promise<CompactResponse> {
+    return http.post(
+      `/xyzen/api/v1/topics/${topicId}/compact`,
+      upToMessageId ? { up_to_message_id: upToMessageId } : {},
+    );
   }
 }
 
