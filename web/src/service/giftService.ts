@@ -10,6 +10,12 @@ export interface RewardData {
   milestone_name: string;
 }
 
+export interface Milestone {
+  consecutive_day: number;
+  milestone_name: string;
+  access_days: number;
+}
+
 export interface CampaignStatusResponse {
   id: string;
   name: string;
@@ -22,6 +28,7 @@ export interface CampaignStatusResponse {
   total_claims: number;
   completed: boolean;
   next_reward_preview: RewardData | null;
+  milestones: Milestone[] | null;
 }
 
 export interface ClaimResultResponse {

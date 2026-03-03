@@ -6,7 +6,6 @@ Create Date: 2026-03-03 23:10:16.756672
 
 """
 
-import json
 from typing import Sequence, Union
 from uuid import uuid4
 
@@ -89,13 +88,14 @@ def upgrade() -> None:
                 "display_name_key": "gift.beta2024.title",
                 "description_key": "gift.beta2024.description",
                 "mode": "daily_credits_with_unlock",
-                "config": json.dumps(
-                    {
-                        "daily_credits": 500,
-                        "unlock_consecutive_day": 3,
-                        "model_access_days": 30,
-                    }
-                ),
+                "config": {
+                    "daily_credits": 500,
+                    "milestones": [
+                        {"consecutive_day": 2, "milestone_name": "standard_unlock", "access_days": 0},
+                        {"consecutive_day": 3, "milestone_name": "pro_unlock", "access_days": 0},
+                        {"consecutive_day": 5, "milestone_name": "ultra_unlock", "access_days": 30},
+                    ],
+                },
                 "total_days": 30,
                 "starts_at": "2024-01-01T00:00:00+00:00",
                 "ends_at": "2026-12-31T23:59:59+00:00",

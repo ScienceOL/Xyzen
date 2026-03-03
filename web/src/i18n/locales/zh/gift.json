@@ -6,13 +6,23 @@
     "enjoy": "享受你的奖励吧！",
     "streak": "第 {{current}} / {{total}} 天",
     "credits": "+{{amount}} 积分",
+    "dailyCredits": "每日 +500 积分",
     "dismiss": "关闭",
     "openGift": "打开礼物",
     "consecutiveDays": "连续 {{days}} 天",
     "completed": "所有礼物已领取！",
-    "fullModelAccess": "Ultra 模式已解锁 {{days}} 天！"
+    "fullModelAccess": "Ultra 模式已解锁 {{days}} 天！",
+    "tierStandard": "标准版",
+    "tierPro": "专业版",
+    "tierUltra": "Ultra",
+    "unlocked": "已解锁",
+    "locked": "未解锁",
+    "dayN": "第 {{day}} 天",
+    "ultraAccess": "30 天完整访问"
   },
   "milestones": {
+    "standard_unlock": "标准版已解锁！",
+    "pro_unlock": "专业版已解锁！",
     "ultra_unlock": "Ultra 已解锁！"
   },
   "beta2024": {

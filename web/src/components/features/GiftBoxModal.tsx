@@ -4,10 +4,11 @@ import {
   giftService,
   type CampaignStatusResponse,
   type ClaimResultResponse,
+  type Milestone,
 } from "@/service/giftService";
 import { useXyzen } from "@/store";
 import { AnimatePresence, motion } from "framer-motion";
-import { Crown, Gift, Sparkles, Zap } from "lucide-react";
+import { Check, Crown, Gift, Sparkles, Zap } from "lucide-react";
 import { useCallback, useEffect, useRef, useState } from "react";
 import { useTranslation } from "react-i18next";
 
@@ -35,6 +36,83 @@ const PARTICLES = Array.from({ length: PARTICLE_COUNT }, (_, i) => {
     ],
   };
 });
+
+/* ---------- milestone tier display names ---------- */
+const TIER_KEY_MAP: Record<string, string> = {
+  standard_unlock: "gift.giftBox.tierStandard",
+  pro_unlock: "gift.giftBox.tierPro",
+  ultra_unlock: "gift.giftBox.tierUltra",
+};
+
+function MilestoneStepper({
+  milestones,
+  consecutiveDays,
+  t,
+}: {
+  milestones: Milestone[];
+  consecutiveDays: number;
+  t: (key: string, opts?: Record<string, unknown>) => string;
+}) {
+  return (
+    <div className="flex w-full flex-col gap-0">
+      {milestones.map((ms, idx) => {
+        const reached = consecutiveDays >= ms.consecutive_day;
+        const isLast = idx === milestones.length - 1;
+
+        return (
+          <div key={ms.milestone_name} className="flex items-stretch gap-3">
+            {/* Vertical line + circle */}
+            <div className="flex w-5 flex-col items-center">
+              {/* Circle */}
+              <div
+                className={cn(
+                  "flex h-5 w-5 shrink-0 items-center justify-center rounded-full transition-colors",
+                  reached
+                    ? "bg-green-500 dark:bg-green-500"
+                    : "bg-neutral-200 dark:bg-neutral-700",
+                )}
+              >
+                {reached && <Check className="h-3 w-3 text-white" />}
+              </div>
+              {/* Connecting line */}
+              {!isLast && (
+                <div
+                  className={cn(
+                    "w-px flex-1 min-h-[20px]",
+                    reached
+                      ? "bg-green-400/60 dark:bg-green-500/40"
+                      : "bg-neutral-200 dark:bg-neutral-700",
+                  )}
+                />
+              )}
+            </div>
+
+            {/* Label */}
+            <div className="flex flex-col pb-3">
+              <span
+                className={cn(
+                  "text-[13px] font-medium",
+                  reached
+                    ? "text-neutral-800 dark:text-neutral-100"
+                    : "text-neutral-400 dark:text-neutral-500",
+                )}
+              >
+                {t("gift.giftBox.dayN", { day: ms.consecutive_day })}
+                {" — "}
+                {t(TIER_KEY_MAP[ms.milestone_name] ?? ms.milestone_name)}
+              </span>
+              {ms.access_days > 0 && (
+                <span className="text-xs text-neutral-400 dark:text-neutral-500">
+                  {t("gift.giftBox.ultraAccess")}
+                </span>
+              )}
+            </div>
+          </div>
+        );
+      })}
+    </div>
+  );
+}
 
 export function GiftBoxModal({
   campaign,
@@ -140,35 +218,38 @@ export function GiftBoxModal({
                 <Gift className="h-12 w-12 text-amber-600 dark:text-amber-400" />
               </motion.div>
 
-              <p className="text-[13px] text-neutral-500 dark:text-neutral-400">
-                {t("gift.giftBox.tapToOpen")}
-              </p>
-
-              {/* Progress bar */}
-              <div className="w-full max-w-[200px]">
-                <div className="h-1.5 overflow-hidden rounded-full bg-neutral-200/60 dark:bg-white/[0.06]">
-                  <motion.div
-                    className="h-full rounded-full bg-gradient-to-r from-amber-400 to-indigo-500"
-                    initial={{ width: 0 }}
-                    animate={{
-                      width: `${(campaign.total_claims / campaign.total_days) * 100}%`,
-                    }}
-                    transition={{ duration: 0.6, delay: 0.2 }}
+              {/* Milestone stepper */}
+              {campaign.milestones && campaign.milestones.length > 0 ? (
+                <div className="w-full rounded-lg bg-neutral-100/60 px-4 py-3 dark:bg-white/[0.04]">
+                  <MilestoneStepper
+                    milestones={campaign.milestones}
+                    consecutiveDays={campaign.consecutive_days}
+                    t={t}
                   />
                 </div>
-              </div>
-
-              {/* Consecutive days badge */}
-              {campaign.consecutive_days > 0 && (
-                <div className="flex items-center gap-1.5 rounded-full bg-indigo-50/80 px-3 py-1 dark:bg-indigo-950/30">
-                  <Zap className="h-3 w-3 text-indigo-500 dark:text-indigo-400" />
-                  <span className="text-xs font-medium text-indigo-600 dark:text-indigo-400">
-                    {t("gift.giftBox.consecutiveDays", {
-                      days: campaign.consecutive_days,
-                    })}
-                  </span>
+              ) : (
+                /* Fallback progress bar for campaigns without milestones */
+                <div className="w-full max-w-[200px]">
+                  <div className="h-1.5 overflow-hidden rounded-full bg-neutral-200/60 dark:bg-white/[0.06]">
+                    <motion.div
+                      className="h-full rounded-full bg-gradient-to-r from-amber-400 to-indigo-500"
+                      initial={{ width: 0 }}
+                      animate={{
+                        width: `${(campaign.total_claims / campaign.total_days) * 100}%`,
+                      }}
+                      transition={{ duration: 0.6, delay: 0.2 }}
+                    />
+                  </div>
                 </div>
               )}
+
+              {/* Daily credits badge */}
+              <div className="flex items-center gap-1.5 rounded-full bg-amber-50/80 px-3 py-1 dark:bg-amber-950/20">
+                <Zap className="h-3 w-3 text-amber-500 dark:text-amber-400" />
+                <span className="text-xs font-medium text-amber-600 dark:text-amber-400">
+                  {t("gift.giftBox.dailyCredits")}
+                </span>
+              </div>
 
               {error && (
                 <p className="text-xs text-red-500 dark:text-red-400">

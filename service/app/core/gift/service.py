@@ -34,6 +34,7 @@ class CampaignStatus(TypedDict):
     total_claims: int
     completed: bool
     next_reward_preview: dict[str, Any] | None
+    milestones: list[dict[str, Any]] | None
 
 
 class ClaimResult(TypedDict):
@@ -88,6 +89,8 @@ class GiftService:
                     preview = handler.compute_reward(next_day, preview_streak, campaign.config)
                     next_reward_preview = preview.to_dict()
 
+            milestones = campaign.config.get("milestones") or None
+
             result.append(
                 CampaignStatus(
                     id=str(campaign.id),
@@ -101,6 +104,7 @@ class GiftService:
                     total_claims=total_claims,
                     completed=completed,
                     next_reward_preview=next_reward_preview,
+                    milestones=milestones,
                 )
             )
         return result

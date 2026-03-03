@@ -21,6 +21,14 @@ router = APIRouter(tags=["gifts"])
 # ==================== Response Models ====================
 
 
+class MilestoneConfig(BaseModel):
+    """A milestone in the campaign progression."""
+
+    consecutive_day: int
+    milestone_name: str
+    access_days: int = 0
+
+
 class CampaignStatusResponse(BaseModel):
     """Status of a campaign for a specific user."""
 
@@ -35,6 +43,7 @@ class CampaignStatusResponse(BaseModel):
     total_claims: int
     completed: bool
     next_reward_preview: dict[str, Any] | None = None
+    milestones: list[MilestoneConfig] | None = None
 
 
 class RewardData(BaseModel):
@@ -67,7 +76,7 @@ async def get_active_campaigns(
     try:
         service = GiftService(db)
         campaigns = await service.get_active_campaigns_for_user(current_user)
-        return [CampaignStatusResponse(**c) for c in campaigns]
+        return [CampaignStatusResponse.model_validate(c) for c in campaigns]
     except Exception as e:
         logger.error(f"Error fetching active campaigns for user {current_user}: {e}", exc_info=True)
         raise HTTPException(
