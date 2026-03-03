@@ -562,7 +562,8 @@ class AgentMarketplaceRepository:
         count_stmt = sa_select(func.count()).select_from(AgentMarketplace)
         if filters:
             count_stmt = count_stmt.where(*filters)
-        total = int((await self.db.exec(count_stmt)).one())  # type: ignore[arg-type]
+        result = (await self.db.exec(count_stmt)).one()  # type: ignore[arg-type]
+        total = int(result[0])
 
         # Sorting
         if sort_by == "forks":

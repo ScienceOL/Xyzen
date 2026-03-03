@@ -66,6 +66,7 @@ export function AgentMarketplaceTab({ adminSecret }: AgentMarketplaceTabProps) {
 
   // Error state
   const [error, setError] = useState<string | null>(null);
+  const [listingsError, setListingsError] = useState<string | null>(null);
 
   // Debounce search
   useEffect(() => {
@@ -146,13 +147,13 @@ export function AgentMarketplaceTab({ adminSecret }: AgentMarketplaceTabProps) {
           offset: page * pageSize,
         });
         if (!signal?.aborted) {
-          setError(null);
+          setListingsError(null);
           setListings(data.listings);
           setListingsTotal(data.total);
         }
       } catch (err) {
         if (!signal?.aborted)
-          setError(
+          setListingsError(
             err instanceof Error ? err.message : "Failed to fetch listings",
           );
       } finally {
@@ -424,6 +425,12 @@ export function AgentMarketplaceTab({ adminSecret }: AgentMarketplaceTabProps) {
                       className="py-8 text-center text-neutral-500"
                     >
                       Loading...
+                    </td>
+                  </tr>
+                ) : listingsError ? (
+                  <tr>
+                    <td colSpan={8} className="py-8 text-center text-red-400">
+                      {listingsError}
                     </td>
                   </tr>
                 ) : listings.length === 0 ? (

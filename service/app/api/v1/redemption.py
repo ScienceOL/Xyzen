@@ -1018,6 +1018,7 @@ class CreditHeatmapEntry(BaseModel):
     redemption_code_credits: int = 0
     subscription_monthly_credits: int = 0
     daily_checkin_credits: int = 0
+    other_credits: int = 0
 
 
 class CreditRankingEntry(BaseModel):
@@ -1028,6 +1029,7 @@ class CreditRankingEntry(BaseModel):
     redemption_code_credits: int = 0
     subscription_monthly_credits: int = 0
     daily_checkin_credits: int = 0
+    other_credits: int = 0
 
 
 @router.get("/admin/stats/filter-options", response_model=FilterOptionsResponse)
@@ -1126,6 +1128,22 @@ async def get_consumption_top_users(
         return [ConsumptionTopUserEntry(**row) for row in data]
     except Exception as e:
         logger.error(f"Error fetching consumption top users: {e}")
+        raise HTTPException(status_code=status.HTTP_500_INTERNAL_SERVER_ERROR, detail=str(e))
+
+
+@router.get("/admin/stats/credit-sources", response_model=list[str])
+async def get_credit_sources(
+    admin_secret: str = Header(..., alias="X-Admin-Secret"),
+    db: AsyncSession = Depends(get_db_session),
+):
+    """Get distinct credit source values from CreditLedger (admin only)."""
+    if admin_secret != configs.Admin.secret:
+        raise HTTPException(status_code=status.HTTP_401_UNAUTHORIZED, detail="Invalid admin secret key")
+    try:
+        redemption_repo = RedemptionRepository(db)
+        return await redemption_repo.get_distinct_credit_sources()
+    except Exception as e:
+        logger.error(f"Error fetching credit sources: {e}")
         raise HTTPException(status_code=status.HTTP_500_INTERNAL_SERVER_ERROR, detail=str(e))
 
 
