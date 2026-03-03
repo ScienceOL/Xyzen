@@ -26,7 +26,8 @@
       "confirmExecute": "确认执行",
       "status": "状态",
       "tool": "工具",
-      "node": "节点"
+      "node": "节点",
+      "toolCallCount": "{{count}} 次工具调用"
     },
     "agent": {
       "stopped": "生成已停止",

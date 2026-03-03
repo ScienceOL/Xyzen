@@ -26,7 +26,8 @@
       "confirmExecute": "実行を確認",
       "status": "ステータス",
       "tool": "ツール",
-      "node": "ノード"
+      "node": "ノード",
+      "toolCallCount": "{{count}} 件のツール呼び出し"
     },
     "agent": {
       "stopped": "生成が停止されました",

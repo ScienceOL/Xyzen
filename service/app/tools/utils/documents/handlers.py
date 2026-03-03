@@ -73,6 +73,9 @@ class BaseFileHandler(abc.ABC):
             data = json.loads(text_content)
             if isinstance(data, dict):
                 return spec_class.model_validate(data)
+            if isinstance(data, list) and data and isinstance(data[0], dict) and "type" in data[0]:
+                # LLM sent a bare array of content blocks without the wrapper object
+                return spec_class.model_validate({"content": data})
         except (json.JSONDecodeError, ValidationError):
             pass
         return None

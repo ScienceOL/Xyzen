@@ -1,0 +1,22 @@
+{
+  "giftBox": {
+    "title": "每日礼物",
+    "tapToOpen": "点击打开你的礼物！",
+    "claiming": "开启中...",
+    "enjoy": "享受你的奖励吧！",
+    "streak": "第 {{current}} / {{total}} 天",
+    "credits": "+{{amount}} 积分",
+    "dismiss": "关闭",
+    "openGift": "打开礼物",
+    "consecutiveDays": "连续 {{days}} 天",
+    "completed": "所有礼物已领取！",
+    "fullModelAccess": "Ultra 模式已解锁 {{days}} 天！"
+  },
+  "milestones": {
+    "ultra_unlock": "Ultra 已解锁！"
+  },
+  "beta2024": {
+    "title": "内测福利",
+    "description": "每日领取积分，解锁 Ultra 模式！"
+  }
+}

@@ -39,6 +39,8 @@ export interface ToolCall {
   result?: ToolCallResult;
   error?: string;
   timestamp: string;
+  /** streamedContent.length when this tool call was requested (for interleaved rendering) */
+  contentOffset?: number;
 }
 
 export interface MessageAttachment {

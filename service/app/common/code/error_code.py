@@ -177,7 +177,15 @@ class ErrCode(IntEnum):
 
     # ========== CHECK-IN (14100-14199) ==========
     # Use when: Check-in operations fail
-    ALREADY_CHECKED_IN_TODAY = 14100  # User has already checked in today
+    ALREADY_CHECKED_IN_TODAY = 14100
+
+    # ========== GIFT CAMPAIGNS (14200-14299) ==========
+    # Use when: Gift campaign operations fail
+    GIFT_CAMPAIGN_NOT_FOUND = 14200  # Campaign doesn't exist
+    GIFT_CAMPAIGN_INACTIVE = 14201  # Campaign is not active or outside date range
+    GIFT_CAMPAIGN_COMPLETED = 14202  # User completed all campaign days
+    GIFT_ALREADY_CLAIMED_TODAY = 14203  # User already claimed today
+    GIFT_INVALID_MODE = 14204  # Campaign mode handler not found  # User has already checked in today
 
     # ========== OSS (OBJECT STORAGE SERVICE) (15xxx) ==========
     # Use when: OSS operations fail
@@ -300,6 +308,12 @@ def handle_auth_error(error: ErrCodeError) -> HTTPException:
         ErrCode.INVALID_PARAMETER: 400,
         # 400 errors (check-in)
         ErrCode.ALREADY_CHECKED_IN_TODAY: 400,
+        # gift campaign errors
+        ErrCode.GIFT_CAMPAIGN_NOT_FOUND: 404,
+        ErrCode.GIFT_CAMPAIGN_INACTIVE: 400,
+        ErrCode.GIFT_CAMPAIGN_COMPLETED: 400,
+        ErrCode.GIFT_ALREADY_CLAIMED_TODAY: 400,
+        ErrCode.GIFT_INVALID_MODE: 400,
         # 404 errors (OSS)
         ErrCode.OSS_BUCKET_NOT_FOUND: 404,
         ErrCode.OSS_OBJECT_NOT_FOUND: 404,

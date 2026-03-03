@@ -20,6 +20,7 @@ from .redis import RedisConfig
 from .sandbox import SandboxConfig
 from .searxng import SearXNGConfig
 from .settler import SettlerConfig
+from .telemetry import TelemetryConfig
 from .video import VideoConfig
 
 
@@ -151,6 +152,11 @@ class AppConfig(BaseSettings):
     Payment: PaymentConfig = Field(
         default_factory=lambda: PaymentConfig(),
         description="Payment gateway configuration (PayPal, Airwallex, etc.)",
+    )
+
+    Telemetry: TelemetryConfig = Field(
+        default_factory=lambda: TelemetryConfig(),
+        description="OpenTelemetry tracing configuration",
     )
 
 
