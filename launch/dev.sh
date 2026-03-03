@@ -245,6 +245,10 @@ fi
 if [ -f "${PROJECT_DIR}/docker/docker-compose.novu.yaml" ]; then
   MID_CMD_ARGS+=(-f "${PROJECT_DIR}/docker/docker-compose.novu.yaml")
 fi
+# Conditionally include OpenTelemetry infrastructure overlay on infra
+if [ -f "${PROJECT_DIR}/docker/docker-compose.telemetry.yaml" ]; then
+  MID_CMD_ARGS+=(-f "${PROJECT_DIR}/docker/docker-compose.telemetry.yaml")
+fi
 
 # 处理关闭并移除容器的命令
 if [ "${EXIT_COMMAND}" -eq 1 ]; then

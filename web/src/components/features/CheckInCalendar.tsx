@@ -548,7 +548,21 @@ export function CheckInCalendar({ onCheckInSuccess }: CheckInCalendarProps) {
     setIsCheckingIn(true);
     try {
       const response = await checkInService.checkIn();
-      toast.success(response.message);
+      const params = {
+        points: response.points_awarded,
+        days: response.consecutive_days,
+      };
+      let toastKey: string;
+      if (response.consecutive_days === 1) {
+        toastKey = "app.checkInCalendar.checkInSuccessFirst";
+      } else if (response.consecutive_days <= 3) {
+        toastKey = "app.checkInCalendar.checkInSuccessEarly";
+      } else if (response.consecutive_days === 4) {
+        toastKey = "app.checkInCalendar.checkInSuccessAlmost";
+      } else {
+        toastKey = "app.checkInCalendar.checkInSuccessMax";
+      }
+      toast.success(t(toastKey, params));
 
       // Invalidate queries to refresh data
       await queryClient.invalidateQueries({ queryKey: ["check-in"] });

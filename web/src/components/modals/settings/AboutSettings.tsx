@@ -190,8 +190,7 @@ export const AboutSettings = () => {
 
         {/* Footer */}
         <p className="mt-8 pb-4 text-center text-xs text-neutral-400 dark:text-neutral-500">
-          &copy; 2024-2026 Miracle Story (Shanghai) Intelligent Technology Co.,
-          Ltd.{" "}
+          &copy; 2024-2026 ATOMBEAT TECHNOLOGY PTE. LTD.{" "}
           <a
             href={`${GITHUB_REPO}/blob/main/LICENSE`}
             target="_blank"

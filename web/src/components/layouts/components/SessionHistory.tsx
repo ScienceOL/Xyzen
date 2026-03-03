@@ -20,8 +20,11 @@ import {
   UserIcon,
   XMarkIcon,
 } from "@heroicons/react/24/outline";
-import { memo, useEffect, useMemo, useState } from "react";
+import { memo, useCallback, useEffect, useMemo, useState } from "react";
+import { useInView } from "react-intersection-observer";
 import { useTranslation } from "react-i18next";
+
+const PAGE_SIZE = 20;
 
 interface SessionHistoryProps {
   isOpen: boolean;
@@ -111,6 +114,32 @@ function SessionHistory({
       return dateB.getTime() - dateA.getTime();
     });
   }, [filteredTopics]);
+
+  // Progressive rendering — show PAGE_SIZE items at a time
+  const [visibleCount, setVisibleCount] = useState(PAGE_SIZE);
+
+  // Reset visible count when data source changes
+  useEffect(() => {
+    setVisibleCount(PAGE_SIZE);
+  }, [activeSessionId, searchQuery]);
+
+  const visibleHistory = useMemo(
+    () => sortedHistory.slice(0, visibleCount),
+    [sortedHistory, visibleCount],
+  );
+  const hasMore = visibleCount < sortedHistory.length;
+
+  const loadMore = useCallback(() => {
+    setVisibleCount((prev) => prev + PAGE_SIZE);
+  }, []);
+
+  const { ref: loadMoreRef } = useInView({
+    threshold: 0,
+    rootMargin: "200px",
+    onChange: (inView) => {
+      if (inView && hasMore) loadMore();
+    },
+  });
 
   // 清空所有对话
   const handleClearAllTopics = () => {
@@ -269,7 +298,7 @@ function SessionHistory({
           </div>
         ) : (
           <div className="space-y-2">
-            {sortedHistory.map((chat: ChatHistoryItem) => (
+            {visibleHistory.map((chat: ChatHistoryItem) => (
               <div
                 key={chat.id}
                 className={`group relative flex cursor-pointer items-center justify-between rounded-sm border p-3 transition-colors hover:bg-neutral-50 dark:hover:bg-neutral-900 ${
@@ -357,6 +386,13 @@ function SessionHistory({
                 </div>
               </div>
             ))}
+
+            {/* Infinite scroll sentinel */}
+            {hasMore && (
+              <div ref={loadMoreRef} className="flex justify-center py-3">
+                <LoadingSpinner size="sm" />
+              </div>
+            )}
           </div>
         )}
       </div>

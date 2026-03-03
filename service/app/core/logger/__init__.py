@@ -2,13 +2,17 @@ from typing import Any
 
 from app.configs import configs
 
+_BASE_FMT = "%(levelprefix)s \033[90m%(asctime)s\033[0m \033[36m|\033[0m \033[35m%(name)s: \033[90m%(lineno)d\033[0m \033[36m|\033[0m %(message)s"  # noqa: E501
+_TRACE_SUFFIX = " \033[90m[trace=%(otelTraceID)s span=%(otelSpanID)s]\033[0m"
+_DEFAULT_FMT = f"{_BASE_FMT}{_TRACE_SUFFIX}" if configs.Telemetry.Enabled else _BASE_FMT
+
 LOGGING_CONFIG: dict[str, Any] = {
     "version": 1,
     "disable_existing_loggers": False,
     "formatters": {
         "default": {
             "()": "uvicorn.logging.DefaultFormatter",
-            "fmt": "%(levelprefix)s \033[90m%(asctime)s\033[0m \033[36m|\033[0m \033[35m%(name)s: \033[90m%(lineno)d\033[0m \033[36m|\033[0m %(message)s",  # noqa: E501
+            "fmt": _DEFAULT_FMT,
             "datefmt": "%Y-%m-%d %H:%M:%S",
             "use_colors": True,
         },

@@ -537,7 +537,7 @@ async def _generate_image(
         return result
 
     except Exception as e:
-        logger.error(f"Image generation failed: {e}")
+        logger.error(f"Image generation failed: {e}", exc_info=True)
         return {
             "success": False,
             "error": f"Image generation failed: {e!s}",

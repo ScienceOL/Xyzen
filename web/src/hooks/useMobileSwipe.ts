@@ -278,6 +278,30 @@ export function useMobileSwipe({
     return () => window.removeEventListener("resize", onResize);
   }, [applyTransform, getWidth]);
 
+  // Re-validate page position when pageCount changes (e.g. Capsule page
+  // added/removed during streaming).  Clamp to valid range and re-apply
+  // transform so the visible page stays correct after DOM mutations.
+  const prevPageCountRef = useRef(pageCount);
+  useEffect(() => {
+    if (prevPageCountRef.current === pageCount) return;
+    prevPageCountRef.current = pageCount;
+    const maxPage = Math.max(0, pageCount - 1);
+    const clamped = Math.min(pageRef.current, maxPage);
+    pageRef.current = clamped;
+    setCurrentPage(clamped);
+    applyTransform(-clamped * getWidth(), false);
+  }, [pageCount, applyTransform, getWidth]);
+
+  // Invalidate stale snap callbacks on unmount so pending timeouts
+  // from snapTo() don't fire onSnap into the global store after
+  // the component has been removed.
+  useEffect(() => {
+    const epoch = snapEpochRef;
+    return () => {
+      epoch.current++;
+    };
+  }, []);
+
   return {
     wrapperRef,
     trackRef,

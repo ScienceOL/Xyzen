@@ -8,7 +8,6 @@ import {
   type DragStartEvent,
   type DropAnimation,
   MouseSensor,
-  TouchSensor,
   type UniqueIdentifier,
   defaultDropAnimation,
   useSensor,
@@ -225,11 +224,6 @@ const SortableTreeComp = React.forwardRef<
         activationConstraint: isTrashView
           ? { distance: Infinity }
           : { distance: 8 },
-      }),
-      useSensor(TouchSensor, {
-        activationConstraint: isTrashView
-          ? { delay: Infinity, tolerance: 0 }
-          : { delay: 250, tolerance: 8 },
       }),
     );
 

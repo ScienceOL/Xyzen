@@ -169,19 +169,7 @@ export default function SkillMarketplace({
       {(() => {
         const controls = (
           <>
-            {activeTab === "all" && (
-              <div className="relative max-w-xs flex-1">
-                <MagnifyingGlassIcon className="absolute left-2.5 top-1/2 h-3.5 w-3.5 -translate-y-1/2 text-neutral-400" />
-                <input
-                  type="text"
-                  placeholder={t("skillMarketplace.search.placeholder")}
-                  value={searchQuery}
-                  onChange={(e) => setSearchQuery(e.target.value)}
-                  className="w-full rounded-lg bg-neutral-200/50 py-1.5 pl-8 pr-3 text-sm text-neutral-900 placeholder-neutral-400 outline-none transition-colors focus:bg-white focus:ring-1 focus:ring-neutral-300 dark:bg-neutral-800/60 dark:text-neutral-100 dark:placeholder-neutral-500 dark:focus:bg-neutral-800 dark:focus:ring-neutral-600"
-                />
-              </div>
-            )}
-            <div className="flex items-center gap-0.5 rounded-none bg-neutral-100/60 p-0.5 dark:bg-white/[0.04]">
+            <div className="flex shrink-0 items-center gap-0.5 bg-neutral-100/60 p-0.5 dark:bg-white/[0.04]">
               {(
                 [
                   { key: "all", label: t("skillMarketplace.tabs.all") },
@@ -194,7 +182,7 @@ export default function SkillMarketplace({
                 <button
                   key={key}
                   onClick={() => setActiveTab(key)}
-                  className="relative px-3 py-1.5 text-[13px] transition-colors"
+                  className="relative whitespace-nowrap px-3 py-1.5 text-[13px] transition-colors"
                 >
                   {activeTab === key && (
                     <motion.div
@@ -219,6 +207,18 @@ export default function SkillMarketplace({
                 </button>
               ))}
             </div>
+            {activeTab === "all" && (
+              <div className="relative min-w-0 flex-1">
+                <MagnifyingGlassIcon className="absolute left-2.5 top-1/2 h-3.5 w-3.5 -translate-y-1/2 text-neutral-400" />
+                <input
+                  type="text"
+                  placeholder={t("skillMarketplace.search.placeholder")}
+                  value={searchQuery}
+                  onChange={(e) => setSearchQuery(e.target.value)}
+                  className="w-full rounded-lg bg-neutral-200/50 py-1.5 pl-8 pr-3 text-sm text-neutral-900 placeholder-neutral-400 outline-none transition-colors focus:bg-white focus:ring-1 focus:ring-neutral-300 dark:bg-neutral-800/60 dark:text-neutral-100 dark:placeholder-neutral-500 dark:focus:bg-neutral-800 dark:focus:ring-neutral-600"
+                />
+              </div>
+            )}
           </>
         );
 

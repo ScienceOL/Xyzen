@@ -10,6 +10,7 @@ from .checkin import router as checkin_router
 from .deployments import router as deployments_router
 from .developer import router as developer_router
 from .files import router as files_router
+from .gift import router as gift_router
 from .folders import router as folders_router
 from .knowledge_sets import router as knowledge_sets_router
 from .marketplace import router as marketplace_router
@@ -107,6 +108,7 @@ v1_router.include_router(skills_router, prefix="/skills")
 v1_router.include_router(mcps_router, prefix="/mcps")
 v1_router.include_router(redemption_router, prefix="/redemption", tags=["redemption"])
 v1_router.include_router(checkin_router, prefix="/checkin")
+v1_router.include_router(gift_router, prefix="/gifts", tags=["gifts"])
 v1_router.include_router(developer_router, prefix="/developer", tags=["developer"])
 v1_router.include_router(files_router, prefix="/files")
 v1_router.include_router(folders_router, prefix="/folders")

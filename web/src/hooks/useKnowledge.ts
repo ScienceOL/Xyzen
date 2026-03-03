@@ -42,7 +42,9 @@ export function useKnowledge() {
     if (
       knowledgeActiveTab === "all" ||
       knowledgeActiveTab === "knowledge" ||
-      knowledgeActiveTab === "trash"
+      knowledgeActiveTab === "trash" ||
+      knowledgeActiveTab === "images" ||
+      knowledgeActiveTab === "documents"
     ) {
       fetchKnowledgeTree();
     }

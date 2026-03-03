@@ -1,7 +1,7 @@
 import { FileIcon } from "@/components/knowledge/FileIcon";
 import { useDraggable, useDroppable } from "@dnd-kit/core";
 import { FolderIcon, FolderOpenIcon } from "lucide-react";
-import React, { forwardRef, useEffect, useRef } from "react";
+import React, { forwardRef, useCallback, useEffect, useRef } from "react";
 import { useTranslation } from "react-i18next";
 import type { FlattenedItem } from "./types";
 import {
@@ -35,9 +35,11 @@ interface TreeItemRowProps {
 }
 
 /**
- * A tree item row that is both draggable (drag source) and droppable (drop target).
- * Items stay perfectly in place during drag — no shifting, no transforms.
- * Only the DragOverlay follows the cursor.
+ * A tree item row that is both draggable and droppable.
+ *
+ * Interaction model:
+ * - Desktop: dnd-kit MouseSensor for drag, right-click for context menu.
+ * - Mobile:  long-press (550ms) opens context menu, no drag support.
  */
 export const TreeItemRow: React.FC<TreeItemRowProps> = ({
   item,
@@ -63,6 +65,64 @@ export const TreeItemRow: React.FC<TreeItemRowProps> = ({
 
   const { setNodeRef: setDropRef } = useDroppable({ id: item.id });
 
+  // ---- Mobile long-press → context menu ----
+  const longPressTimerRef = useRef<number | null>(null);
+  const longPressStartRef = useRef<{ x: number; y: number } | null>(null);
+  const didLongPressRef = useRef(false);
+
+  const clearLongPress = useCallback(() => {
+    if (longPressTimerRef.current !== null) {
+      window.clearTimeout(longPressTimerRef.current);
+      longPressTimerRef.current = null;
+    }
+    longPressStartRef.current = null;
+  }, []);
+
+  // Clean up timer on unmount
+  useEffect(() => clearLongPress, [clearLongPress]);
+
+  const handleTouchStart = useCallback(
+    (e: React.TouchEvent) => {
+      if (isEditing) return;
+      didLongPressRef.current = false;
+      const touch = e.touches[0];
+      longPressStartRef.current = { x: touch.clientX, y: touch.clientY };
+      clearLongPress();
+      const { clientX, clientY } = touch;
+      longPressTimerRef.current = window.setTimeout(() => {
+        didLongPressRef.current = true;
+        try {
+          navigator.vibrate?.(10);
+        } catch {
+          // ignore
+        }
+        onContextMenu?.({
+          preventDefault: () => {},
+          stopPropagation: () => {},
+          clientX,
+          clientY,
+        } as unknown as React.MouseEvent);
+      }, 550);
+    },
+    [isEditing, clearLongPress, onContextMenu],
+  );
+
+  const handleTouchMove = useCallback(
+    (e: React.TouchEvent) => {
+      const start = longPressStartRef.current;
+      if (!start) return;
+      const touch = e.touches[0];
+      if (Math.hypot(touch.clientX - start.x, touch.clientY - start.y) > 10) {
+        clearLongPress();
+      }
+    },
+    [clearLongPress],
+  );
+
+  const handleTouchEnd = useCallback(() => {
+    clearLongPress();
+  }, [clearLongPress]);
+
   return (
     <div
       ref={(el) => {
@@ -73,10 +133,19 @@ export const TreeItemRow: React.FC<TreeItemRowProps> = ({
       style={{ opacity: isDragging ? 0.4 : 1 }}
       {...(isEditing ? {} : attributes)}
       {...(isEditing ? {} : listeners)}
+      onTouchStart={handleTouchStart}
+      onTouchMove={handleTouchMove}
+      onTouchEnd={handleTouchEnd}
+      onTouchCancel={handleTouchEnd}
       onMouseDown={(e) => {
         e.stopPropagation();
       }}
       onClick={(e) => {
+        // Ignore synthetic click after a long-press
+        if (didLongPressRef.current) {
+          didLongPressRef.current = false;
+          return;
+        }
         if (!isEditing) {
           onClick?.(e, item.id);
           if (item.type === "folder") onCollapse?.(item.id);

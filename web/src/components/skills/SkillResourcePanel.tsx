@@ -57,7 +57,7 @@ export function SkillResourcePanel({
 
   // ── Navigation state ────────────────────────────────────────────
   const [folderId, setFolderId] = useState<string | null>(null);
-  const [viewMode, setViewMode] = useState<ViewMode>("list");
+  const [viewMode] = useState<ViewMode>("list");
   const [breadcrumbs, setBreadcrumbs] = useState<Folder[]>([]);
 
   // ── Misc state ──────────────────────────────────────────────────
@@ -444,8 +444,6 @@ export function SkillResourcePanel({
       <KnowledgeToolbar
         title={skill.name}
         breadcrumbs={breadcrumbs}
-        viewMode={viewMode}
-        onViewModeChange={setViewMode}
         onSearch={(q) => console.log("Search", q)}
         onBreadcrumbClick={navigateToFolder}
         onCreateFolder={readonlyMode ? undefined : handleCreateFolder}

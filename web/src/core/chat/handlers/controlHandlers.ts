@@ -348,6 +348,13 @@ export function handleToolCallRequest(
         if (!targetPhase.toolCalls) {
           targetPhase.toolCalls = [];
         }
+        // Record content offset for interleaved rendering
+        const contentOffset = targetPhase.streamedContent?.length ?? 0;
+        (toolCall as { contentOffset?: number }).contentOffset = contentOffset;
+        // Insert paragraph separator so text reads naturally around tool calls
+        if (contentOffset > 0 && targetPhase.streamedContent) {
+          targetPhase.streamedContent += "\n\n";
+        }
         targetPhase.toolCalls.push(toolCall);
         console.log(
           `ChatSlice: Added tool call ${toolCallData.name} to phase ${targetPhase.id}`,

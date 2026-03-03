@@ -1,0 +1,20 @@
+# OpenTelemetry infrastructure overlay for sciol-infra
+# Usage: auto-included by dev.sh when this file exists
+
+services:
+  jaeger:
+    image: jaegertracing/jaeger:2
+    restart: unless-stopped
+    attach: false
+    ports:
+      - "${JAEGER_UI_PORT:-16686}:16686"
+      - "${JAEGER_OTLP_GRPC:-4317}:4317"
+      - "${JAEGER_OTLP_HTTP:-4318}:4318"
+    environment:
+      COLLECTOR_OTLP_ENABLED: "true"
+    networks:
+      - sciol-network
+
+networks:
+  sciol-network:
+    driver: bridge

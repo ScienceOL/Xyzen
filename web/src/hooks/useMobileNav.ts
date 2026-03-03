@@ -1,4 +1,3 @@
-import { useActiveChannelStatus } from "@/hooks/useChannelSelectors";
 import { useOverscrollPull } from "@/hooks/useOverscrollPull";
 import { useXyzen } from "@/store";
 import { useCallback, useEffect, useRef, useState } from "react";
@@ -23,7 +22,14 @@ export function useMobileNav() {
       mobilePage: s.mobilePage,
     })),
   );
-  const { knowledge_set_id } = useActiveChannelStatus();
+
+  // Focused selector: only subscribe to knowledge_set_id to avoid
+  // unnecessary re-renders from `responding` / `tokenUsage` changes
+  // during streaming (useActiveChannelStatus returns 12+ fields).
+  const knowledge_set_id = useXyzen((s) => {
+    const id = s.activeChatChannel;
+    return id ? (s.channels[id]?.knowledge_set_id ?? null) : null;
+  });
 
   const hasChannel = !!activeChatChannel;
   const hasCapsule = hasChannel && !!knowledge_set_id;

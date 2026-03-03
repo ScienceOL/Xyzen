@@ -26,7 +26,9 @@
       "confirmExecute": "Confirm",
       "status": "Status",
       "tool": "Tool",
-      "node": "Node"
+      "node": "Node",
+      "toolCallCount_one": "{{count}} tool call",
+      "toolCallCount_other": "{{count}} tool calls"
     },
     "agent": {
       "stopped": "Generation stopped",
@@ -67,7 +69,12 @@
     "foldersLabel": "folders",
     "sourceBuiltin": "Source: builtin",
     "sourceUser": "Source: user",
-    "updatedAt": "Updated"
+    "updatedAt": "Updated",
+    "search": "Search skills...",
+    "noResults": "No skills found.",
+    "selectSkill": "Select a skill to browse its resources",
+    "sortByName": "Sort by name",
+    "sortByDate": "Sort by date"
   },
   "toolbar": {
     "newChat": "New Chat",
@@ -473,7 +480,22 @@
     "prompt": "Prompt",
     "status": "Status",
     "error": "Error",
-    "goToChat": "Go to chat"
+    "goToChat": "Go to chat",
+    "groupToday": "Today",
+    "groupYesterday": "Yesterday",
+    "groupWeek": "This Week",
+    "groupMonth": "This Month",
+    "groupEarlier": "Earlier",
+    "filterStatusAll": "All Status",
+    "filterStatusActive": "Active",
+    "filterStatusCompleted": "Completed",
+    "filterStatusFailed": "Failed",
+    "filterStatusCancelled": "Cancelled",
+    "filterStatusPaused": "Paused",
+    "filterTypeAll": "All Types",
+    "filterTypeOnce": "One-time",
+    "filterTypeRecurring": "Recurring",
+    "emptyFiltered": "No tasks match the current filters."
   },
   "workspace": {
     "recommendations": {
@@ -573,7 +595,11 @@
     "countUnit": "times",
     "noCheckInToday": "You haven’t checked in today. Check in now! 🎉",
     "noRecordForDay": "No records for this day 📅",
-    "checkInFailed": "Check-in failed, please try again later"
+    "checkInFailed": "Check-in failed, please try again later",
+    "checkInSuccessFirst": "Checked in! Earned {{points}} points. Start your check-in journey~",
+    "checkInSuccessEarly": "{{days}}-day streak! Earned {{points}} points. Keep it up~",
+    "checkInSuccessAlmost": "Awesome! {{days}}-day streak, earned {{points}} points! Max reward is just one day away~",
+    "checkInSuccessMax": "Amazing! {{days}}-day streak, earned {{points}} points! Persistence is victory~"
   },
   "consumption": {
     "title": "Usage Analytics",

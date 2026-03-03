@@ -2,8 +2,18 @@ import { autoLogin, handleRelinkCallback } from "@/core/auth";
 import { useAuth } from "@/hooks/useAuth";
 import { useXyzen } from "@/store";
 import { QueryClient, QueryClientProvider } from "@tanstack/react-query";
-import React, { Suspense, useCallback, useEffect, useState } from "react";
+import React, {
+  Suspense,
+  useCallback,
+  useEffect,
+  useRef,
+  useState,
+} from "react";
 import { useShallow } from "zustand/react/shallow";
+import {
+  giftService,
+  type CampaignStatusResponse,
+} from "@/service/giftService";
 
 import AuthErrorScreen from "@/app/auth/AuthErrorScreen";
 import SharedAgentDetailPage from "@/app/marketplace/SharedAgentDetailPage";
@@ -19,6 +29,7 @@ import { authService } from "@/service/authService";
 import { LAYOUT_STYLE, type InputPosition } from "@/store/slices/uiSlice/types";
 import { buildAuthorizeUrl } from "@/utils/authFlow";
 import { Toaster } from "@/components/ui/sonner";
+import { GiftBoxModal } from "@/components/features/GiftBoxModal";
 import { AppFullscreen } from "./AppFullscreen";
 import { AppSide } from "./AppSide";
 import { AuthLoadingScreen } from "./AuthLoadingScreen";
@@ -128,6 +139,12 @@ export function Xyzen({
     typeof window !== "undefined" ? window.location.hash : "",
   );
   const [showAuthScreen, setShowAuthScreen] = useState(false);
+  const [showGiftModal, setShowGiftModal] = useState(false);
+  const [giftCampaigns, setGiftCampaigns] = useState<CampaignStatusResponse[]>(
+    [],
+  );
+  const [currentGiftIndex, setCurrentGiftIndex] = useState(0);
+  const giftCheckedRef = useRef(false);
 
   useEffect(() => {
     setMounted(true);
@@ -303,6 +320,44 @@ export function Xyzen({
     activateChannel,
     setActivePanel,
   ]);
+
+  // Check for unclaimed gift campaigns after initial load
+  useEffect(() => {
+    if (!initialLoadComplete || status !== "succeeded") return;
+    if (giftCheckedRef.current) return;
+    if (sessionStorage.getItem("gift_dismissed")) return;
+    giftCheckedRef.current = true;
+
+    giftService
+      .getActiveCampaigns()
+      .then((campaigns) => {
+        const unclaimed = campaigns.filter(
+          (c) => !c.claimed_today && !c.completed,
+        );
+        if (unclaimed.length > 0) {
+          setGiftCampaigns(unclaimed);
+          setCurrentGiftIndex(0);
+          setShowGiftModal(true);
+        }
+      })
+      .catch(() => {
+        // Silently fail — gift check is non-critical
+      });
+  }, [initialLoadComplete, status]);
+
+  const handleGiftClaimed = useCallback(() => {
+    // Advance to next unclaimed campaign or close
+    if (currentGiftIndex < giftCampaigns.length - 1) {
+      setCurrentGiftIndex((prev) => prev + 1);
+    } else {
+      setShowGiftModal(false);
+    }
+  }, [currentGiftIndex, giftCampaigns.length]);
+
+  const handleGiftDismiss = useCallback(() => {
+    sessionStorage.setItem("gift_dismissed", "1");
+    setShowGiftModal(false);
+  }, []);
 
   // Handle #/chat/{topicId} deep-link while app is already running
   // (e.g. from SW notification_click postMessage or in-app hash navigation)
@@ -543,6 +598,14 @@ export function Xyzen({
     <QueryClientProvider client={queryClient}>
       {gatedContent}
       <Toaster position="top-right" />
+      {showGiftModal && giftCampaigns[currentGiftIndex] && (
+        <GiftBoxModal
+          campaign={giftCampaigns[currentGiftIndex]}
+          isOpen={showGiftModal}
+          onClose={handleGiftDismiss}
+          onClaimed={handleGiftClaimed}
+        />
+      )}
     </QueryClientProvider>
   );
 }

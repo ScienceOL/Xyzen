@@ -78,7 +78,8 @@ function CapsuleBody({ activeTab }: { activeTab: string }) {
 
 export function Capsule({ variant = "default", onBack }: CapsuleProps) {
   const { t } = useTranslation();
-  const { knowledge_set_id, sessionId } = useActiveChannelStatus();
+  const { knowledge_set_id, sandbox_backend, sessionId } =
+    useActiveChannelStatus();
   const { isOpen, activeTab, setActiveTab, open, close, toggle } = useCapsule();
 
   // Track previous values to detect *what* changed
@@ -125,9 +126,12 @@ export function Capsule({ variant = "default", onBack }: CapsuleProps) {
     setPeeking(false);
   }, [toggle]);
 
+  const cancelPeekTimer = useCallback(() => {
+    clearTimeout(peekTimeout.current);
+  }, []);
+
   // Determine if the capsule has any content worth showing.
-  // Currently only Knowledge tab has real data; Tools and Memory are "coming soon".
-  const hasContent = !!knowledge_set_id || !!sessionId;
+  const hasContent = !!knowledge_set_id || !!sandbox_backend || !!sessionId;
 
   // -------------------------------------------------------------------------
   // Mobile variant — full screen with back header
@@ -172,13 +176,13 @@ export function Capsule({ variant = "default", onBack }: CapsuleProps) {
   // -------------------------------------------------------------------------
   // Layout width only changes on dock; peek is a floating overlay
   // -------------------------------------------------------------------------
+
   return (
     <motion.div
       initial={false}
       animate={{ width: isOpen ? EXPANDED_WIDTH : COLLAPSED_WIDTH }}
       transition={transition}
       className={`shrink-0 h-full relative ${isSpatial ? "pointer-events-auto" : ""}`}
-      onMouseEnter={handlePeekEnter}
       onMouseLeave={handlePeekLeave}
     >
       {/* ---- Docked panel (always mounted, fades in/out) ---- */}
@@ -219,6 +223,7 @@ export function Capsule({ variant = "default", onBack }: CapsuleProps) {
             : "bg-neutral-200/60 dark:bg-neutral-700/40 hover:bg-neutral-300/80 dark:hover:bg-neutral-600/50"
         }`}
         style={{ width: COLLAPSED_WIDTH }}
+        onMouseEnter={handlePeekEnter}
         onClick={handleClick}
         title={t("capsule.expand")}
       />
@@ -231,6 +236,7 @@ export function Capsule({ variant = "default", onBack }: CapsuleProps) {
             animate={{ opacity: 1, x: 0 }}
             exit={{ opacity: 0, x: 12 }}
             transition={{ duration: 0.2, ease: [0.4, 0, 0.2, 1] }}
+            onMouseEnter={cancelPeekTimer}
             className={`absolute top-0 right-full z-50 flex flex-col pointer-events-auto ${peekBg}`}
             style={{
               width: EXPANDED_WIDTH,

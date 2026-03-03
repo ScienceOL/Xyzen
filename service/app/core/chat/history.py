@@ -181,6 +181,29 @@ async def _build_assistant_message(db: AsyncSession, message: Any, content: str)
         return AIMessage(content=content, additional_kwargs=additional_kwargs)
 
 
+def _truncate_tool_args(args: dict[str, Any], max_chars: int = 8000) -> dict[str, Any]:
+    """Truncate large tool call argument values to prevent context overflow.
+
+    The LLM generates tool call args (e.g., the ``content`` param of knowledge_write
+    can be a massive JSON spec).  When replayed as history, the LLM does not need the
+    full content again — a truncated summary suffices.
+    """
+    truncated = {}
+    for key, value in args.items():
+        if isinstance(value, str) and len(value) > max_chars:
+            truncated[key] = value[:max_chars] + f"\n... [truncated, {len(value)} chars total]"
+        else:
+            truncated[key] = value
+    return truncated
+
+
+def _truncate_tool_result(result: str, max_chars: int = 12000) -> str:
+    """Truncate large tool call results to prevent context overflow."""
+    if len(result) > max_chars:
+        return result[:max_chars] + f"\n... [truncated, {len(result)} chars total]"
+    return result
+
+
 def _build_tool_messages(
     content: str, history: list[BaseMessage], num_tool_calls: int
 ) -> tuple[BaseMessage | None, int]:
@@ -204,9 +227,10 @@ def _build_tool_messages(
         message: BaseMessage
 
         if formatted_content.get("event") == ChatEventType.TOOL_CALL_REQUEST:
+            raw_args = formatted_content["arguments"]
             tool_call: ToolCall = {
                 "name": formatted_content["name"],
-                "args": formatted_content["arguments"],
+                "args": _truncate_tool_args(raw_args) if isinstance(raw_args, dict) else raw_args,
                 "id": formatted_content["id"],
             }
 
@@ -233,8 +257,9 @@ def _build_tool_messages(
                 logger.warning(f"Skipping tool response with invalid tool_call_id: {tool_call_id!r}")
                 return None, num_tool_calls
 
+            raw_result = formatted_content.get("result", "")
             message = ToolMessage(
-                content=formatted_content.get("result", ""),
+                content=_truncate_tool_result(raw_result) if isinstance(raw_result, str) else raw_result,
                 tool_call_id=tool_call_id,
             )
             return message, num_tool_calls - 1

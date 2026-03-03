@@ -26,7 +26,9 @@ export default function CommunityHub() {
       {/* Stable header — never slides */}
       <div className="shrink-0 bg-neutral-50/80 backdrop-blur-xl dark:bg-black/80">
         <div className="mx-auto max-w-7xl px-4 pt-3 pb-2 md:px-6">
-          <div className="flex items-center justify-between gap-3">
+          {/* Mobile: two rows (section switcher / controls) */}
+          {/* Desktop: single row, inline */}
+          <div className="flex flex-col gap-2 md:flex-row md:items-center md:gap-3">
             {/* Section switcher */}
             <div
               className={`relative grid w-fit shrink-0 grid-cols-2 bg-neutral-100/50 p-[3px] ring-1 dark:bg-white/[0.03] ${
@@ -61,7 +63,7 @@ export default function CommunityHub() {
                 className="relative z-10 px-5 py-2 text-center"
               >
                 <span
-                  className={`text-[13px] transition-colors duration-200 ${
+                  className={`text-[13px] whitespace-nowrap transition-colors duration-200 ${
                     isAgents
                       ? "font-bold text-neutral-900 dark:text-violet-50"
                       : "font-medium text-neutral-400 hover:text-neutral-600 dark:text-neutral-500 dark:hover:text-neutral-300"
@@ -75,7 +77,7 @@ export default function CommunityHub() {
                 className="relative z-10 px-5 py-2 text-center"
               >
                 <span
-                  className={`text-[13px] transition-colors duration-200 ${
+                  className={`text-[13px] whitespace-nowrap transition-colors duration-200 ${
                     !isAgents
                       ? "font-bold text-neutral-900 dark:text-emerald-50"
                       : "font-medium text-neutral-400 hover:text-neutral-600 dark:text-neutral-500 dark:hover:text-neutral-300"
@@ -89,7 +91,7 @@ export default function CommunityHub() {
             {/* Portal target — marketplace controls render here */}
             <div
               ref={setHeaderTarget}
-              className="flex flex-1 items-center justify-end gap-3"
+              className="flex min-w-0 flex-1 items-center gap-2 md:justify-end"
             />
           </div>
         </div>

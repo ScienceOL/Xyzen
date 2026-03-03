@@ -6,6 +6,7 @@ import enAgents from "./locales/en/agents.json";
 import enApp from "./locales/en/app.json";
 import enCapsule from "./locales/en/capsule.json";
 import enCommon from "./locales/en/common.json";
+import enGift from "./locales/en/gift.json";
 import enKnowledge from "./locales/en/knowledge.json";
 import enLanding from "./locales/en/landing.json";
 import enMarketplace from "./locales/en/marketplace.json";
@@ -21,6 +22,7 @@ import jaAgents from "./locales/ja/agents.json";
 import jaApp from "./locales/ja/app.json";
 import jaCapsule from "./locales/ja/capsule.json";
 import jaCommon from "./locales/ja/common.json";
+import jaGift from "./locales/ja/gift.json";
 import jaKnowledge from "./locales/ja/knowledge.json";
 import jaLanding from "./locales/ja/landing.json";
 import jaMarketplace from "./locales/ja/marketplace.json";
@@ -36,6 +38,7 @@ import zhAgents from "./locales/zh/agents.json";
 import zhApp from "./locales/zh/app.json";
 import zhCapsule from "./locales/zh/capsule.json";
 import zhCommon from "./locales/zh/common.json";
+import zhGift from "./locales/zh/gift.json";
 import zhKnowledge from "./locales/zh/knowledge.json";
 import zhLanding from "./locales/zh/landing.json";
 import zhMarketplace from "./locales/zh/marketplace.json";
@@ -71,6 +74,7 @@ export function initI18n() {
             app: enApp,
             capsule: enCapsule,
             common: enCommon,
+            gift: enGift,
             settings: enSettings,
             marketplace: enMarketplace,
             skillMarketplace: enSkillMarketplace,
@@ -89,6 +93,7 @@ export function initI18n() {
             app: zhApp,
             capsule: zhCapsule,
             common: zhCommon,
+            gift: zhGift,
             settings: zhSettings,
             marketplace: zhMarketplace,
             skillMarketplace: zhSkillMarketplace,
@@ -107,6 +112,7 @@ export function initI18n() {
             app: jaApp,
             capsule: jaCapsule,
             common: jaCommon,
+            gift: jaGift,
             settings: jaSettings,
             marketplace: jaMarketplace,
             skillMarketplace: jaSkillMarketplace,

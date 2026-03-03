@@ -1,38 +1,31 @@
-import { Modal } from "@/components/animate-ui/components/animate/modal";
 import { Button } from "@/components/animate-ui/primitives/buttons/button";
 import { LiquidButton } from "@/components/animate-ui/primitives/buttons/liquid";
+import { Input } from "@/components/base/Input";
 import { LoadingSpinner } from "@/components/base/LoadingSpinner";
-import { AddMcpServerModal } from "@/components/modals/AddMcpServerModal";
 import { EditMcpServerModal } from "@/components/modals/EditMcpServerModal";
 import { ToolTestModal } from "@/components/modals/ToolTestModal";
-import McpServerDetail from "@/marketplace/components/McpServerDetail";
-import SmitheryServerDetail from "@/marketplace/components/SmitheryServerDetail";
-import UnifiedMcpMarketList from "@/marketplace/components/UnifiedMcpMarketList";
 import { websocketService } from "@/service/websocketService";
 import { useXyzen } from "@/store";
 import { useShallow } from "zustand/react/shallow";
-import type {
-  BohriumMcpData,
-  BuiltinMcpData,
-  ExplorableMcpServer,
-  McpServer,
-  SmitheryMcpData,
-} from "@/types/mcp";
-import { isBohriumMcp, isBuiltinMcp, isSmitheryMcp } from "@/types/mcp";
+import type { McpServer, McpServerCreate } from "@/types/mcp";
+import { Field, Label, Radio, RadioGroup } from "@headlessui/react";
 import {
   ArrowPathIcon,
+  CheckCircleIcon,
   ChevronRightIcon,
   CommandLineIcon,
   GlobeAltIcon,
+  KeyIcon,
   ListBulletIcon,
   PencilIcon,
   PlayIcon,
   PlusIcon,
   ServerStackIcon,
   TrashIcon,
+  UserIcon,
 } from "@heroicons/react/24/outline";
 import { AnimatePresence, motion } from "framer-motion";
-import { useEffect, useMemo, useState } from "react";
+import { useEffect, useState, type ChangeEvent } from "react";
 import { useTranslation } from "react-i18next";
 
 interface ServerStatusIndicatorProps {
@@ -254,6 +247,376 @@ const McpServerCard: React.FC<McpServerCardProps> = ({
   );
 };
 
+/* ------------------------------------------------------------------ */
+/*  Inline Add-Server Form (replaces marketplace on left panel)       */
+/* ------------------------------------------------------------------ */
+
+function AddServerForm() {
+  const { t } = useTranslation();
+  const { addMcpServer, getLoading, user, token } = useXyzen(
+    useShallow((s) => ({
+      addMcpServer: s.addMcpServer,
+      getLoading: s.getLoading,
+      user: s.user,
+      token: s.token,
+    })),
+  );
+
+  const [newServer, setNewServer] = useState<McpServerCreate>({
+    name: "",
+    description: "",
+    url: "",
+    token: "",
+  });
+  const [error, setError] = useState<string | null>(null);
+  const [isSuccess, setIsSuccess] = useState(false);
+  const [authEnabled, setAuthEnabled] = useState(false);
+  const [authMode, setAuthMode] = useState<"current" | "custom">(
+    user && token ? "current" : "custom",
+  );
+
+  const isCreating = getLoading("mcpServerCreate");
+
+  const handleInputChange = (e: ChangeEvent<HTMLInputElement>) => {
+    const { name, value } = e.target;
+    setNewServer((prev) => ({ ...prev, [name]: value }));
+    if (error) setError(null);
+  };
+
+  const handleAddServer = async () => {
+    setError(null);
+    if (!newServer.name.trim() || !newServer.url.trim()) {
+      setError(t("mcp.addModal.errors.required"));
+      return;
+    }
+
+    try {
+      const serverToCreate = {
+        ...newServer,
+        token: authEnabled
+          ? authMode === "current"
+            ? token || ""
+            : newServer.token
+          : "",
+      };
+
+      await addMcpServer(serverToCreate);
+      setIsSuccess(true);
+      setTimeout(() => {
+        setNewServer({ name: "", description: "", url: "", token: "" });
+        setIsSuccess(false);
+        setAuthEnabled(false);
+        setAuthMode(user && token ? "current" : "custom");
+      }, 1500);
+    } catch (err) {
+      setError(t("mcp.addModal.errors.failed"));
+      console.error(err);
+    }
+  };
+
+  return (
+    <div className="space-y-5 p-4">
+      <AnimatePresence mode="wait">
+        {isSuccess ? (
+          <motion.div
+            key="success"
+            initial={{ opacity: 0, y: 20 }}
+            animate={{ opacity: 1, y: 0 }}
+            exit={{ opacity: 0, y: -20 }}
+            transition={{ duration: 0.4, ease: "easeOut" }}
+            className="flex flex-col items-center justify-center py-10"
+          >
+            <motion.div
+              initial={{ scale: 0, rotate: -180 }}
+              animate={{ scale: 1, rotate: 0 }}
+              transition={{
+                delay: 0.2,
+                duration: 0.5,
+                type: "spring",
+                stiffness: 200,
+                damping: 15,
+              }}
+              className="mb-4 rounded-full bg-linear-to-br from-green-100 to-green-50 p-3.5 shadow-lg dark:from-green-900/30 dark:to-green-800/20"
+            >
+              <CheckCircleIcon className="h-7 w-7 text-green-600 dark:text-green-400" />
+            </motion.div>
+            <motion.div
+              initial={{ opacity: 0, y: 10 }}
+              animate={{ opacity: 1, y: 0 }}
+              transition={{ delay: 0.4, duration: 0.3 }}
+              className="text-center"
+            >
+              <h3 className="text-[15px] font-semibold text-neutral-900 dark:text-white">
+                {t("mcp.addModal.success.title")}
+              </h3>
+              <p className="mt-1 text-xs text-neutral-500 dark:text-neutral-400">
+                {t("mcp.addModal.success.message")}
+              </p>
+            </motion.div>
+          </motion.div>
+        ) : (
+          <motion.div
+            key="form"
+            initial={{ opacity: 0 }}
+            animate={{ opacity: 1 }}
+            exit={{ opacity: 0 }}
+            className="space-y-4"
+          >
+            {/* Name */}
+            <Field>
+              <Label className="text-[13px] font-medium text-neutral-700 dark:text-neutral-300">
+                {t("mcp.addModal.fields.name.label")}{" "}
+                <span className="text-indigo-500">*</span>
+              </Label>
+              <Input
+                name="name"
+                value={newServer.name}
+                onChange={handleInputChange}
+                placeholder={t("mcp.addModal.fields.name.placeholder")}
+                required
+                className="mt-1"
+              />
+            </Field>
+
+            {/* Description */}
+            <Field>
+              <Label className="text-[13px] font-medium text-neutral-700 dark:text-neutral-300">
+                {t("mcp.addModal.fields.description.label")}
+              </Label>
+              <Input
+                name="description"
+                value={newServer.description}
+                onChange={handleInputChange}
+                placeholder={t("mcp.addModal.fields.description.placeholder")}
+                className="mt-1"
+              />
+            </Field>
+
+            {/* URL */}
+            <Field>
+              <Label className="text-[13px] font-medium text-neutral-700 dark:text-neutral-300">
+                {t("mcp.addModal.fields.url.label")}{" "}
+                <span className="text-indigo-500">*</span>
+              </Label>
+              <Input
+                name="url"
+                value={newServer.url}
+                onChange={handleInputChange}
+                placeholder={t("mcp.addModal.fields.url.placeholder")}
+                required
+                className="mt-1"
+              />
+            </Field>
+
+            {/* Auth Toggle */}
+            <Field>
+              <div className="flex items-center justify-between gap-3">
+                <Label className="text-[13px] font-medium text-neutral-700 dark:text-neutral-300">
+                  {t("mcp.addModal.fields.auth.label")}
+                </Label>
+                <button
+                  type="button"
+                  onClick={() =>
+                    setAuthEnabled((v) => {
+                      const next = !v;
+                      if (!next) {
+                        setNewServer((prev) => ({ ...prev, token: "" }));
+                      } else {
+                        setAuthMode(user && token ? "current" : "custom");
+                      }
+                      return next;
+                    })
+                  }
+                  className={`inline-flex items-center gap-2 rounded-sm px-3 py-1.5 text-[13px] font-medium transition-colors ${
+                    authEnabled
+                      ? "bg-amber-100 text-amber-800 hover:bg-amber-200 dark:bg-amber-900/40 dark:text-amber-200 dark:hover:bg-amber-900/50"
+                      : "bg-neutral-100 text-neutral-600 hover:bg-neutral-200 dark:bg-neutral-800 dark:text-neutral-400 dark:hover:bg-neutral-700"
+                  }`}
+                >
+                  <span
+                    className={`h-2 w-2 rounded-full ${
+                      authEnabled
+                        ? "bg-amber-500"
+                        : "bg-neutral-400 dark:bg-neutral-500"
+                    }`}
+                  />
+                  {authEnabled
+                    ? t("mcp.addModal.fields.auth.enabled")
+                    : t("mcp.addModal.fields.auth.enable")}
+                </button>
+              </div>
+
+              <AnimatePresence initial={false}>
+                {authEnabled && (
+                  <motion.div
+                    initial={{ opacity: 0, height: 0, y: -10 }}
+                    animate={{ opacity: 1, height: "auto", y: 0 }}
+                    exit={{ opacity: 0, height: 0, y: -10 }}
+                    transition={{ duration: 0.25 }}
+                    className="mt-3 space-y-3 overflow-hidden"
+                  >
+                    <RadioGroup
+                      value={authMode}
+                      onChange={setAuthMode}
+                      className="space-y-2"
+                    >
+                      {user && token && (
+                        <Radio value="current">
+                          {({ checked }) => (
+                            <div
+                              className={`cursor-pointer rounded-sm p-3 transition-all ${
+                                checked
+                                  ? "bg-indigo-50/80 ring-1 ring-indigo-500/30 dark:bg-indigo-900/20"
+                                  : "bg-neutral-100/60 hover:bg-neutral-100 dark:bg-white/[0.04] dark:hover:bg-white/[0.06]"
+                              }`}
+                            >
+                              <div className="flex items-center space-x-3">
+                                <div
+                                  className={`flex h-4 w-4 items-center justify-center rounded-full border-2 ${
+                                    checked
+                                      ? "border-indigo-500 bg-indigo-500"
+                                      : "border-neutral-300 dark:border-neutral-600"
+                                  }`}
+                                >
+                                  {checked && (
+                                    <div className="h-1.5 w-1.5 rounded-full bg-white" />
+                                  )}
+                                </div>
+                                <div className="flex items-center space-x-2">
+                                  <UserIcon className="h-4 w-4 text-indigo-600 dark:text-indigo-400" />
+                                  <span className="text-[13px] font-medium text-neutral-900 dark:text-white">
+                                    {t(
+                                      "mcp.addModal.fields.auth.current.label",
+                                    )}
+                                  </span>
+                                </div>
+                              </div>
+                              <p className="ml-7 mt-1 text-xs text-neutral-500 dark:text-neutral-400">
+                                {t("mcp.addModal.fields.auth.current.desc")}
+                              </p>
+                            </div>
+                          )}
+                        </Radio>
+                      )}
+
+                      <Radio value="custom">
+                        {({ checked }) => (
+                          <div
+                            className={`cursor-pointer rounded-sm p-3 transition-all ${
+                              checked
+                                ? "bg-indigo-50/80 ring-1 ring-indigo-500/30 dark:bg-indigo-900/20"
+                                : "bg-neutral-100/60 hover:bg-neutral-100 dark:bg-white/[0.04] dark:hover:bg-white/[0.06]"
+                            }`}
+                          >
+                            <div className="flex items-center space-x-3">
+                              <div
+                                className={`flex h-4 w-4 items-center justify-center rounded-full border-2 ${
+                                  checked
+                                    ? "border-indigo-500 bg-indigo-500"
+                                    : "border-neutral-300 dark:border-neutral-600"
+                                }`}
+                              >
+                                {checked && (
+                                  <div className="h-1.5 w-1.5 rounded-full bg-white" />
+                                )}
+                              </div>
+                              <div className="flex items-center space-x-2">
+                                <KeyIcon className="h-4 w-4 text-indigo-600 dark:text-indigo-400" />
+                                <span className="text-[13px] font-medium text-neutral-900 dark:text-white">
+                                  {t("mcp.addModal.fields.auth.custom.label")}
+                                </span>
+                              </div>
+                            </div>
+                            <p className="ml-7 mt-1 text-xs text-neutral-500 dark:text-neutral-400">
+                              {t("mcp.addModal.fields.auth.custom.desc")}
+                            </p>
+                          </div>
+                        )}
+                      </Radio>
+                    </RadioGroup>
+
+                    {authMode === "custom" && (
+                      <motion.div
+                        initial={{ opacity: 0, y: -10 }}
+                        animate={{ opacity: 1, y: 0 }}
+                        transition={{ delay: 0.1 }}
+                      >
+                        <Label className="text-[13px] font-medium text-neutral-700 dark:text-neutral-300">
+                          {t("mcp.addModal.fields.auth.token.label")}
+                        </Label>
+                        <Input
+                          name="token"
+                          type="password"
+                          value={newServer.token}
+                          onChange={handleInputChange}
+                          placeholder={t(
+                            "mcp.addModal.fields.auth.token.placeholder",
+                          )}
+                          className="mt-1"
+                        />
+                      </motion.div>
+                    )}
+                  </motion.div>
+                )}
+              </AnimatePresence>
+            </Field>
+
+            {/* Error */}
+            <AnimatePresence>
+              {error && (
+                <motion.div
+                  initial={{ opacity: 0, y: -10 }}
+                  animate={{ opacity: 1, y: 0 }}
+                  exit={{ opacity: 0, y: -10 }}
+                  className="rounded-sm bg-red-50/80 p-3 dark:bg-red-950/30"
+                >
+                  <p className="text-[13px] text-red-600 dark:text-red-400">
+                    {error}
+                  </p>
+                </motion.div>
+              )}
+            </AnimatePresence>
+
+            {/* Submit */}
+            <Button
+              onClick={handleAddServer}
+              disabled={
+                isCreating || !newServer.name.trim() || !newServer.url.trim()
+              }
+              className="w-full bg-primary text-primary-foreground text-[13px] font-semibold px-4 py-2 rounded-lg disabled:cursor-not-allowed disabled:opacity-50"
+            >
+              {isCreating ? (
+                <span className="inline-flex items-center gap-2">
+                  <motion.div
+                    animate={{ rotate: 360 }}
+                    transition={{
+                      duration: 1,
+                      repeat: Infinity,
+                      ease: "linear",
+                    }}
+                  >
+                    <ServerStackIcon className="h-4 w-4" />
+                  </motion.div>
+                  {t("mcp.addModal.actions.adding")}
+                </span>
+              ) : (
+                <span className="inline-flex items-center gap-2">
+                  <PlusIcon className="h-4 w-4" />
+                  {t("mcp.addModal.actions.add")}
+                </span>
+              )}
+            </Button>
+          </motion.div>
+        )}
+      </AnimatePresence>
+    </div>
+  );
+}
+
+/* ------------------------------------------------------------------ */
+/*  McpSettings (main export)                                         */
+/* ------------------------------------------------------------------ */
+
 export function McpSettings() {
   const {
     mcpServers,
@@ -262,15 +625,11 @@ export function McpSettings() {
     removeMcpServer,
     updateMcpServerInList,
     backendUrl,
-    openAddMcpServerModal,
     openEditMcpServerModal,
     getLoading,
     toolTestModal,
     openToolTestModal,
     closeToolTestModal,
-    builtinMcpServers,
-    fetchBuiltinMcpServers,
-    quickAddBuiltinServer,
   } = useXyzen(
     useShallow((s) => ({
       mcpServers: s.mcpServers,
@@ -279,28 +638,17 @@ export function McpSettings() {
       removeMcpServer: s.removeMcpServer,
       updateMcpServerInList: s.updateMcpServerInList,
       backendUrl: s.backendUrl,
-      openAddMcpServerModal: s.openAddMcpServerModal,
       openEditMcpServerModal: s.openEditMcpServerModal,
       getLoading: s.getLoading,
       toolTestModal: s.toolTestModal,
       openToolTestModal: s.openToolTestModal,
       closeToolTestModal: s.closeToolTestModal,
-      builtinMcpServers: s.builtinMcpServers,
-      fetchBuiltinMcpServers: s.fetchBuiltinMcpServers,
-      quickAddBuiltinServer: s.quickAddBuiltinServer,
     })),
   );
 
   const { t } = useTranslation();
   const mcpServersLoading = getLoading("mcpServers");
-  const [selectedMarketServer, setSelectedMarketServer] =
-    useState<ExplorableMcpServer | null>(null);
   const [showAddedServersMobile, setShowAddedServersMobile] = useState(false);
-
-  const isMarketDetailOpen = useMemo(
-    () => !!selectedMarketServer,
-    [selectedMarketServer],
-  );
 
   const handleEditServer = (server: McpServer) => {
     openEditMcpServerModal(server);
@@ -314,33 +662,9 @@ export function McpSettings() {
     openToolTestModal(server, toolName, toolDescription);
   };
 
-  const handleSelectMarketServer = (server: ExplorableMcpServer) => {
-    setSelectedMarketServer(server);
-  };
-
-  const handleCloseMarketDetail = () => {
-    setSelectedMarketServer(null);
-  };
-
-  const handleQuickAddFromMarket = async () => {
-    if (!selectedMarketServer) return;
-    if (isBuiltinMcp(selectedMarketServer)) {
-      try {
-        await quickAddBuiltinServer(
-          selectedMarketServer as ExplorableMcpServer<BuiltinMcpData>,
-        );
-        await fetchMcpServers();
-        handleCloseMarketDetail();
-      } catch (error) {
-        console.error("Failed to add builtin server:", error);
-      }
-    }
-  };
-
   useEffect(() => {
     if (backendUrl) {
       fetchMcpServers();
-      fetchBuiltinMcpServers();
 
       websocketService.connect("/xyzen/ws/v1/mcp", (serverUpdate) => {
         updateMcpServerInList(serverUpdate);
@@ -350,12 +674,7 @@ export function McpSettings() {
         websocketService.disconnect();
       };
     }
-  }, [
-    backendUrl,
-    fetchMcpServers,
-    fetchBuiltinMcpServers,
-    updateMcpServerInList,
-  ]);
+  }, [backendUrl, fetchMcpServers, updateMcpServerInList]);
 
   const handleRefresh = () => {
     refreshMcpServers();
@@ -364,20 +683,19 @@ export function McpSettings() {
   return (
     <div className="flex h-full flex-col">
       {/* Header Section */}
-      <div className="shrink-0 border-b border-neutral-200 bg-neutral-50/50 px-4 py-3 dark:border-neutral-800 dark:bg-neutral-900/50">
+      <div className="shrink-0 border-b border-neutral-200/60 bg-neutral-50/50 px-4 py-3 dark:border-neutral-800/60 dark:bg-neutral-900/50">
         <div className="flex items-center justify-between">
           <h2 className="text-lg font-semibold text-neutral-900 dark:text-white">
             {t("mcp.title")}
           </h2>
 
           <div className="flex items-center space-x-2">
-            {/* Mobile Toggle Button (Only if needed, but in settings it might be better to just stack) */}
             <Button
               onClick={() => setShowAddedServersMobile(!showAddedServersMobile)}
               className="lg:hidden bg-neutral-100 text-neutral-900 hover:bg-neutral-200 dark:bg-neutral-800 dark:text-neutral-100 dark:hover:bg-neutral-700 text-sm font-medium px-2.5 h-8 flex items-center rounded-sm"
             >
               {showAddedServersMobile ? (
-                <GlobeAltIcon className="h-4 w-4" />
+                <PlusIcon className="h-4 w-4" />
               ) : (
                 <ListBulletIcon className="h-4 w-4" />
               )}
@@ -393,44 +711,33 @@ export function McpSettings() {
               />
               <span className="whitespace-nowrap">{t("mcp.refresh")}</span>
             </LiquidButton>
-
-            <Button
-              onClick={openAddMcpServerModal}
-              className="bg-primary text-primary-foreground text-xs font-medium px-3 h-8 flex items-center rounded-sm"
-            >
-              <PlusIcon className="h-3.5 w-3.5 mr-1.5 shrink-0" />
-              <span className="whitespace-nowrap">{t("mcp.addCustom")}</span>
-            </Button>
           </div>
         </div>
       </div>
 
       {/* Content Section - Split View */}
       <div className="flex-1 flex flex-col lg:flex-row overflow-hidden">
-        {/* LEFT: MCP Market (Uses flex-1 to fill remaining space) */}
+        {/* LEFT: Add Server Form */}
         <div
-          className={`flex-1 min-w-0 flex flex-col border-r border-neutral-200 dark:border-neutral-800 ${showAddedServersMobile ? "hidden lg:flex" : "flex"}`}
+          className={`lg:w-[320px] shrink-0 flex flex-col border-r border-neutral-200/60 dark:border-neutral-800/60 ${showAddedServersMobile ? "hidden lg:flex" : "flex"}`}
         >
-          <div className="shrink-0 p-3 bg-neutral-50/30 border-b border-neutral-100 dark:bg-neutral-900/30 dark:border-neutral-800 flex items-center space-x-2">
-            <GlobeAltIcon className="h-4 w-4 text-purple-500" />
+          <div className="shrink-0 p-3 bg-neutral-50/30 border-b border-neutral-100 dark:bg-neutral-900/30 dark:border-neutral-800/60 flex items-center space-x-2">
+            <PlusIcon className="h-4 w-4 text-indigo-500" />
             <h3 className="text-sm font-medium text-neutral-900 dark:text-white">
-              {t("mcp.market.title")}
+              {t("mcp.addCustom")}
             </h3>
           </div>
 
-          <div className="flex-1 overflow-y-auto custom-scrollbar p-0">
-            <UnifiedMcpMarketList
-              builtinServers={builtinMcpServers}
-              onSelectServer={handleSelectMarketServer}
-            />
+          <div className="flex-1 overflow-y-auto custom-scrollbar">
+            <AddServerForm />
           </div>
         </div>
 
-        {/* RIGHT: Added Servers (Fixed width on large screens) */}
+        {/* RIGHT: Connected Servers */}
         <div
-          className={`flex-1 lg:flex-none lg:w-[320px] flex flex-col bg-neutral-50/30 dark:bg-neutral-900/30 ${showAddedServersMobile ? "flex" : "hidden lg:flex"}`}
+          className={`flex-1 min-w-0 flex flex-col bg-neutral-50/30 dark:bg-neutral-900/30 ${showAddedServersMobile ? "flex" : "hidden lg:flex"}`}
         >
-          <div className="shrink-0 p-3 border-b border-neutral-200 dark:border-neutral-800 flex items-center justify-between">
+          <div className="shrink-0 p-3 border-b border-neutral-200/60 dark:border-neutral-800/60 flex items-center justify-between">
             <div className="flex items-center space-x-2">
               <ServerStackIcon className="h-4 w-4 text-indigo-500" />
               <h3 className="text-sm font-medium text-neutral-900 dark:text-white">
@@ -503,73 +810,6 @@ export function McpSettings() {
         </div>
       </div>
 
-      {/* Market Detail Modal */}
-      <Modal
-        isOpen={isMarketDetailOpen}
-        onClose={handleCloseMarketDetail}
-        title={selectedMarketServer?.name || ""}
-        maxWidth="max-w-6xl"
-        maxHeight="max-h-[90vh]"
-      >
-        <div className="overflow-y-auto max-h-[calc(90vh-120px)] custom-scrollbar">
-          {selectedMarketServer ? (
-            isBohriumMcp(selectedMarketServer) ? (
-              <McpServerDetail
-                appKey={(selectedMarketServer.data as BohriumMcpData).appKey}
-                onBack={handleCloseMarketDetail}
-              />
-            ) : isSmitheryMcp(selectedMarketServer) ? (
-              <SmitheryServerDetail
-                id={
-                  (selectedMarketServer.data as SmitheryMcpData).qualifiedName
-                }
-                onBack={handleCloseMarketDetail}
-              />
-            ) : (
-              <div className="space-y-4">
-                {/* Cover / Banner */}
-                <div className="overflow-hidden rounded-sm">
-                  <img
-                    src={
-                      selectedMarketServer.cover ||
-                      "https://storage.sciol.ac.cn/library/origin.png"
-                    }
-                    alt={selectedMarketServer.name}
-                    className="h-48 w-full object-cover"
-                  />
-                </div>
-                {/* Info */}
-                <div>
-                  <h3 className="text-xl font-semibold text-neutral-900 dark:text-white">
-                    {selectedMarketServer.name}
-                  </h3>
-                  <p className="mt-2 text-sm text-neutral-600 dark:text-neutral-400">
-                    {selectedMarketServer.description}
-                  </p>
-                </div>
-                {/* Quick Add */}
-                <div className="flex justify-end gap-2">
-                  <button
-                    className="rounded-lg bg-neutral-100 px-4 py-2 text-sm font-medium text-neutral-700 hover:bg-neutral-200 dark:bg-neutral-800 dark:text-neutral-300 dark:hover:bg-neutral-700"
-                    onClick={handleCloseMarketDetail}
-                  >
-                    {t("mcp.market.close")}
-                  </button>
-                  {isBuiltinMcp(selectedMarketServer) && (
-                    <button
-                      className="inline-flex items-center gap-2 rounded-lg bg-indigo-600 px-4 py-2 text-sm font-medium text-white hover:bg-indigo-700"
-                      onClick={handleQuickAddFromMarket}
-                    >
-                      {t("mcp.market.quickAdd")}
-                    </button>
-                  )}
-                </div>
-              </div>
-            )
-          ) : null}
-        </div>
-      </Modal>
-
       {/* Tool Test Modal */}
       {toolTestModal.isOpen &&
         toolTestModal.server &&
@@ -585,7 +825,6 @@ export function McpSettings() {
 
       {/* Edit MCP Server Modal */}
       <EditMcpServerModal />
-      <AddMcpServerModal />
     </div>
   );
 }

@@ -24,6 +24,12 @@ import remarkMath from "remark-math";
 import { createHighlighter, type Highlighter } from "shiki";
 
 import { useXyzen } from "@/store";
+import {
+  HoverCard,
+  HoverCardTrigger,
+  HoverCardPortal,
+  HoverCardContent,
+} from "@/components/animate-ui/primitives/radix/hover-card";
 
 // Lazy load MermaidRenderer to avoid SSR issues with mermaid library
 const MermaidRenderer = React.lazy(() =>
@@ -817,6 +823,140 @@ const MarkdownVideo = React.memo(
   (prevProps, nextProps) => prevProps.src === nextProps.src,
 );
 
+// ---------------------------------------------------------------------------
+// MarkdownLink — styled link with lazy hover preview for external URLs
+// ---------------------------------------------------------------------------
+// Performance notes:
+//   • HoverCard per link ≈ 1 useState + 2 useMotionValue + 1 Context.Provider (very cheap)
+//   • Screenshot URL is built & fetched ONLY when the card opens (openDelay=500ms)
+//   • No <link rel="preload"> — avoids the eager fetch in PreviewLinkCard primitive
+
+const isExternalUrl = (href?: string): href is string =>
+  !!href && /^https?:\/\//.test(href);
+
+const getLinkDomain = (href: string): string => {
+  try {
+    return new URL(href).hostname.replace(/^www\./, "");
+  } catch {
+    return href;
+  }
+};
+
+const buildScreenshotUrl = (href: string): string => {
+  const params = new URLSearchParams({
+    url: href,
+    screenshot: "true",
+    meta: "false",
+    embed: "screenshot.url",
+    colorScheme: "light",
+    "viewport.isMobile": "true",
+    "viewport.deviceScaleFactor": "1",
+    "viewport.width": "720",
+    "viewport.height": "405",
+  });
+  return `https://api.microlink.io/?${params}`;
+};
+
+/** Rendered only when the HoverCard opens — never preloads screenshots. */
+const LinkPreview = React.memo(function LinkPreview({
+  href,
+}: {
+  href: string;
+}) {
+  const src = React.useMemo(() => buildScreenshotUrl(href), [href]);
+  const [status, setStatus] = useState<"loading" | "loaded" | "error">(
+    "loading",
+  );
+
+  return (
+    <a
+      href={href}
+      target="_blank"
+      rel="noopener noreferrer"
+      className="block w-[240px] bg-white dark:bg-neutral-900 no-underline"
+    >
+      <div className="relative w-[240px] h-[135px] bg-neutral-100 dark:bg-neutral-800 overflow-hidden">
+        {status === "loading" && (
+          <div className="absolute inset-0 animate-pulse bg-neutral-200/50 dark:bg-neutral-700/30" />
+        )}
+        {status !== "error" && (
+          <img
+            src={src}
+            alt=""
+            width={240}
+            height={135}
+            className={clsx(
+              "block w-full h-full object-cover transition-opacity duration-200",
+              status === "loaded" ? "opacity-100" : "opacity-0",
+            )}
+            onLoad={() => setStatus("loaded")}
+            onError={() => setStatus("error")}
+          />
+        )}
+        {status === "error" && (
+          <div className="flex items-center justify-center h-full text-xs text-neutral-400 dark:text-neutral-500">
+            Preview unavailable
+          </div>
+        )}
+      </div>
+      <div className="px-2.5 py-2 border-t border-neutral-100 dark:border-neutral-800">
+        <span className="block truncate text-[11px] text-neutral-500 dark:text-neutral-400">
+          {getLinkDomain(href)}
+        </span>
+      </div>
+    </a>
+  );
+});
+
+const LINK_CLASSES =
+  "underline decoration-neutral-400/50 dark:decoration-neutral-500/40 underline-offset-[3px] hover:decoration-current transition-[text-decoration-color] duration-150";
+
+const MarkdownLinkComponent: React.FC<
+  React.AnchorHTMLAttributes<HTMLAnchorElement>
+> = ({ href, children, title }) => {
+  if (!isExternalUrl(href)) {
+    return (
+      <a href={href} title={title} className={LINK_CLASSES}>
+        {children}
+      </a>
+    );
+  }
+
+  return (
+    <HoverCard openDelay={500} closeDelay={200}>
+      <HoverCardTrigger asChild>
+        <a
+          href={href}
+          title={title}
+          target="_blank"
+          rel="noopener noreferrer"
+          className={LINK_CLASSES}
+        >
+          {children}
+        </a>
+      </HoverCardTrigger>
+      <HoverCardPortal>
+        <HoverCardContent
+          side="top"
+          sideOffset={8}
+          transition={{ duration: 0.15 }}
+          initial={{ opacity: 0, scale: 0.97, y: 4 }}
+          animate={{ opacity: 1, scale: 1, y: 0 }}
+          exit={{ opacity: 0, scale: 0.97, y: 4 }}
+          className="z-50 rounded-lg border border-neutral-200/60 dark:border-neutral-800/60 shadow-lg overflow-hidden outline-hidden bg-white dark:bg-neutral-900"
+        >
+          <LinkPreview href={href} />
+        </HoverCardContent>
+      </HoverCardPortal>
+    </HoverCard>
+  );
+};
+
+const MarkdownLink = React.memo(
+  MarkdownLinkComponent,
+  (prev, next) => prev.href === next.href && prev.children === next.children,
+);
+
 // Stable plugin arrays — declared outside so references never change between renders
 const REMARK_PLUGINS = [
   remarkMath,
@@ -974,6 +1114,7 @@ const Markdown: React.FC<MarkdownProps> = React.memo(function Markdown(props) {
       },
       img: MarkdownImage,
       video: MarkdownVideo,
+      a: MarkdownLink,
     }),
     [isDark],
   );

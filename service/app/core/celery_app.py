@@ -52,6 +52,15 @@ def init_worker_process(**kwargs: object) -> None:
 
     register_builtin_tools()
 
+    # Initialize OpenTelemetry tracing for Celery workers
+    if configs.Telemetry.Enabled:
+        from opentelemetry.instrumentation.celery import CeleryInstrumentor
+
+        from app.core.telemetry import init_telemetry
+
+        init_telemetry(service_name_override="xyzen-celery")
+        CeleryInstrumentor().instrument()
+
     # Bootstrap Novu so the worker has the real API key
     import asyncio
 

@@ -7,7 +7,7 @@
  */
 
 import type { AgentExecutionState } from "@/types/agentEvents";
-import type { MessageError } from "@/store/types";
+import type { MessageError, ToolCall } from "@/store/types";
 import Markdown from "@/lib/Markdown";
 import { StopCircle } from "lucide-react";
 import { motion } from "framer-motion";
@@ -15,6 +15,7 @@ import { memo, useDeferredValue, useMemo } from "react";
 import { useTranslation } from "react-i18next";
 import AgentExecutionTimeline from "./AgentExecutionTimeline";
 import ErrorMessageCard from "./ErrorMessageCard";
+import InterleavedContent from "./InterleavedContent";
 import LoadingMessage from "./LoadingMessage";
 import ThinkingBubble from "./ThinkingBubble";
 
@@ -61,17 +62,28 @@ function MessageContent({
 
   const isExecuting = agentExecution?.status === "running";
 
+  // Simple agent: single phase, default renderer, no subagents
+  // → skip the timeline accordion, render interleaved content in normal flow
+  const isSimpleAgent =
+    hasTimeline &&
+    agentExecution!.phases.length === 1 &&
+    !agentExecution!.phases[0].componentKey &&
+    agentExecution!.subagents.length === 0;
+
+  // Show timeline only for multi-phase / custom-renderer agents
+  const showTimeline = hasTimeline && !isSimpleAgent;
+
   // Compute display mode from props (equivalent to getMessageDisplayMode)
   const showLoading = isLoading && !error;
-  const showTimelineOnly = hasTimeline && isExecuting; // timeline_streaming
-  const showContentBelowTimeline = hasTimeline && !isExecuting; // timeline_complete
+  const showTimelineOnly = showTimeline && isExecuting; // timeline_streaming
+  const showContentBelowTimeline = showTimeline && !isExecuting; // timeline_complete
 
   return (
     <div
       className={`prose prose-neutral dark:prose-invert prose-sm max-w-none min-w-0 overflow-x-auto select-text break-words ${
         isUser
           ? "text-sm text-neutral-800 dark:text-neutral-200"
-          : "text-sm text-neutral-700 dark:text-neutral-300"
+          : "text-sm text-neutral-800 dark:text-neutral-300"
       }`}
     >
       {/* Thinking content — shown before main response for assistant messages */}
@@ -79,8 +91,8 @@ function MessageContent({
         <ThinkingBubble content={thinkingContent} isThinking={isThinking} />
       )}
 
-      {/* Agent execution timeline */}
-      {!isUser && hasTimeline && (
+      {/* Agent execution timeline — multi-phase / custom-renderer only */}
+      {!isUser && showTimeline && (
         <AgentExecutionTimeline
           execution={agentExecution}
           isExecuting={isExecuting}
@@ -105,13 +117,57 @@ function MessageContent({
             return null;
           }
           if (showContentBelowTimeline) {
-            return deferredContent ? (
+            // Extract final phase's tool calls for interleaved rendering
+            const finalPhase =
+              agentExecution && agentExecution.phases.length > 0
+                ? agentExecution.phases[agentExecution.phases.length - 1]
+                : null;
+            const finalToolCalls: ToolCall[] =
+              finalPhase?.status === "completed"
+                ? (finalPhase.toolCalls ?? [])
+                : [];
+
+            if (!deferredContent && finalToolCalls.length === 0) return null;
+
+            return (
               <div className="mt-4">
-                <Markdown content={deferredContent} />
+                {finalToolCalls.length > 0 ? (
+                  <InterleavedContent
+                    content={deferredContent}
+                    toolCalls={finalToolCalls}
+                  />
+                ) : (
+                  <Markdown content={deferredContent} />
+                )}
               </div>
-            ) : null;
+            );
           }
-          // Simple mode
+          // Simple agent: render interleaved content directly in document flow
+          if (isSimpleAgent) {
+            const phase = agentExecution!.phases[0];
+            const phaseContent = phase.streamedContent || deferredContent;
+            const toolCalls = phase.toolCalls ?? [];
+
+            // Brief gap between agent_start and streaming_start
+            if (isExecuting && !phaseContent && toolCalls.length === 0) {
+              return (
+                <span className="inline-flex items-center gap-1">
+                  <LoadingMessage size="small" />
+                </span>
+              );
+            }
+
+            if (toolCalls.length > 0) {
+              return (
+                <InterleavedContent
+                  content={phaseContent}
+                  toolCalls={toolCalls}
+                />
+              );
+            }
+            return phaseContent ? <Markdown content={phaseContent} /> : null;
+          }
+          // Simple mode (no agent execution)
           return markdownContent;
         })()}
 
@@ -124,8 +180,8 @@ function MessageContent({
         />
       )}
 
-      {/* Stopped indicator for simple messages without agentExecution */}
-      {!isUser && isCancelled && !agentExecution && (
+      {/* Stopped indicator — non-agent messages and simple agents */}
+      {!isUser && isCancelled && !showTimeline && (
         <div className="mt-2 flex items-center gap-1.5 text-[13px] text-neutral-400 dark:text-neutral-500">
           <StopCircle className="h-3.5 w-3.5" />
           <span>{t("app.chat.agent.stopped")}</span>

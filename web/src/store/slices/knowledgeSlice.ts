@@ -91,7 +91,12 @@ export const createKnowledgeSlice: StateCreator<
     }
 
     // Only fetch for tabs that use the tree view
-    if (knowledgeActiveTab !== "all" && knowledgeActiveTab !== "knowledge") {
+    if (
+      knowledgeActiveTab !== "all" &&
+      knowledgeActiveTab !== "knowledge" &&
+      knowledgeActiveTab !== "images" &&
+      knowledgeActiveTab !== "documents"
+    ) {
       return;
     }
 

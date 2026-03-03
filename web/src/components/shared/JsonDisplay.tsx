@@ -42,6 +42,11 @@ const VARIANT_BADGE: Record<
   },
 };
 
+/** Skip Shiki for strings longer than this (tokenisation + DOM are too expensive). */
+const SHIKI_MAX_LENGTH = 10_000;
+/** Truncate display beyond this length; full content still available via Copy. */
+const DISPLAY_MAX_LENGTH = 50_000;
+
 export const JsonDisplay: React.FC<JsonDisplayProps> = ({
   data,
   className,
@@ -51,6 +56,7 @@ export const JsonDisplay: React.FC<JsonDisplayProps> = ({
   maxHeight = "max-h-80",
 }) => {
   const [highlightedHtml, setHighlightedHtml] = useState<string>("");
+  const [showFull, setShowFull] = useState(false);
   const { theme } = useTheme();
   const isDark = React.useMemo(() => {
     const prefersDark =
@@ -69,7 +75,21 @@ export const JsonDisplay: React.FC<JsonDisplayProps> = ({
     }
   }, [data]);
 
+  const isTruncatable = jsonString.length > DISPLAY_MAX_LENGTH;
+  const displayString =
+    isTruncatable && !showFull
+      ? jsonString.slice(0, DISPLAY_MAX_LENGTH)
+      : jsonString;
+
+  // Skip Shiki for large content to avoid freezing the browser
+  const skipHighlight = jsonString.length > SHIKI_MAX_LENGTH;
+
   React.useEffect(() => {
+    if (skipHighlight) {
+      setHighlightedHtml("");
+      return;
+    }
+
     let mounted = true;
 
     const initHighlighter = async () => {
@@ -111,7 +131,7 @@ export const JsonDisplay: React.FC<JsonDisplayProps> = ({
     return () => {
       mounted = false;
     };
-  }, [jsonString, isDark]);
+  }, [jsonString, isDark, skipHighlight]);
 
   const badge = VARIANT_BADGE[variant] ?? VARIANT_BADGE.default;
 
@@ -181,14 +201,14 @@ export const JsonDisplay: React.FC<JsonDisplayProps> = ({
         )}
 
         <div className={clsx(isDark && "dark")}>
-          {!highlightedHtml ? (
+          {!highlightedHtml || skipHighlight ? (
             <pre
               className={clsx(
                 "font-mono text-zinc-600 dark:text-zinc-300 whitespace-pre-wrap break-all",
                 compact ? "text-xs" : "text-sm",
               )}
             >
-              {jsonString}
+              {displayString}
             </pre>
           ) : (
             <div
@@ -200,6 +220,16 @@ export const JsonDisplay: React.FC<JsonDisplayProps> = ({
               )}
               dangerouslySetInnerHTML={{ __html: highlightedHtml }}
             />
+          )}
+          {isTruncatable && !showFull && (
+            <button
+              type="button"
+              onClick={() => setShowFull(true)}
+              className="mt-2 text-xs text-blue-500 hover:text-blue-400 font-mono"
+            >
+              ... {(jsonString.length / 1000).toFixed(0)}K chars total — show
+              all
+            </button>
           )}
         </div>
       </div>

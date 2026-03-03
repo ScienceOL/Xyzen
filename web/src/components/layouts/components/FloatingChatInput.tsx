@@ -289,6 +289,12 @@ export const FloatingChatInput: React.FC<FloatingChatInputProps> = ({
                 allMcpServers={toolbar.mcpServers}
                 onOpenSettings={() => toolbar.openSettingsModal("mcp")}
                 onAgentRefresh={toolbar.fetchAgents}
+                sessionKnowledgeSetId={toolbar.currentChannelKnowledgeSetId}
+                onUpdateSessionKnowledge={toolbar.handleKnowledgeSetChange}
+                sessionSandboxBackend={toolbar.currentChannelSandboxBackend}
+                onUpdateSessionSandboxBackend={
+                  toolbar.handleSandboxBackendChange
+                }
               />
             )}
 
@@ -314,16 +320,8 @@ export const FloatingChatInput: React.FC<FloatingChatInputProps> = ({
                   />
                 )}
 
-                {/* Desktop: expanded items */}
+                {/* Desktop: Knowledge, Sandbox, Tools, MCP, Skills */}
                 <div className="hidden md:flex items-center space-x-1">
-                  {toolbar.activeChatChannel && toolbar.currentAgent && (
-                    <ToolSelector
-                      agent={toolbar.currentAgent}
-                      onUpdateAgent={toolbar.updateAgent}
-                      buttonClassName={toolbarButtonClass}
-                    />
-                  )}
-
                   {toolbar.activeChatChannel && toolbar.currentAgent && (
                     <KnowledgeButton
                       agent={toolbar.currentAgent}
@@ -348,6 +346,14 @@ export const FloatingChatInput: React.FC<FloatingChatInputProps> = ({
                       onUpdateSessionSandboxBackend={
                         toolbar.handleSandboxBackendChange
                       }
+                      buttonClassName={toolbarButtonClass}
+                    />
+                  )}
+
+                  {toolbar.activeChatChannel && toolbar.currentAgent && (
+                    <ToolSelector
+                      agent={toolbar.currentAgent}
+                      onUpdateAgent={toolbar.updateAgent}
                       buttonClassName={toolbarButtonClass}
                     />
                   )}

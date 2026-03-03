@@ -2,6 +2,8 @@
   "titles": {
     "recents": "最近",
     "allFiles": "所有文件",
+    "images": "图片",
+    "documents": "文档",
     "myKnowledge": "我的知识库",
     "knowledgeBase": "知识库",
     "trash": "回收站"

@@ -13,6 +13,7 @@ from .agent_marketplace import (
 from .agent_snapshot import AgentSnapshot, AgentSnapshotCreate, AgentSnapshotRead
 from .chat_share import ChatShare, ChatShareCreate, ChatSharePublicRead, ChatShareRead
 from .checkin import CheckIn, CheckInCreate, CheckInRead
+from .gift import GiftCampaign, GiftCampaignRead, GiftClaim, GiftClaimCreate, GiftClaimRead
 from .citation import Citation, CitationCreate, CitationRead
 from .consume import ConsumeRecord
 from .deployment import Deployment, DeploymentCreate, DeploymentRead
@@ -97,6 +98,11 @@ __all__ = [
     "CheckIn",
     "CheckInCreate",
     "CheckInRead",
+    "GiftCampaign",
+    "GiftCampaignRead",
+    "GiftClaim",
+    "GiftClaimCreate",
+    "GiftClaimRead",
     "ConsumeRecord",
     "Deployment",
     "DeploymentCreate",
