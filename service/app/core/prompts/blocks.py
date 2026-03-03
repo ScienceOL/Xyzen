@@ -289,13 +289,28 @@ class CoreMemoryPromptBlock(PromptBlock):
 
     Accepts pre-fetched XML text from CoreMemoryBlock.to_prompt_text()
     since build() is synchronous but fetching requires async store access.
+
+    When core memory is empty, injects a cold-start hint instead, encouraging
+    the agent to gently gather user information from natural conversation.
     """
 
-    def __init__(self, core_memory_text: str):
+    def __init__(self, core_memory_text: str, is_empty: bool = False):
         self._text = core_memory_text
+        self._is_empty = is_empty
 
     def build(self) -> str:
+        if self._is_empty:
+            return _COLD_START_PROMPT
         return self._text if self._text else ""
+
+
+_COLD_START_PROMPT = """\
+<CORE_MEMORY_COLD_START>
+You don't have any stored information about this user yet. As you interact:
+- Pay attention to personal details they share (name, role, preferences, projects) and save them to memory using your memory tools.
+- If the user initiates a casual conversation (greetings, open-ended chat), you may gently ask about their background to personalize future interactions.
+- Do NOT interrogate or overwhelm the user. Focus on their request first. Gathering info is secondary and should feel natural.
+</CORE_MEMORY_COLD_START>"""
 
 
 class AutoRetrievedMemoriesBlock(PromptBlock):

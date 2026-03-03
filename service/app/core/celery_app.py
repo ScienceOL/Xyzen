@@ -1,4 +1,5 @@
 from celery import Celery
+from celery.schedules import crontab
 from celery.signals import worker_process_init, worker_ready
 
 from app.configs import configs
@@ -26,6 +27,14 @@ celery_app.conf.update(
         "sandbox-cleanup-every-10min": {
             "task": "sandbox_cleanup",
             "schedule": 600.0,  # every 10 minutes
+        },
+        "daily-memory-catchup": {
+            "task": "daily_memory_catchup",
+            "schedule": crontab(hour=3, minute=0),  # 3:00 AM daily
+        },
+        "weekly-core-memory-resynthesis": {
+            "task": "weekly_core_memory_resynthesis",
+            "schedule": crontab(hour=4, minute=0, day_of_week=1),  # Monday 4:00 AM
         },
     },
 )

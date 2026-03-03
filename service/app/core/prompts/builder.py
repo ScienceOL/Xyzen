@@ -87,6 +87,7 @@ class MemoryContext:
     """
 
     core_memory_text: str = ""
+    core_memory_empty: bool = True
     auto_retrieved: list[str] = field(default_factory=list)
 
 
@@ -188,7 +189,14 @@ def _build_prompt_layers(
     platform_content = _join_non_empty(platform_parts)
 
     # Memory layers (separated from platform for cacheability)
-    core_memory_content = CoreMemoryPromptBlock(_mem.core_memory_text).build().strip()
+    core_memory_content = (
+        CoreMemoryPromptBlock(
+            _mem.core_memory_text,
+            is_empty=_mem.core_memory_empty,
+        )
+        .build()
+        .strip()
+    )
     auto_memory_content = AutoRetrievedMemoriesBlock(_mem.auto_retrieved).build().strip()
 
     return [
@@ -358,11 +366,13 @@ async def fetch_memory_context(
 
     core_text = ""
     retrieved: list[str] = []
+    core_empty = True
 
     # Layer A: Core Memory
     if configs.Memory.CoreMemory.Enabled:
         try:
             block = await svc.get_core_memory(user_id)
+            core_empty = block.is_empty()
             core_text = block.to_prompt_text()
         except Exception:
             logger.debug("Core memory fetch failed for user %s", user_id, exc_info=True)
@@ -374,4 +384,4 @@ async def fetch_memory_context(
         except Exception:
             logger.debug("Auto-retrieval failed for user %s", user_id, exc_info=True)
 
-    return MemoryContext(core_memory_text=core_text, auto_retrieved=retrieved)
+    return MemoryContext(core_memory_text=core_text, core_memory_empty=core_empty, auto_retrieved=retrieved)
