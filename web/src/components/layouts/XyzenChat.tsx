@@ -196,7 +196,7 @@ function BaseChat({ config, historyEnabled = false }: BaseChatProps) {
         <div className="relative grow overflow-y-auto min-w-0">
           <div
             ref={messagesContainerRef}
-            className="h-full overflow-y-auto overflow-x-hidden rounded-sm bg-transparent dark:bg-neutral-950/90 custom-scrollbar"
+            className="h-full overflow-y-auto overflow-x-hidden rounded-sm bg-white/70 dark:bg-neutral-950/90 custom-scrollbar"
             onScroll={handleScroll}
           >
             {/* Sticky Frosted Header — scroll-driven animation (CSS) */}
@@ -367,7 +367,7 @@ function BaseChat({ config, historyEnabled = false }: BaseChatProps) {
         </div>
 
         {/* Input Area */}
-        <div className="shrink-0">
+        <div className="shrink-0 bg-white/70 dark:bg-neutral-950/90">
           <FloatingChatInput
             onSendMessage={handleSendMessage}
             disabled={!connected}

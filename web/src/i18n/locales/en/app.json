@@ -67,7 +67,12 @@
     "foldersLabel": "folders",
     "sourceBuiltin": "Source: builtin",
     "sourceUser": "Source: user",
-    "updatedAt": "Updated"
+    "updatedAt": "Updated",
+    "search": "Search skills...",
+    "noResults": "No skills found.",
+    "selectSkill": "Select a skill to browse its resources",
+    "sortByName": "Sort by name",
+    "sortByDate": "Sort by date"
   },
   "toolbar": {
     "newChat": "New Chat",

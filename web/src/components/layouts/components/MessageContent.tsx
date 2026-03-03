@@ -71,7 +71,7 @@ function MessageContent({
       className={`prose prose-neutral dark:prose-invert prose-sm max-w-none min-w-0 overflow-x-auto select-text break-words ${
         isUser
           ? "text-sm text-neutral-800 dark:text-neutral-200"
-          : "text-sm text-neutral-700 dark:text-neutral-300"
+          : "text-sm text-neutral-800 dark:text-neutral-300"
       }`}
     >
       {/* Thinking content — shown before main response for assistant messages */}

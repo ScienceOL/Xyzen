@@ -67,7 +67,12 @@
     "foldersLabel": "文件夹",
     "sourceBuiltin": "来源：内置",
     "sourceUser": "来源：用户",
-    "updatedAt": "更新时间"
+    "updatedAt": "更新时间",
+    "search": "搜索技能...",
+    "noResults": "未找到技能。",
+    "selectSkill": "选择一个技能以浏览其资源",
+    "sortByName": "按名称排序",
+    "sortByDate": "按日期排序"
   },
   "toolbar": {
     "newChat": "新对话",

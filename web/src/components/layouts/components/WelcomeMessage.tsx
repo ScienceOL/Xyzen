@@ -119,7 +119,7 @@ const WelcomeMessage: React.FC<WelcomeMessageProps> = ({
         animate={{ y: 0, opacity: 1 }}
         transition={{ delay: 0.2, duration: 0.5 }}
       >
-        <h3 className="flex items-center justify-center gap-2 text-lg font-medium text-neutral-900/40 dark:text-white/40">
+        <h3 className="flex items-center justify-center gap-2 text-lg font-medium text-neutral-900/70 dark:text-white/40">
           {title}
           <img
             src="https://storage.sciol.ac.cn/library/docs/1f44b.webp"
@@ -128,7 +128,7 @@ const WelcomeMessage: React.FC<WelcomeMessageProps> = ({
             loading="lazy"
           />
         </h3>
-        <p className="mt-2 max-w-md text-sm leading-relaxed text-neutral-600/30 dark:text-neutral-300/30">
+        <p className="mt-2 max-w-md text-sm leading-relaxed text-neutral-500/70 dark:text-neutral-300/30">
           {description}
         </p>
       </motion.div>

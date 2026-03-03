@@ -141,10 +141,10 @@ function DockIcon({
       onMouseLeave={() => setHovered(false)}
       className={cn(
         "relative flex flex-col items-center justify-center gap-0.5 rounded-sm transition-colors duration-200",
-        "bg-white/60 dark:bg-neutral-800/60",
-        "hover:bg-white/90 dark:hover:bg-neutral-700/80",
-        "border border-white/20 dark:border-neutral-700/30",
-        isActive && "bg-white/90 dark:bg-neutral-700/80 shadow-md",
+        "bg-white/80 dark:bg-neutral-800/60",
+        "hover:bg-white dark:hover:bg-neutral-700/80",
+        "border border-neutral-200/40 dark:border-neutral-700/30",
+        isActive && "bg-white dark:bg-neutral-700/80 shadow-md",
       )}
     >
       {/* Tooltip */}
@@ -210,7 +210,7 @@ function UserAvatar({ compact = false }: { compact?: boolean }) {
       <div
         className={cn(
           avatarSize,
-          "flex items-center justify-center rounded-full bg-white/60 dark:bg-neutral-800/60",
+          "flex items-center justify-center rounded-full bg-white/80 dark:bg-neutral-800/60",
         )}
       >
         <div className="h-4 w-4 animate-spin rounded-full border-2 border-neutral-300 border-t-indigo-600 dark:border-neutral-700 dark:border-t-indigo-500" />
@@ -229,7 +229,7 @@ function UserAvatar({ compact = false }: { compact?: boolean }) {
               className={cn(
                 avatarSize,
                 "relative flex items-center justify-center rounded-full overflow-hidden transition-shadow hover:shadow-lg",
-                "ring-2 ring-white/50 dark:ring-neutral-700/50",
+                "ring-2 ring-neutral-200/60 dark:ring-neutral-700/50",
               )}
             >
               {auth.user?.avatar ? (
@@ -363,7 +363,7 @@ function UserAvatar({ compact = false }: { compact?: boolean }) {
         onClick={() => setShowTokenModal(true)}
         className={cn(
           avatarSize,
-          "flex items-center justify-center rounded-full bg-white/60 dark:bg-neutral-800/60 border border-amber-200/50 dark:border-amber-700/50 transition-shadow hover:shadow-lg",
+          "flex items-center justify-center rounded-full bg-white/80 dark:bg-neutral-800/60 border border-amber-200/60 dark:border-amber-700/50 transition-shadow hover:shadow-lg",
         )}
         title={t("app.authStatus.unauthorized")}
       >
@@ -408,7 +408,7 @@ function VersionInfo() {
         rel="noopener noreferrer"
         className="flex items-center justify-center h-7 w-7 rounded-md transition-colors hover:bg-white/50 dark:hover:bg-neutral-700/50"
       >
-        <Github className="h-4 w-4 text-neutral-400 dark:text-neutral-500 hover:text-neutral-600 dark:hover:text-neutral-300 transition-colors" />
+        <Github className="h-4 w-4 text-neutral-500 dark:text-neutral-500 hover:text-neutral-700 dark:hover:text-neutral-300 transition-colors" />
       </a>
 
       {/* Version + Region */}
@@ -418,7 +418,7 @@ function VersionInfo() {
         onMouseLeave={() => setHovered(false)}
       >
         {/* Version Number */}
-        <span className="text-[11px] font-medium text-neutral-400 dark:text-neutral-500 tabular-nums">
+        <span className="text-[11px] font-medium text-neutral-500 dark:text-neutral-500 tabular-nums">
           {backend.version || "..."}
         </span>
 
@@ -496,9 +496,9 @@ const TIER_STYLES: Record<
     icon: Gem,
   },
   ultra: {
-    bg: "bg-amber-50/80 dark:bg-amber-950/40",
+    bg: "bg-amber-100/90 dark:bg-amber-950/40",
     text: "text-amber-600 dark:text-amber-400",
-    border: "border-amber-200/50 dark:border-amber-800/50",
+    border: "border-amber-300/70 dark:border-amber-800/50",
     icon: Crown,
   },
 };
@@ -559,8 +559,8 @@ function SubscriptionTooltip({
           <div
             className={cn(
               "relative flex flex-col gap-1.5 min-w-[180px] rounded-2xl px-4 py-3 text-xs shadow-2xl",
-              "bg-white/60 text-neutral-900 backdrop-blur-lg",
-              "border border-white/30",
+              "bg-white/90 text-neutral-900 backdrop-blur-lg",
+              "border border-neutral-200/60",
               "dark:bg-white/5 dark:text-white",
               "dark:border-white/[0.08]",
             )}
@@ -670,7 +670,7 @@ function SubscriptionTooltip({
             </div>
           </div>
           {/* Arrow indicator */}
-          <div className="absolute -bottom-[5px] right-4 h-2.5 w-2.5 rotate-45 bg-white/60 dark:bg-white/5 backdrop-blur-lg border-b border-r border-white/30 dark:border-white/[0.06]" />
+          <div className="absolute -bottom-[5px] right-4 h-2.5 w-2.5 rotate-45 bg-white/90 dark:bg-white/5 backdrop-blur-lg border-b border-r border-neutral-200/60 dark:border-white/[0.06]" />
         </motion.div>
       )}
     </AnimatePresence>,
@@ -871,9 +871,9 @@ export function BottomDock({
           transition={{ duration: 0.3 }}
           className={cn(
             "w-full",
-            "bg-white/60 dark:bg-neutral-900/60",
+            "bg-white/80 dark:bg-neutral-900/60",
             "backdrop-blur-2xl",
-            "border border-white/30 dark:border-neutral-700/50",
+            "border border-neutral-200/50 dark:border-neutral-700/50",
             "rounded-2xl",
           )}
           style={{
@@ -888,7 +888,7 @@ export function BottomDock({
               <UserAvatar compact />
 
               {/* Divider */}
-              <div className="h-8 w-px bg-neutral-300/50 dark:bg-neutral-600/30" />
+              <div className="h-8 w-px bg-neutral-300/80 dark:bg-neutral-600/30" />
 
               {/* Navigation Tabs */}
               <div
@@ -914,7 +914,7 @@ export function BottomDock({
               <VersionInfo />
 
               {/* Divider */}
-              <div className="h-6 w-px bg-neutral-300/50 dark:bg-neutral-600/30" />
+              <div className="h-6 w-px bg-neutral-300/80 dark:bg-neutral-600/30" />
 
               {/* Check-in Button (only for authenticated users with checkIn feature) */}
               {checkIn && isAuthedForUi && (
@@ -936,7 +936,7 @@ export function BottomDock({
               )}
 
               {/* Divider */}
-              <div className="h-6 w-px bg-neutral-300/50 dark:bg-neutral-600/30" />
+              <div className="h-6 w-px bg-neutral-300/80 dark:bg-neutral-600/30" />
 
               {/* Subscription Badge */}
               <SubscriptionBadge />

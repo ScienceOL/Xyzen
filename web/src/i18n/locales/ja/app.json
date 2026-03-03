@@ -67,7 +67,12 @@
     "foldersLabel": "フォルダ",
     "sourceBuiltin": "ソース: builtin",
     "sourceUser": "ソース: user",
-    "updatedAt": "更新日時"
+    "updatedAt": "更新日時",
+    "search": "スキルを検索...",
+    "noResults": "スキルが見つかりません。",
+    "selectSkill": "スキルを選択してリソースを閲覧",
+    "sortByName": "名前で並べ替え",
+    "sortByDate": "日付で並べ替え"
   },
   "toolbar": {
     "newChat": "新しい会話",

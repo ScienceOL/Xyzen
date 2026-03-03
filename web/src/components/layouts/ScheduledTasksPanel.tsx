@@ -135,32 +135,34 @@ const STATUS_CARD_ACCENT: Record<
   { border: string; front: string; back: string }
 > = {
   active: {
-    border: "border-t-emerald-400/60",
+    border: "border-t-emerald-400 dark:border-t-emerald-400/60",
     front:
-      "from-emerald-50/40 via-background to-emerald-50/20 dark:from-emerald-950/20 dark:via-background dark:to-emerald-950/10",
-    back: "from-emerald-50/30 via-background to-emerald-50/15 dark:from-emerald-950/15 dark:via-background dark:to-emerald-950/10",
+      "from-emerald-100/90 via-emerald-50/50 to-emerald-50/70 dark:from-emerald-950/20 dark:via-background dark:to-emerald-950/10",
+    back: "from-emerald-100/70 via-emerald-50/40 to-emerald-50/50 dark:from-emerald-950/15 dark:via-background dark:to-emerald-950/10",
   },
   paused: {
-    border: "border-t-amber-400/60",
+    border: "border-t-amber-400 dark:border-t-amber-400/60",
     front:
-      "from-amber-50/40 via-background to-amber-50/20 dark:from-amber-950/20 dark:via-background dark:to-amber-950/10",
-    back: "from-amber-50/30 via-background to-amber-50/15 dark:from-amber-950/15 dark:via-background dark:to-amber-950/10",
+      "from-amber-100/90 via-amber-50/50 to-amber-50/70 dark:from-amber-950/20 dark:via-background dark:to-amber-950/10",
+    back: "from-amber-100/70 via-amber-50/40 to-amber-50/50 dark:from-amber-950/15 dark:via-background dark:to-amber-950/10",
   },
   failed: {
-    border: "border-t-red-400/60",
+    border: "border-t-red-400 dark:border-t-red-400/60",
     front:
-      "from-red-50/40 via-background to-red-50/20 dark:from-red-950/20 dark:via-background dark:to-red-950/10",
-    back: "from-red-50/30 via-background to-red-50/15 dark:from-red-950/15 dark:via-background dark:to-red-950/10",
+      "from-red-100/90 via-red-50/50 to-red-50/70 dark:from-red-950/20 dark:via-background dark:to-red-950/10",
+    back: "from-red-100/70 via-red-50/40 to-red-50/50 dark:from-red-950/15 dark:via-background dark:to-red-950/10",
   },
   completed: {
-    border: "border-t-neutral-300/60 dark:border-t-neutral-600/60",
-    front: "from-muted/60 via-background to-muted/40",
-    back: "from-muted/60 via-background to-muted/40",
+    border: "border-t-neutral-300 dark:border-t-neutral-600/60",
+    front:
+      "from-neutral-200/70 via-neutral-100/50 to-neutral-100/60 dark:from-muted/60 dark:via-background dark:to-muted/40",
+    back: "from-neutral-200/70 via-neutral-100/50 to-neutral-100/60 dark:from-muted/60 dark:via-background dark:to-muted/40",
   },
   cancelled: {
-    border: "border-t-neutral-300/60 dark:border-t-neutral-600/60",
-    front: "from-muted/60 via-background to-muted/40",
-    back: "from-muted/60 via-background to-muted/40",
+    border: "border-t-neutral-300 dark:border-t-neutral-600/60",
+    front:
+      "from-neutral-200/70 via-neutral-100/50 to-neutral-100/60 dark:from-muted/60 dark:via-background dark:to-muted/40",
+    back: "from-neutral-200/70 via-neutral-100/50 to-neutral-100/60 dark:from-muted/60 dark:via-background dark:to-muted/40",
   },
 };
 
@@ -394,7 +396,7 @@ function TaskCard({
     >
       {/* ── Front ── */}
       <motion.div
-        className={`absolute inset-0 backface-hidden rounded-lg border border-foreground/[0.06] border-t-2 ${accent.border} p-2.5 md:p-3.5 flex flex-col items-center justify-center bg-gradient-to-br ${accent.front} text-center`}
+        className={`absolute inset-0 backface-hidden rounded-lg border border-neutral-200/80 dark:border-white/[0.06] border-t-2 ${accent.border} p-2.5 md:p-3.5 flex flex-col items-center justify-center bg-gradient-to-br ${accent.front} text-center`}
         animate={isFlipped ? "back" : "front"}
         variants={cardVariants}
         style={{ transformStyle: "preserve-3d" }}
@@ -436,7 +438,7 @@ function TaskCard({
 
       {/* ── Back ── */}
       <motion.div
-        className={`absolute inset-0 backface-hidden rounded-lg border border-foreground/[0.06] border-t-2 ${accent.border} flex flex-col bg-gradient-to-tr ${accent.back} overflow-hidden`}
+        className={`absolute inset-0 backface-hidden rounded-lg border border-neutral-200/80 dark:border-white/[0.06] border-t-2 ${accent.border} flex flex-col bg-gradient-to-tr ${accent.back} overflow-hidden`}
         initial={{ rotateY: 180 }}
         animate={isFlipped ? "front" : "back"}
         variants={cardVariants}
