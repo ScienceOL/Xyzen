@@ -338,6 +338,7 @@
       "availableModels": "Model Reference",
       "imageGen": "Image Generation",
       "betaSpecial": "Beta Special",
+      "primary": "Primary",
       "disclaimer": "* Models listed are for capability reference only and do not guarantee the actual model used."
     },
     "speedLabels": {

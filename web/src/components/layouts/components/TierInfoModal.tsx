@@ -82,6 +82,7 @@ interface ModelInfo {
     | "deepseek"
     | "glm";
   betaSpecial?: boolean;
+  primary?: boolean;
 }
 
 const PROVIDER_COLORS: Record<string, string> = {
@@ -131,7 +132,7 @@ const TIERS: TierInfo[] = [
     models: [
       { name: "Claude Haiku 4.5", provider: "anthropic" },
       // { name: "DeepSeek V3.2", provider: "deepseek" },
-      { name: "Gemini 3 Flash", provider: "google" },
+      { name: "Gemini 3 Flash", provider: "google", primary: true },
     ],
   },
   {
@@ -150,7 +151,7 @@ const TIERS: TierInfo[] = [
     featureKeys: ["pdfAnalysis", "codeWriting", "taskPlanning"],
     models: [
       { name: "Claude Sonnet 4.5", provider: "anthropic" },
-      { name: "Gemini 3.1 Pro", provider: "google" },
+      { name: "Gemini 3.1 Pro", provider: "google", primary: true },
       { name: "GPT-5.3", provider: "openai" },
       // { name: "Grok 4.1", provider: "xai" },
       // { name: "Qwen3 Max", provider: "qwen" },
@@ -173,7 +174,7 @@ const TIERS: TierInfo[] = [
       "bg-gradient-to-r from-purple-600 to-pink-600 hover:from-purple-500 hover:to-pink-500",
     featureKeys: ["deepReasoning", "academicAnalysis", "mathSolving"],
     models: [
-      { name: "Claude Opus 4.6 1M", provider: "anthropic" },
+      { name: "Claude Opus 4.6 1M", provider: "anthropic", primary: true },
       { name: "GPT-5.2 Pro", provider: "openai" },
       // { name: "Grok 4.1 Thinking", provider: "xai" },
     ],
@@ -373,6 +374,15 @@ export function TierInfoModal({ open, onOpenChange }: TierInfoModalProps) {
                           <span className="text-xs font-medium text-zinc-700 dark:text-white/90">
                             {model.name}
                           </span>
+                          {model.primary && (
+                            <span className="ml-auto shrink-0 inline-flex items-center gap-0.5 px-1.5 py-0.5 text-[9px] font-bold uppercase tracking-wider rounded-full bg-gradient-to-r from-amber-400/20 to-yellow-400/20 text-amber-600 dark:from-amber-400/25 dark:to-yellow-400/25 dark:text-amber-300 ring-1 ring-amber-500/25">
+                              <Sparkles className="w-2.5 h-2.5" />
+                              {t(
+                                "app.tierSelector.infoModal.primary",
+                                "Primary",
+                              )}
+                            </span>
+                          )}
                           {model.betaSpecial && (
                             <span className="ml-auto shrink-0 px-1.5 py-0.5 text-[9px] font-bold uppercase tracking-wider rounded-full bg-gradient-to-r from-cyan-500/15 to-blue-500/15 text-cyan-600 dark:from-cyan-400/20 dark:to-blue-400/20 dark:text-cyan-300 ring-1 ring-cyan-500/20">
                               {t("app.tierSelector.infoModal.betaSpecial")}

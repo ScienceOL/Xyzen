@@ -336,6 +336,7 @@
       "availableModels": "能力の参考",
       "imageGen": "画像生成",
       "betaSpecial": "ベータ特典",
+      "primary": "優先",
       "disclaimer": "* このリストはモデル能力の参考用であり、実際に使用されるモデルを保証するものではありません。"
     },
     "speedLabels": {
