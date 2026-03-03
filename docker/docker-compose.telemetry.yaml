@@ -3,7 +3,7 @@
 
 services:
   jaeger:
-    image: jaegertracing/jaeger:2
+    image: jaegertracing/jaeger:2.15.1
     restart: unless-stopped
     attach: false
     ports:
