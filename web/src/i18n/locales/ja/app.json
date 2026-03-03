@@ -464,7 +464,22 @@
     "prompt": "プロンプト",
     "status": "ステータス",
     "error": "エラー",
-    "goToChat": "チャットへ移動"
+    "goToChat": "チャットへ移動",
+    "groupToday": "今日",
+    "groupYesterday": "昨日",
+    "groupWeek": "今週",
+    "groupMonth": "今月",
+    "groupEarlier": "それ以前",
+    "filterStatusAll": "すべてのステータス",
+    "filterStatusActive": "アクティブ",
+    "filterStatusCompleted": "完了",
+    "filterStatusFailed": "失敗",
+    "filterStatusCancelled": "キャンセル済み",
+    "filterStatusPaused": "一時停止",
+    "filterTypeAll": "すべてのタイプ",
+    "filterTypeOnce": "一回限り",
+    "filterTypeRecurring": "繰り返し",
+    "emptyFiltered": "フィルター条件に一致するタスクはありません。"
   },
   "workspace": {
     "recommendations": {
@@ -564,7 +579,11 @@
     "countUnit": "回",
     "noCheckInToday": "今日はまだチェックインしていません。今すぐチェックインしよう！🎉",
     "noRecordForDay": "この日の記録はありません 📅",
-    "checkInFailed": "チェックインに失敗しました。後でもう一度お試しください"
+    "checkInFailed": "チェックインに失敗しました。後でもう一度お試しください",
+    "checkInSuccessFirst": "チェックイン成功！{{points}} ポイント獲得。チェックインの旅を始めよう～",
+    "checkInSuccessEarly": "{{days}} 日連続チェックイン！{{points}} ポイント獲得。この調子で頑張ろう～",
+    "checkInSuccessAlmost": "すごい！{{days}} 日連続チェックイン、{{points}} ポイント獲得！明日は最高報酬に到達～",
+    "checkInSuccessMax": "素晴らしい！{{days}} 日連続チェックイン、{{points}} ポイント獲得！継続は力なり～"
   },
   "consumption": {
     "title": "利用分析",

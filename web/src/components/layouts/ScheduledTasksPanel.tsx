@@ -10,12 +10,13 @@ import {
   ArrowPathIcon,
   ArrowTopRightOnSquareIcon,
   CalendarDaysIcon,
+  ChevronDownIcon,
   TrashIcon,
 } from "@heroicons/react/24/outline";
 import { useQueryClient } from "@tanstack/react-query";
 import type { TFunction } from "i18next";
 import { easeOut, motion } from "motion/react";
-import { useCallback, useState } from "react";
+import { useCallback, useMemo, useState } from "react";
 import { useTranslation } from "react-i18next";
 import { toast } from "sonner";
 import {
@@ -24,6 +25,12 @@ import {
 } from "@/components/layouts/BottomDock";
 import { MOBILE_BREAKPOINT } from "@/configs/common";
 import { SheetModal } from "@/components/animate-ui/components/animate/sheet-modal";
+import {
+  Accordion,
+  AccordionItem,
+  AccordionTrigger,
+  AccordionContent,
+} from "@/components/animate-ui/components/radix/accordion";
 
 // ── Helpers ──────────────────────────────────────────────────────────
 
@@ -122,6 +129,41 @@ const STATUS_DOT: Record<string, string> = {
   cancelled: "bg-neutral-400 dark:bg-neutral-500",
 };
 
+/** Status-based card accent colors: [topBorder, frontGradient, backGradient] */
+const STATUS_CARD_ACCENT: Record<
+  string,
+  { border: string; front: string; back: string }
+> = {
+  active: {
+    border: "border-t-emerald-400/60",
+    front:
+      "from-emerald-50/40 via-background to-emerald-50/20 dark:from-emerald-950/20 dark:via-background dark:to-emerald-950/10",
+    back: "from-emerald-50/30 via-background to-emerald-50/15 dark:from-emerald-950/15 dark:via-background dark:to-emerald-950/10",
+  },
+  paused: {
+    border: "border-t-amber-400/60",
+    front:
+      "from-amber-50/40 via-background to-amber-50/20 dark:from-amber-950/20 dark:via-background dark:to-amber-950/10",
+    back: "from-amber-50/30 via-background to-amber-50/15 dark:from-amber-950/15 dark:via-background dark:to-amber-950/10",
+  },
+  failed: {
+    border: "border-t-red-400/60",
+    front:
+      "from-red-50/40 via-background to-red-50/20 dark:from-red-950/20 dark:via-background dark:to-red-950/10",
+    back: "from-red-50/30 via-background to-red-50/15 dark:from-red-950/15 dark:via-background dark:to-red-950/10",
+  },
+  completed: {
+    border: "border-t-neutral-300/60 dark:border-t-neutral-600/60",
+    front: "from-muted/60 via-background to-muted/40",
+    back: "from-muted/60 via-background to-muted/40",
+  },
+  cancelled: {
+    border: "border-t-neutral-300/60 dark:border-t-neutral-600/60",
+    front: "from-muted/60 via-background to-muted/40",
+    back: "from-muted/60 via-background to-muted/40",
+  },
+};
+
 function getStatusLabel(task: ScheduledTask, t: TFunction): string {
   if (task.status === "active") {
     return task.schedule_type !== "once"
@@ -148,6 +190,113 @@ const cardVariants = {
   front: { rotateY: 0, transition: { duration: 0.45, ease: easeOut } },
   back: { rotateY: 180, transition: { duration: 0.45, ease: easeOut } },
 };
+
+// ── Filters & Grouping ──────────────────────────────────────────────
+
+type StatusFilter =
+  | "all"
+  | "active"
+  | "completed"
+  | "failed"
+  | "cancelled"
+  | "paused";
+type TypeFilter = "all" | "once" | "recurring";
+
+type TimeGroup = "today" | "yesterday" | "week" | "month" | "earlier";
+
+const TIME_GROUP_ORDER: TimeGroup[] = [
+  "today",
+  "yesterday",
+  "week",
+  "month",
+  "earlier",
+];
+
+const TIME_GROUP_LABEL_KEY: Record<TimeGroup, string> = {
+  today: "app.tasksPanel.groupToday",
+  yesterday: "app.tasksPanel.groupYesterday",
+  week: "app.tasksPanel.groupWeek",
+  month: "app.tasksPanel.groupMonth",
+  earlier: "app.tasksPanel.groupEarlier",
+};
+
+function getTimeGroup(isoDate: string): TimeGroup {
+  const now = new Date();
+  const d = new Date(isoDate);
+
+  // Start of today (00:00 local)
+  const startOfToday = new Date(
+    now.getFullYear(),
+    now.getMonth(),
+    now.getDate(),
+  );
+  const startOfYesterday = new Date(startOfToday.getTime() - 86_400_000);
+  const startOfWeek = new Date(startOfToday.getTime() - 6 * 86_400_000);
+  const startOfMonth = new Date(startOfToday.getTime() - 29 * 86_400_000);
+
+  if (d >= startOfToday) return "today";
+  if (d >= startOfYesterday) return "yesterday";
+  if (d >= startOfWeek) return "week";
+  if (d >= startOfMonth) return "month";
+  return "earlier";
+}
+
+function filterTasks(
+  tasks: ScheduledTask[],
+  status: StatusFilter,
+  type: TypeFilter,
+): ScheduledTask[] {
+  return tasks.filter((task) => {
+    if (status !== "all" && task.status !== status) return false;
+    if (type === "once" && task.schedule_type !== "once") return false;
+    if (type === "recurring" && task.schedule_type === "once") return false;
+    return true;
+  });
+}
+
+function groupByTime(
+  tasks: ScheduledTask[],
+): { group: TimeGroup; tasks: ScheduledTask[] }[] {
+  const map = new Map<TimeGroup, ScheduledTask[]>();
+  for (const task of tasks) {
+    const g = getTimeGroup(task.created_at);
+    const arr = map.get(g);
+    if (arr) arr.push(task);
+    else map.set(g, [task]);
+  }
+  return TIME_GROUP_ORDER.filter((g) => map.has(g)).map((g) => ({
+    group: g,
+    tasks: map.get(g)!,
+  }));
+}
+
+/** Tiny inline select styled as a pill button */
+function FilterSelect<T extends string>({
+  value,
+  options,
+  onChange,
+}: {
+  value: T;
+  options: { key: T; label: string }[];
+  onChange: (v: T) => void;
+}) {
+  return (
+    <div className="relative inline-flex">
+      <select
+        value={value}
+        onChange={(e) => onChange(e.target.value as T)}
+        className="appearance-none bg-neutral-100/60 dark:bg-white/[0.04] text-foreground/80 text-[11px] md:text-xs pl-2 pr-5 py-1 rounded-lg outline-none cursor-pointer hover:bg-neutral-200/60 dark:hover:bg-white/[0.08] transition-colors"
+      >
+        {options.map((o) => (
+          <option key={o.key} value={o.key}>
+            {o.label}
+          </option>
+        ))}
+      </select>
+      <ChevronDownIcon className="pointer-events-none absolute right-1.5 top-1/2 -translate-y-1/2 size-2.5 text-muted-foreground/50" />
+    </div>
+  );
+}
 
 // ── Detail Row ──────────────────────────────────────────────────────
 
@@ -196,11 +345,14 @@ function TaskCard({
   const activateChannel = useXyzen((s) => s.activateChannel);
   const activateChannelForAgent = useXyzen((s) => s.activateChannelForAgent);
   const setActivePanel = useXyzen((s) => s.setActivePanel);
+  const requestFocusAgent = useXyzen((s) => s.requestFocusAgent);
 
   const [isFlipped, setIsFlipped] = useState(false);
 
   const agent = resolveAgent(task.agent_id);
   const dot = STATUS_DOT[task.status] ?? STATUS_DOT.cancelled;
+  const accent =
+    STATUS_CARD_ACCENT[task.status] ?? STATUS_CARD_ACCENT.cancelled;
   const isRecurring = task.schedule_type !== "once";
   const lang = i18n.language;
 
@@ -215,6 +367,7 @@ function TaskCard({
     } else {
       await activateChannelForAgent(task.agent_id);
     }
+    requestFocusAgent(task.agent_id);
     setActivePanel("chat");
   };
 
@@ -241,7 +394,7 @@ function TaskCard({
     >
       {/* ── Front ── */}
       <motion.div
-        className="absolute inset-0 backface-hidden rounded-xl border border-foreground/[0.08] p-2.5 md:p-3.5 flex flex-col items-center justify-center bg-gradient-to-br from-muted/60 via-background to-muted/40 text-center"
+        className={`absolute inset-0 backface-hidden rounded-lg border border-foreground/[0.06] border-t-2 ${accent.border} p-2.5 md:p-3.5 flex flex-col items-center justify-center bg-gradient-to-br ${accent.front} text-center`}
         animate={isFlipped ? "back" : "front"}
         variants={cardVariants}
         style={{ transformStyle: "preserve-3d" }}
@@ -283,7 +436,7 @@ function TaskCard({
 
       {/* ── Back ── */}
       <motion.div
-        className="absolute inset-0 backface-hidden rounded-xl border border-foreground/[0.08] flex flex-col bg-gradient-to-tr from-muted/60 via-background to-muted/40 overflow-hidden"
+        className={`absolute inset-0 backface-hidden rounded-lg border border-foreground/[0.06] border-t-2 ${accent.border} flex flex-col bg-gradient-to-tr ${accent.back} overflow-hidden`}
         initial={{ rotateY: 180 }}
         animate={isFlipped ? "front" : "back"}
         variants={cardVariants}
@@ -397,6 +550,7 @@ function TaskDetailModal({
   const activateChannel = useXyzen((s) => s.activateChannel);
   const activateChannelForAgent = useXyzen((s) => s.activateChannelForAgent);
   const setActivePanel = useXyzen((s) => s.setActivePanel);
+  const requestFocusAgent = useXyzen((s) => s.requestFocusAgent);
 
   const agent = resolveAgent(task.agent_id);
   const dot = STATUS_DOT[task.status] ?? STATUS_DOT.cancelled;
@@ -413,6 +567,7 @@ function TaskDetailModal({
     } else {
       await activateChannelForAgent(task.agent_id);
     }
+    requestFocusAgent(task.agent_id);
     setActivePanel("chat");
     onClose();
   };
@@ -569,6 +724,52 @@ export default function ScheduledTasksPanel() {
   const [selectedTask, setSelectedTask] = useState<ScheduledTask | null>(null);
   const [deleteTarget, setDeleteTarget] = useState<ScheduledTask | null>(null);
 
+  // Filters
+  const [statusFilter, setStatusFilter] = useState<StatusFilter>("all");
+  const [typeFilter, setTypeFilter] = useState<TypeFilter>("all");
+
+  const statusOptions = useMemo(
+    () => [
+      { key: "all" as const, label: t("app.tasksPanel.filterStatusAll") },
+      { key: "active" as const, label: t("app.tasksPanel.filterStatusActive") },
+      {
+        key: "completed" as const,
+        label: t("app.tasksPanel.filterStatusCompleted"),
+      },
+      { key: "failed" as const, label: t("app.tasksPanel.filterStatusFailed") },
+      { key: "paused" as const, label: t("app.tasksPanel.filterStatusPaused") },
+      {
+        key: "cancelled" as const,
+        label: t("app.tasksPanel.filterStatusCancelled"),
+      },
+    ],
+    [t],
+  );
+
+  const typeOptions = useMemo(
+    () => [
+      { key: "all" as const, label: t("app.tasksPanel.filterTypeAll") },
+      { key: "once" as const, label: t("app.tasksPanel.filterTypeOnce") },
+      {
+        key: "recurring" as const,
+        label: t("app.tasksPanel.filterTypeRecurring"),
+      },
+    ],
+    [t],
+  );
+
+  const filteredTasks = useMemo(
+    () => (tasks ? filterTasks(tasks, statusFilter, typeFilter) : []),
+    [tasks, statusFilter, typeFilter],
+  );
+
+  const groupedTasks = useMemo(
+    () => groupByTime(filteredTasks),
+    [filteredTasks],
+  );
+
+  const hasActiveFilters = statusFilter !== "all" || typeFilter !== "all";
+
   const handleRefresh = useCallback(() => {
     void queryClient.invalidateQueries({
       queryKey: queryKeys.scheduledTasks.all,
@@ -626,6 +827,20 @@ export default function ScheduledTasksPanel() {
               <ArrowPathIcon className="size-3.5 md:size-4" />
             </button>
           </div>
+
+          {/* Filter bar */}
+          <div className="mt-2.5 flex flex-wrap items-center gap-1.5">
+            <FilterSelect
+              value={statusFilter}
+              options={statusOptions}
+              onChange={setStatusFilter}
+            />
+            <FilterSelect
+              value={typeFilter}
+              options={typeOptions}
+              onChange={setTypeFilter}
+            />
+          </div>
         </div>
 
         {/* Content */}
@@ -654,21 +869,66 @@ export default function ScheduledTasksPanel() {
             </div>
           )}
 
-          {!isLoading && !error && tasks && tasks.length > 0 && (
-            <div className="grid grid-cols-[repeat(auto-fill,minmax(120px,1fr))] md:grid-cols-[repeat(auto-fill,minmax(160px,1fr))] gap-1.5 md:gap-2">
-              {tasks.map((task) => (
-                <TaskCard
-                  key={task.id}
-                  task={task}
-                  onSelect={setSelectedTask}
-                  onDelete={setDeleteTarget}
-                  isDeleting={
-                    cancelMutation.isPending &&
-                    cancelMutation.variables === task.id
-                  }
-                />
+          {!isLoading &&
+            !error &&
+            tasks &&
+            tasks.length > 0 &&
+            filteredTasks.length === 0 &&
+            hasActiveFilters && (
+              <div className="flex flex-col items-center justify-center py-16 text-center">
+                <CalendarDaysIcon className="size-6 md:size-8 text-muted-foreground/20" />
+                <p className="mt-2 text-[11px] md:text-xs font-medium text-muted-foreground/60">
+                  {t("app.tasksPanel.emptyFiltered")}
+                </p>
+              </div>
+            )}
+
+          {!isLoading && !error && groupedTasks.length > 0 && (
+            <Accordion
+              type="multiple"
+              defaultValue={groupedTasks.map(({ group }) => group)}
+            >
+              {groupedTasks.map(({ group, tasks: groupTasks }) => (
+                <AccordionItem
+                  key={group}
+                  value={group}
+                  className="border-none"
+                >
+                  <AccordionTrigger className="sticky top-0 z-[1] backdrop-blur-sm hover:no-underline group/trigger">
+                    <span className="flex items-center gap-2">
+                      <span className="group-hover/trigger:underline underline-offset-4">
+                        {t(TIME_GROUP_LABEL_KEY[group])}
+                      </span>
+                      <span className="rounded-md bg-neutral-100/80 dark:bg-white/[0.06] px-1.5 py-0.5 text-xs font-normal text-muted-foreground/50 leading-none">
+                        {groupTasks.length}
+                      </span>
+                    </span>
+                  </AccordionTrigger>
+                  <AccordionContent
+                    keepRendered
+                    transition={{ duration: 0.25, ease: "easeOut" }}
+                  >
+                    <div
+                      className="grid grid-cols-[repeat(auto-fill,minmax(120px,1fr))] md:grid-cols-[repeat(auto-fill,minmax(160px,1fr))] gap-2.5 md:gap-3 pt-1 pb-3 md:pb-4"
+                      style={{ contentVisibility: "auto" }}
+                    >
+                      {groupTasks.map((task) => (
+                        <TaskCard
+                          key={task.id}
+                          task={task}
+                          onSelect={setSelectedTask}
+                          onDelete={setDeleteTarget}
+                          isDeleting={
+                            cancelMutation.isPending &&
+                            cancelMutation.variables === task.id
+                          }
+                        />
+                      ))}
+                    </div>
+                  </AccordionContent>
+                </AccordionItem>
               ))}
-            </div>
+            </Accordion>
           )}
         </div>
       </div>

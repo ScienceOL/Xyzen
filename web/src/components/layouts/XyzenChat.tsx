@@ -16,6 +16,7 @@ import { useEffect, useMemo, useState } from "react";
 import { useTranslation } from "react-i18next";
 
 import ChatBubble from "./components/ChatBubble";
+import ChatMessageNav from "./components/ChatMessageNav";
 import ContextUsageRing from "./components/ContextUsageRing";
 import EmptyChat from "./components/EmptyChat";
 import FloatingChatInput from "./components/FloatingChatInput";
@@ -333,6 +334,12 @@ function BaseChat({ config, historyEnabled = false }: BaseChatProps) {
               )}
             </div>
           </div>
+
+          {/* Message Navigation Rail */}
+          <ChatMessageNav
+            messages={messages}
+            scrollContainerRef={messagesContainerRef}
+          />
 
           {/* Scroll to Bottom Button */}
           {!autoScroll && messages.length > 0 && (

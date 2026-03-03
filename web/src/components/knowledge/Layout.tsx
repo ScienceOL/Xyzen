@@ -74,7 +74,7 @@ export const KnowledgeLayout = () => {
   const [isCreateKnowledgeSetOpen, setIsCreateKnowledgeSetOpen] =
     useState(false);
 
-  const [viewMode, setViewMode] = useState<ViewMode>("list");
+  const [viewMode] = useState<ViewMode>("list");
   const [refreshKey, setRefreshKey] = useState(0);
   const [isFileListLoading, setIsFileListLoading] = useState(false);
   const [breadcrumbs, setBreadcrumbs] = useState<Folder[]>([]);
@@ -649,6 +649,10 @@ export const KnowledgeLayout = () => {
         return t("knowledge.titles.recents");
       case "all":
         return t("knowledge.titles.allFiles");
+      case "images":
+        return t("knowledge.titles.images");
+      case "documents":
+        return t("knowledge.titles.documents");
       case "knowledge":
         return currentKnowledgeSetName || t("knowledge.titles.knowledgeBase");
       case "trash":
@@ -747,8 +751,6 @@ export const KnowledgeLayout = () => {
             {/* Toolbar */}
             <KnowledgeToolbar
               title={getTitle()}
-              viewMode={viewMode}
-              onViewModeChange={setViewMode}
               onSearch={(q) => console.log("Search", q)}
               onUpload={handleUploadClick}
               onUploadFolder={handleFolderUploadClick}

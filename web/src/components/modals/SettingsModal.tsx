@@ -30,6 +30,7 @@ import {
   UiSettings,
 } from "./settings";
 import { McpSettings } from "./settings/McpSettings";
+import { useVersion } from "@/hooks/useVersion";
 
 export function SettingsModal() {
   const { t } = useTranslation();
@@ -72,6 +73,8 @@ export function SettingsModal() {
     prevOpen.current = isSettingsModalOpen;
   }, [isSettingsModalOpen, activeSettingsCategory]);
 
+  const { status: versionStatus } = useVersion();
+
   const categories = [
     {
       id: "account",
@@ -112,6 +115,7 @@ export function SettingsModal() {
       id: "about",
       label: t("settings.categories.about"),
       icon: InformationCircleIcon,
+      badge: versionStatus === "mismatch",
     },
   ];
 
@@ -166,13 +170,16 @@ export function SettingsModal() {
                       }`}
                     >
                       <div
-                        className={`flex h-7 w-7 items-center justify-center rounded-lg ${
+                        className={`relative flex h-7 w-7 items-center justify-center rounded-lg ${
                           isActive
                             ? "bg-indigo-500 text-white"
                             : "bg-neutral-200/70 text-neutral-500 dark:bg-neutral-700/70 dark:text-neutral-400"
                         }`}
                       >
                         <Icon className="h-4 w-4" />
+                        {"badge" in category && category.badge && (
+                          <span className="absolute -top-0.5 -right-0.5 size-2 rounded-full bg-red-500 ring-2 ring-white dark:ring-neutral-900" />
+                        )}
                       </div>
                       <span className="flex-1 text-left">{category.label}</span>
                       <ChevronRightIcon className="h-4 w-4 text-neutral-300 md:hidden dark:text-neutral-600" />

@@ -7577,11 +7577,11 @@ __metadata:
     little-date: "npm:^1.2.1"
     lodash: "npm:^4.17.21"
     lowlight: "npm:^3.3.0"
-    lucide-react: "npm:^0.575.0"
+    lucide-react: "npm:^0.576.0"
     mermaid: "npm:^11.12.2"
     mini-svg-data-uri: "npm:^1.4.4"
     monaco-editor: "npm:^0.55.1"
-    motion: "npm:^12.34.3"
+    motion: "npm:^12.34.4"
     next-themes: "npm:^0.4.6"
     pdf-lib: "npm:^1.17.1"
     pdfjs-dist: "npm:^5.4.449"
@@ -12209,9 +12209,9 @@ __metadata:
   languageName: node
   linkType: hard
 
-"framer-motion@npm:^12.34.3":
-  version: 12.34.3
-  resolution: "framer-motion@npm:12.34.3"
+"framer-motion@npm:^12.34.4":
+  version: 12.34.4
+  resolution: "framer-motion@npm:12.34.4"
   dependencies:
     motion-dom: "npm:^12.34.3"
     motion-utils: "npm:^12.29.2"
@@ -12227,7 +12227,7 @@ __metadata:
       optional: true
     react-dom:
       optional: true
-  checksum: 10c0/e36d8d2b33200c6d8ad8af6508090276674dcd239da8026ab19ec4f739b8943197c7b1777f28f96c7149f65ccd35efb5905cbdfdaf6e75017bcd7cc4eb69328b
+  checksum: 10c0/28732e24a0dee80649eb70205e961a70e73d4dbfd3b6c1ed9afbb6910b59a2c626cc73931cf67e9cc1af1488fd7232f49a852a92148798cabd4deb46082b6d4e
   languageName: node
   linkType: hard
 
@@ -14168,12 +14168,12 @@ __metadata:
   languageName: node
   linkType: hard
 
-"lucide-react@npm:^0.575.0":
-  version: 0.575.0
-  resolution: "lucide-react@npm:0.575.0"
+"lucide-react@npm:^0.576.0":
+  version: 0.576.0
+  resolution: "lucide-react@npm:0.576.0"
   peerDependencies:
     react: ^16.5.1 || ^17.0.0 || ^18.0.0 || ^19.0.0
-  checksum: 10c0/4f42e81c88f60c8f904b178c0b28e8ac9a99da8ef24eba5f26ed97b63124304a847baea2f71125629a272df58dbb61cd799ff6a7e4878e5a4c28d8a699b84730
+  checksum: 10c0/316301dd4331d99ec6923d5e7e7ec48d57309738fa29b2e993fd4f4f9db73a22e820b9bf586831b2bb48ddbd0a7c56f6a6f130b2a5b718df5301395290b99e90
   languageName: node
   linkType: hard
 
@@ -15625,11 +15625,11 @@ __metadata:
   languageName: node
   linkType: hard
 
-"motion@npm:^12.34.3":
-  version: 12.34.3
-  resolution: "motion@npm:12.34.3"
+"motion@npm:^12.34.4":
+  version: 12.34.4
+  resolution: "motion@npm:12.34.4"
   dependencies:
-    framer-motion: "npm:^12.34.3"
+    framer-motion: "npm:^12.34.4"
     tslib: "npm:^2.4.0"
   peerDependencies:
     "@emotion/is-prop-valid": "*"
@@ -15642,7 +15642,7 @@ __metadata:
       optional: true
     react-dom:
       optional: true
-  checksum: 10c0/bb16391e893c2df81e1447d920cb97f54da1c2660ca648c9bfee6cc5b482f96b4bcb223eee02da40e78bd33c4211168b444e3fefefeb1177e338f0e1063b4be1
+  checksum: 10c0/ab1b0c5f62b0781620bfd3ec9f22647666ff07fa1ae845f147d9f78e3250c121a0915b12c96186367b705df119a9df3c505168f76e7103213c923400ad3a292f
   languageName: node
   linkType: hard
 

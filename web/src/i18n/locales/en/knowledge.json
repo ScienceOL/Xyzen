@@ -2,6 +2,8 @@
   "titles": {
     "recents": "Recents",
     "allFiles": "All Files",
+    "images": "Images",
+    "documents": "Documents",
     "myKnowledge": "My Knowledge",
     "knowledgeBase": "Knowledge Base",
     "trash": "Trash"

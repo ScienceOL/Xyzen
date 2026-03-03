@@ -9,18 +9,14 @@ import {
   ListBulletIcon,
   MagnifyingGlassIcon,
   PlusIcon,
-  Squares2X2Icon,
   TrashIcon,
   XMarkIcon,
 } from "@heroicons/react/24/outline";
 import { useCallback, useEffect, useRef, useState } from "react";
 import { useTranslation } from "react-i18next";
 import { DRAG_MIME, getDragContext } from "./FileTreeView";
-import type { ViewMode } from "./types";
 
 interface KnowledgeToolbarProps {
-  viewMode: ViewMode;
-  onViewModeChange: (mode: ViewMode) => void;
   onSearch: (query: string) => void;
   onUpload: () => void;
   onUploadFolder?: () => void;
@@ -42,8 +38,6 @@ interface KnowledgeToolbarProps {
 }
 
 export const KnowledgeToolbar = ({
-  viewMode,
-  onViewModeChange,
   onSearch,
   onUpload,
   onUploadFolder,
@@ -196,32 +190,6 @@ export const KnowledgeToolbar = ({
         >
           <MagnifyingGlassIcon className="h-5 w-5" />
         </button>
-
-        {/* View Toggle */}
-        <div className="flex items-center rounded-sm bg-white/50 dark:bg-neutral-800/50 p-1 border border-white/20 dark:border-neutral-700/30">
-          <button
-            onClick={() => onViewModeChange("list")}
-            className={`rounded-lg p-1.5 transition-all duration-200 ${
-              viewMode === "list"
-                ? "bg-white dark:bg-neutral-700 text-neutral-900 dark:text-white shadow-sm"
-                : "text-neutral-500 hover:text-neutral-700 dark:text-neutral-400 dark:hover:text-neutral-200"
-            }`}
-            title={t("knowledge.toolbar.listView")}
-          >
-            <ListBulletIcon className="h-4 w-4" />
-          </button>
-          <button
-            onClick={() => onViewModeChange("grid")}
-            className={`rounded-lg p-1.5 transition-all duration-200 ${
-              viewMode === "grid"
-                ? "bg-white dark:bg-neutral-700 text-neutral-900 dark:text-white shadow-sm"
-                : "text-neutral-500 hover:text-neutral-700 dark:text-neutral-400 dark:hover:text-neutral-200"
-            }`}
-            title={t("knowledge.toolbar.gridView")}
-          >
-            <Squares2X2Icon className="h-4 w-4" />
-          </button>
-        </div>
 
         {/* Desktop Search Input */}
         <div className="relative hidden md:block">

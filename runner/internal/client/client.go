@@ -3,7 +3,9 @@ package client
 import (
 	"encoding/base64"
 	"encoding/json"
+	"errors"
 	"fmt"
+	"io"
 	"log"
 	"net/url"
 	"runtime"
@@ -16,6 +18,11 @@ import (
 	"github.com/scienceol/xyzen/runner/internal/protocol"
 	"github.com/scienceol/xyzen/runner/internal/ui"
 )
+
+// errReplaced is returned when the server closes our connection because
+// a newer runner for the same user has connected (close code 4002).
+// The client should NOT auto-reconnect in this case.
+var errReplaced = errors.New("replaced by new runner connection")
 
 const (
 	pingInterval   = 20 * time.Second
@@ -106,6 +113,10 @@ func (c *Client) Run() error {
 		}
 
 		err := c.connectAndServe()
+		if errors.Is(err, errReplaced) {
+			ui.Warn("Another runner connected for this account — this session has been replaced.")
+			return nil
+		}
 		if err != nil {
 			ui.Error("Connection lost: %v", err)
 		}
@@ -133,8 +144,19 @@ func (c *Client) connectAndServe() error {
 	q.Set("token", c.cfg.Token)
 	u.RawQuery = q.Encode()
 
-	conn, _, err := websocket.DefaultDialer.Dial(u.String(), nil)
+	conn, resp, err := websocket.DefaultDialer.Dial(u.String(), nil)
 	if err != nil {
+		// When the server rejects the WebSocket upgrade (e.g. bad token),
+		// it returns an HTTP error. Read the status to give users a
+		// meaningful message instead of the opaque "bad handshake".
+		if resp != nil {
+			defer resp.Body.Close()
+			body, _ := io.ReadAll(io.LimitReader(resp.Body, 512))
+			if len(body) > 0 {
+				return fmt.Errorf("dial failed (HTTP %d): %s", resp.StatusCode, string(body))
+			}
+			return fmt.Errorf("dial failed (HTTP %d): %w", resp.StatusCode, err)
+		}
 		return fmt.Errorf("dial failed: %w", err)
 	}
 
@@ -213,6 +235,13 @@ func (c *Client) connectAndServe() error {
 			case <-c.stopCh:
 				return nil
 			default:
+			}
+			// If the server closed us because a newer runner connected
+			// (close code 4002), return the sentinel so Run() exits
+			// instead of auto-reconnecting.
+			var closeErr *websocket.CloseError
+			if errors.As(err, &closeErr) && closeErr.Code == 4002 {
+				return errReplaced
 			}
 			return fmt.Errorf("read error: %w", err)
 		}

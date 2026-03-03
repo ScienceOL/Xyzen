@@ -170,8 +170,64 @@ export const FileList = React.memo(
         filter === "all" ||
         filter === "knowledge" ||
         filter === "trash" ||
-        filter === "skill";
+        filter === "skill" ||
+        filter === "images" ||
+        filter === "documents";
       const isSkillMode = filter === "skill";
+
+      // Filter tree items for category tabs (images/documents)
+      const filteredTreeItems = useMemo(() => {
+        if (filter !== "images" && filter !== "documents") return treeItems;
+
+        const IMAGE_EXTS = new Set([
+          "jpg",
+          "jpeg",
+          "png",
+          "gif",
+          "bmp",
+          "webp",
+          "svg",
+          "ico",
+        ]);
+        const DOCUMENT_EXTS = new Set([
+          "pdf",
+          "doc",
+          "docx",
+          "xls",
+          "xlsx",
+          "ppt",
+          "pptx",
+          "txt",
+          "csv",
+          "md",
+        ]);
+        const exts = filter === "images" ? IMAGE_EXTS : DOCUMENT_EXTS;
+
+        // Find matching files
+        const matchingFileIds = new Set<string>();
+        for (const item of treeItems) {
+          if (!item.is_dir) {
+            const ext = item.name.split(".").pop()?.toLowerCase() || "";
+            if (exts.has(ext)) {
+              matchingFileIds.add(item.id);
+            }
+          }
+        }
+
+        // Collect all ancestor folder IDs
+        const requiredIds = new Set(matchingFileIds);
+        const itemMap = new Map(treeItems.map((i) => [i.id, i]));
+        for (const id of matchingFileIds) {
+          let current = itemMap.get(id);
+          while (current?.parent_id) {
+            if (requiredIds.has(current.parent_id)) break;
+            requiredIds.add(current.parent_id);
+            current = itemMap.get(current.parent_id);
+          }
+        }
+
+        return treeItems.filter((item) => requiredIds.has(item.id));
+      }, [filter, treeItems]);
 
       // Notify parent when loading state changes
       const effectiveLoading = isTreeTab ? treeLoading : isLoading;
@@ -317,13 +373,7 @@ export const FileList = React.memo(
             );
             setSelectedIds(new Set());
             // For tree tabs, refresh via the store; for other tabs, reload locally
-            if (
-              (filter === "all" ||
-                filter === "knowledge" ||
-                filter === "skill" ||
-                filter === "trash") &&
-              onRefreshTree
-            ) {
+            if (isTreeTab && onRefreshTree) {
               onRefreshTree();
             } else {
               loadFilesRef.current();
@@ -332,7 +382,7 @@ export const FileList = React.memo(
             console.error("Drop move failed", e);
           }
         },
-        [folderIds, filter, isSkillMode, onMoveItem, onRefreshTree],
+        [folderIds, isTreeTab, isSkillMode, onMoveItem, onRefreshTree],
       );
 
       // Drag start handler for flat list/grid items
@@ -643,14 +693,9 @@ export const FileList = React.memo(
 
       const loadFiles = useCallback(
         async (append: boolean = false) => {
-          // "all", "knowledge", and "trash" tabs use the centralized tree from the store.
+          // Tree-based tabs use the centralized tree from the store.
           // No local fetching needed for these tabs.
-          if (
-            filter === "all" ||
-            filter === "knowledge" ||
-            filter === "skill" ||
-            filter === "trash"
-          ) {
+          if (isTreeTab) {
             return;
           }
 
@@ -970,13 +1015,7 @@ export const FileList = React.memo(
 
         try {
           // Optimistic: rename in tree immediately
-          if (
-            renameTreeItem &&
-            (filter === "all" ||
-              filter === "knowledge" ||
-              filter === "skill" ||
-              filter === "trash")
-          ) {
+          if (renameTreeItem && isTreeTab) {
             renameTreeItem(item.id, newName);
           }
 
@@ -996,13 +1035,7 @@ export const FileList = React.memo(
             }
           }
           // Refresh: tree tabs via store, others locally
-          if (
-            (filter === "all" ||
-              filter === "knowledge" ||
-              filter === "skill" ||
-              filter === "trash") &&
-            onRefreshTree
-          ) {
+          if (isTreeTab && onRefreshTree) {
             onRefreshTree();
           } else {
             loadFiles();
@@ -1038,13 +1071,7 @@ export const FileList = React.memo(
             }
           }
           // Refresh: tree tabs via store, others locally
-          if (
-            (filter === "all" ||
-              filter === "knowledge" ||
-              filter === "skill" ||
-              filter === "trash") &&
-            onRefreshTree
-          ) {
+          if (isTreeTab && onRefreshTree) {
             onRefreshTree();
           } else {
             loadFiles();
@@ -1115,13 +1142,7 @@ export const FileList = React.memo(
             onConfirm: async () => {
               try {
                 // Optimistic: remove from tree immediately
-                if (
-                  removeTreeItems &&
-                  (filter === "all" ||
-                    filter === "knowledge" ||
-                    filter === "skill" ||
-                    filter === "trash")
-                ) {
+                if (removeTreeItems && isTreeTab) {
                   // Collect all IDs including descendants of selected folders
                   const allIds = [...selectedFileIds, ...selectedFolderIds];
                   for (const folderId of selectedFolderIds) {
@@ -1157,13 +1178,7 @@ export const FileList = React.memo(
                 }
 
                 setSelectedIds(new Set());
-                if (
-                  (filter === "all" ||
-                    filter === "knowledge" ||
-                    filter === "skill" ||
-                    filter === "trash") &&
-                  onRefreshTree
-                ) {
+                if (isTreeTab && onRefreshTree) {
                   onRefreshTree();
                 } else {
                   loadFiles();
@@ -1204,13 +1219,7 @@ export const FileList = React.memo(
               const isHardDelete = filter === "trash";
 
               // Optimistic: remove from tree immediately
-              if (
-                removeTreeItems &&
-                (filter === "all" ||
-                  filter === "knowledge" ||
-                  filter === "skill" ||
-                  filter === "trash")
-              ) {
+              if (removeTreeItems && isTreeTab) {
                 const descendantIds =
                   type === "folder"
                     ? collectDescendantIds(treeItems, item.id)
@@ -1238,13 +1247,7 @@ export const FileList = React.memo(
               }
 
               setSelectedIds(new Set());
-              if (
-                (filter === "all" ||
-                  filter === "knowledge" ||
-                  filter === "skill" ||
-                  filter === "trash") &&
-                onRefreshTree
-              ) {
+              if (isTreeTab && onRefreshTree) {
                 onRefreshTree();
               } else {
                 loadFiles();
@@ -1414,12 +1417,12 @@ export const FileList = React.memo(
         }
       };
 
-      // For tree tabs, use treeItems for empty/loading checks
+      // For tree tabs, use filteredTreeItems for empty/loading checks
       if (isTreeTab) {
-        if (treeLoading && treeItems.length === 0) {
+        if (treeLoading && filteredTreeItems.length === 0) {
           return null;
         }
-        if (!treeLoading && treeItems.length === 0) {
+        if (!treeLoading && filteredTreeItems.length === 0) {
           return (
             <div className="flex h-full flex-col items-center justify-center gap-2 text-sm text-neutral-400">
               <DocumentIcon className="h-8 w-8 opacity-50" />
@@ -1486,13 +1489,10 @@ export const FileList = React.memo(
               }}
             />
           )}
-          {filter === "all" ||
-          filter === "knowledge" ||
-          filter === "skill" ||
-          filter === "trash" ? (
+          {isTreeTab ? (
             <FileTreeView
               ref={treeViewRef}
-              treeItems={treeItems}
+              treeItems={filteredTreeItems}
               selectedIds={selectedIds}
               itemRefs={itemRefs}
               onItemClick={handleItemClick}

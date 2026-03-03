@@ -10,13 +10,13 @@ function EnPrivacy() {
       <p className="meta">Effective Date: {LAST_UPDATED}</p>
 
       <p>
-        Miracle Story (Shanghai) Intelligent Technology Co., Ltd.
-        (&quot;Company&quot;, &quot;we&quot;, &quot;us&quot;, or
-        &quot;our&quot;) operates the Xyzen platform accessible at xyzen.ai (the
-        &quot;Service&quot;). This Privacy Policy describes how we collect, use,
-        store, disclose, and protect your personal information when you access
-        or use our Service. By accessing or using the Service, you acknowledge
-        that you have read and understood this Privacy Policy.
+        ATOMBEAT TECHNOLOGY PTE. LTD. (&quot;Company&quot;, &quot;we&quot;,
+        &quot;us&quot;, or &quot;our&quot;) operates the Xyzen platform
+        accessible at xyzen.ai (the &quot;Service&quot;). This Privacy Policy
+        describes how we collect, use, store, disclose, and protect your
+        personal information when you access or use our Service. By accessing or
+        using the Service, you acknowledge that you have read and understood
+        this Privacy Policy.
       </p>
 
       <h2>ARTICLE 1 — INFORMATION WE COLLECT</h2>
@@ -363,7 +363,7 @@ function EnPrivacy() {
         Privacy Policy or our data processing practices, please contact us at:
       </p>
       <p>
-        Miracle Story (Shanghai) Intelligent Technology Co., Ltd.
+        ATOMBEAT TECHNOLOGY PTE. LTD.
         <br />
         Email: <a href="mailto:support@xyzen.ai">support@xyzen.ai</a>
       </p>
@@ -378,7 +378,7 @@ function ZhPrivacy() {
       <p className="meta">生效日期：{LAST_UPDATED}</p>
 
       <p>
-        奇迹物语（上海）智能科技有限公司（"公司"、"我们"）运营可通过 xyzen.ai
+        ATOMBEAT TECHNOLOGY PTE. LTD.（"公司"、"我们"）运营可通过 xyzen.ai
         访问的 Xyzen
         平台（"服务"）。本隐私政策描述了我们在您访问或使用本服务时如何收集、使用、存储、披露和保护您的个人信息。访问或使用本服务，即视为您已阅读并理解本隐私政策。
       </p>
@@ -651,7 +651,7 @@ function ZhPrivacy() {
         如对本隐私政策或我们的数据处理实践有任何问题、关切或请求，请通过以下方式联系我们：
       </p>
       <p>
-        奇迹物语（上海）智能科技有限公司
+        ATOMBEAT TECHNOLOGY PTE. LTD.
         <br />
         电子邮件：<a href="mailto:support@xyzen.ai">support@xyzen.ai</a>
       </p>
