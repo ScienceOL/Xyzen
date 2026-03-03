@@ -154,6 +154,32 @@ async def get_ai_response_stream_langchain_legacy(
         # Load conversation history
         history_messages = await load_conversation_history(db, topic)
 
+        # Check context window usage and emit context_usage event
+        from app.core.chat.context_manager import (
+            estimate_message_tokens,
+            get_context_budget,
+            truncate_history_if_needed,
+        )
+
+        estimated_tokens = estimate_message_tokens(history_messages)
+        budget = await get_context_budget(model_name or "", provider_id)
+        usage_percent = (estimated_tokens / budget.max_input_tokens * 100) if budget.max_input_tokens > 0 else 0
+        near_limit = estimated_tokens > budget.warning_threshold
+        critical = estimated_tokens > budget.critical_threshold
+
+        if near_limit:
+            yield StreamingEventHandler.create_context_usage_event(
+                stream_id=ctx.stream_id,
+                estimated_tokens=estimated_tokens,
+                max_tokens=budget.max_input_tokens,
+                usage_percent=usage_percent,
+                near_limit=near_limit,
+                critical=critical,
+            )
+
+        if critical:
+            history_messages = truncate_history_if_needed(history_messages, budget)
+
         # Process stream
         async for event in _process_agent_stream(langchain_agent, history_messages, ctx):
             yield event

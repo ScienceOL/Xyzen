@@ -552,3 +552,27 @@ export function handleGeneratedFiles(
     ];
   }
 }
+
+// ---------------------------------------------------------------------------
+// context_usage
+// ---------------------------------------------------------------------------
+
+export function handleContextUsage(
+  channel: ChatChannel,
+  eventData: {
+    estimated_tokens: number;
+    max_tokens: number;
+    usage_percent: number;
+    near_limit: boolean;
+    critical: boolean;
+    stream_id: string;
+  },
+): void {
+  channel.contextUsage = {
+    estimatedTokens: eventData.estimated_tokens,
+    maxTokens: eventData.max_tokens,
+    usagePercent: eventData.usage_percent,
+    nearLimit: eventData.near_limit,
+    critical: eventData.critical,
+  };
+}

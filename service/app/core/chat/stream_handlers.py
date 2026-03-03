@@ -19,6 +19,7 @@ from langchain_core.messages import AIMessage
 from app.core.chat.token_usage import normalize_token_usage
 from app.schemas.chat_event_payloads import (
     CitationData,
+    ContextUsageData,
     ErrorData,
     GeneratedFileInfo,
     GeneratedFilesData,
@@ -270,6 +271,26 @@ class StreamingEventHandler:
         if occurred_at is not None:
             data["occurred_at"] = occurred_at
         return {"type": ChatEventType.ERROR, "data": data}
+
+    @staticmethod
+    def create_context_usage_event(
+        stream_id: str,
+        estimated_tokens: int,
+        max_tokens: int,
+        usage_percent: float,
+        near_limit: bool,
+        critical: bool,
+    ) -> StreamingEvent:
+        """Create context usage event."""
+        data: ContextUsageData = {
+            "estimated_tokens": estimated_tokens,
+            "max_tokens": max_tokens,
+            "usage_percent": round(usage_percent, 1),
+            "near_limit": near_limit,
+            "critical": critical,
+            "stream_id": stream_id,
+        }
+        return {"type": ChatEventType.CONTEXT_USAGE, "data": data}
 
 
 class ThinkingEventHandler:

@@ -241,6 +241,14 @@ export interface ChatChannel {
   aborting?: boolean;
   // Latest context usage tokens for this topic (not cumulative historical spend)
   tokenUsage?: number;
+  // Context window usage tracking
+  contextUsage?: {
+    estimatedTokens: number;
+    maxTokens: number;
+    usagePercent: number;
+    nearLimit: boolean;
+    critical: boolean;
+  };
 }
 
 export interface ChatHistoryItem {

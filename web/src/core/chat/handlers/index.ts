@@ -36,6 +36,7 @@ export {
   handleTopicUpdated,
   handleSearchCitations,
   handleGeneratedFiles,
+  handleContextUsage,
 } from "./controlHandlers";
 
 export { handleAskUserQuestion } from "./questionHandlers";

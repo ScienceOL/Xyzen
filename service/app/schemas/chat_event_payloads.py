@@ -243,6 +243,17 @@ class AskUserQuestionData(TypedDict):
     thread_id: str
 
 
+class ContextUsageData(TypedDict):
+    """Data payload for CONTEXT_USAGE event."""
+
+    estimated_tokens: int
+    max_tokens: int
+    usage_percent: float
+    near_limit: bool
+    critical: bool
+    stream_id: str
+
+
 # =============================================================================
 # Full Event Structures (type + data)
 # =============================================================================
@@ -381,6 +392,13 @@ class AskUserQuestionEvent(TypedDict):
     data: AskUserQuestionData
 
 
+class ContextUsageEvent(TypedDict):
+    """Full event structure for context usage."""
+
+    type: Literal[ChatEventType.CONTEXT_USAGE]
+    data: ContextUsageData
+
+
 class AgentStartEvent(TypedDict):
     """Full event structure for agent start."""
 
@@ -462,6 +480,7 @@ StreamingEvent = (
     | ThinkingEndEvent
     | StreamAbortedEvent
     | AskUserQuestionEvent
+    | ContextUsageEvent
     | AgentStartEvent
     | AgentEndEvent
     | AgentErrorEvent
@@ -509,6 +528,7 @@ __all__ = [
     "StreamAbortedData",
     "QuestionOptionData",
     "AskUserQuestionData",
+    "ContextUsageData",
     # Event types
     "StreamingStartEvent",
     "StreamingChunkEvent",
@@ -529,6 +549,7 @@ __all__ = [
     "ThinkingEndEvent",
     "StreamAbortedEvent",
     "AskUserQuestionEvent",
+    "ContextUsageEvent",
     "AgentStartData",
     "AgentEndData",
     "AgentErrorData",

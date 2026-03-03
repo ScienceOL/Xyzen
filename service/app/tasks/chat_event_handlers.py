@@ -843,6 +843,19 @@ EVENT_HANDLERS: dict[str, Any] = {
 
 
 # ---------------------------------------------------------------------------
+# Context usage handler (publish-only, no DB persistence)
+# ---------------------------------------------------------------------------
+
+
+async def handle_context_usage(ctx: ChatTaskContext, stream_event: dict[str, Any]) -> None:
+    """Handle CONTEXT_USAGE event — forward to WebSocket, no DB persistence."""
+    await ctx.publisher.publish(json.dumps(stream_event))
+
+
+EVENT_HANDLERS[ChatEventType.CONTEXT_USAGE] = handle_context_usage
+
+
+# ---------------------------------------------------------------------------
 # Abort handler
 # ---------------------------------------------------------------------------
 

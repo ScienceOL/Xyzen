@@ -72,6 +72,7 @@
   "toolbar": {
     "newChat": "新しい会話",
     "newChatCreating": "作成中...",
+    "newChatWithSummary": "要約付きで続行",
     "uploadFile": "ファイルをアップロード",
     "resizeHint": "ドラッグして入力フレームの高さを調整",
     "history": "履歴",
@@ -186,6 +187,13 @@
     "escToStop": "停止",
     "enterToSend": "送信",
     "shiftEnterForNewline": "新しい行"
+  },
+  "contextUsage": {
+    "warning": "コンテキストが {{percent}}% 使用されています。品質を維持するため、新しいチャットの開始をお勧めします。",
+    "critical": "コンテキストがほぼ上限に達しました。一部の古いメッセージが省略されました。",
+    "newChatButton": "要約付きで新しいチャットを開始",
+    "compacting": "要約を生成中...",
+    "compactSuccess": "会話の要約を含む新しいチャットが作成されました"
   },
   "dragDrop": {
     "dropHere": "ここにファイルをドロップ",

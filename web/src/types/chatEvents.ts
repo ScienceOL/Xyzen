@@ -182,4 +182,15 @@ export type ChatEvent =
         stream_id: string;
         thread_id: string;
       };
+    }
+  | {
+      type: "context_usage";
+      data: {
+        estimated_tokens: number;
+        max_tokens: number;
+        usage_percent: number;
+        near_limit: boolean;
+        critical: boolean;
+        stream_id: string;
+      };
     };

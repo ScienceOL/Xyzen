@@ -32,6 +32,7 @@ import {
 } from "./ChatToolbar/index";
 import { KnowledgeButton } from "./ChatToolbar/KnowledgeButton";
 import { SandboxButton } from "./ChatToolbar/SandboxButton";
+import { ContextUsageBanner } from "./ContextUsageBanner";
 import { TierSelector } from "./TierSelector";
 
 interface FloatingChatInputProps {
@@ -246,6 +247,11 @@ export const FloatingChatInput: React.FC<FloatingChatInputProps> = ({
             </div>
           )}
 
+          {/* Context usage warning */}
+          {toolbar.activeChatChannel && (
+            <ContextUsageBanner topicId={toolbar.activeChatChannel} />
+          )}
+
           {/* Auto-expanding textarea */}
           <textarea
             ref={textareaRef}
@@ -292,7 +298,9 @@ export const FloatingChatInput: React.FC<FloatingChatInputProps> = ({
               <div className="flex flex-wrap items-center gap-1">
                 <ToolbarActions
                   onNewChat={toolbar.handleNewChat}
+                  onCompactChat={toolbar.handleCompactChat}
                   isCreatingNewChat={toolbar.isCreatingNewChat}
+                  hasActiveChat={!!toolbar.activeChatChannel}
                   isUploading={toolbar.isUploading}
                   buttonClassName={toolbarButtonClass}
                 />

@@ -9,6 +9,7 @@ import {
 } from "@/hooks/toolbarSelectors";
 import { useXyzen } from "@/store";
 import type { ModelTier } from "@/components/layouts/components/TierSelector";
+import { topicService } from "@/service/topicService";
 import { useCallback, useMemo, useState } from "react";
 import { useShallow } from "zustand/react/shallow";
 
@@ -19,6 +20,7 @@ export function useToolbarState() {
     updateSessionConfig,
     updateAgent,
     openSettingsModal,
+    activateChannel,
   } = useXyzen(
     useShallow((s) => ({
       createDefaultChannel: s.createDefaultChannel,
@@ -26,6 +28,7 @@ export function useToolbarState() {
       updateSessionConfig: s.updateSessionConfig,
       updateAgent: s.updateAgent,
       openSettingsModal: s.openSettingsModal,
+      activateChannel: s.activateChannel,
     })),
   );
 
@@ -133,6 +136,20 @@ export function useToolbarState() {
     }
   }, [isCreatingNewChat, createDefaultChannel, currentAgent?.id]);
 
+  const handleCompactChat = useCallback(async () => {
+    if (isCreatingNewChat || !activeChatChannel) return;
+
+    try {
+      setIsCreatingNewChat(true);
+      const result = await topicService.compactTopic(activeChatChannel);
+      await activateChannel(result.new_topic_id);
+    } catch (error) {
+      console.error("Failed to compact chat:", error);
+    } finally {
+      setIsCreatingNewChat(false);
+    }
+  }, [isCreatingNewChat, activeChatChannel, activateChannel]);
+
   return {
     // Store values
     agents,
@@ -159,6 +176,7 @@ export function useToolbarState() {
     handleKnowledgeSetChange,
     handleSandboxBackendChange,
     handleNewChat,
+    handleCompactChat,
 
     // Store actions
     fetchAgents,

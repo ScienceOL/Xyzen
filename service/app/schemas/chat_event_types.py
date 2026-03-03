@@ -77,6 +77,9 @@ class ChatEventType(StrEnum):
     # User question (interrupt-based)
     ASK_USER_QUESTION = "ask_user_question"
 
+    # Context window usage tracking
+    CONTEXT_USAGE = "context_usage"
+
 
 class ChatClientEventType(StrEnum):
     """Client -> Server event types (messages coming from the frontend)."""
