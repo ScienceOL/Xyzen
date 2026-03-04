@@ -109,7 +109,13 @@ async def test_spawn_subagent_timeout_returns_structured_failure(monkeypatch: py
     async def _build_graph_stub(**_kwargs: Any) -> object:
         return object()
 
-    async def _run_subagent_stub(_graph: object, _task: str, provider_id: str | None = None) -> str:
+    async def _run_subagent_stub(
+        _graph: object,
+        _task: str,
+        provider_id: str | None = None,
+        model_name: str | None = None,
+        model_tier: str | None = None,
+    ) -> str:
         await asyncio.sleep(1)
         return "never reached"
 
@@ -145,7 +151,13 @@ async def test_spawn_subagent_recursion_limit_returns_structured_failure(
     async def _build_graph_stub(**_kwargs: Any) -> object:
         return object()
 
-    async def _run_subagent_stub(_graph: object, _task: str, provider_id: str | None = None) -> str:
+    async def _run_subagent_stub(
+        _graph: object,
+        _task: str,
+        provider_id: str | None = None,
+        model_name: str | None = None,
+        model_tier: str | None = None,
+    ) -> str:
         raise RuntimeError("recursion limit reached")
 
     monkeypatch.setattr(subagent_tools, "_build_subagent_graph", _build_graph_stub)
@@ -178,7 +190,13 @@ async def test_spawn_subagent_success_returns_structured_success(monkeypatch: py
     async def _build_graph_stub(**_kwargs: Any) -> object:
         return object()
 
-    async def _run_subagent_stub(_graph: object, _task: str, provider_id: str | None = None) -> str:
+    async def _run_subagent_stub(
+        _graph: object,
+        _task: str,
+        provider_id: str | None = None,
+        model_name: str | None = None,
+        model_tier: str | None = None,
+    ) -> str:
         return "final answer"
 
     monkeypatch.setattr(subagent_tools, "_build_subagent_graph", _build_graph_stub)

@@ -175,5 +175,17 @@ async def generate_conversation_summary(
     conversation_text = "\n".join(f"[{msg.type}]: {_extract_text_content(msg.content)}" for msg in messages)
     prompt = f"{COMPACTION_PROMPT}\n\n---\n\n{conversation_text}"
     response = await llm.ainvoke([HumanMessage(content=prompt)])
+
+    from app.core.consume.consume_service import record_response_usage_direct
+
+    await record_response_usage_direct(
+        response,
+        user_id=user_id,
+        source="helper:context_compaction",
+        model_name=model,
+        provider_id=str(provider),
+        model_tier="standard",
+    )
+
     content = response.content
     return content if isinstance(content, str) else str(content)

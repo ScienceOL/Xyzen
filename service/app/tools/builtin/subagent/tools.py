@@ -86,6 +86,7 @@ async def create_subagent_tool_for_session(
     model_name: str | None,
     current_depth: int = 0,
     store: "BaseStore | None" = None,
+    model_tier: str | None = None,
 ) -> list[BaseTool]:
     """
     Create the spawn_subagent tool bound to the current session context.
@@ -154,6 +155,7 @@ async def create_subagent_tool_for_session(
             current_depth=current_depth,
             store=store,
             attempt_index=attempt_index,
+            model_tier=model_tier,
         )
 
     tool = StructuredTool(
@@ -177,6 +179,7 @@ async def _spawn_subagent_impl(
     current_depth: int,
     store: "BaseStore | None",
     attempt_index: int,
+    model_tier: str | None = None,
 ) -> str:
     """
     Core implementation: build a react subagent, run it, return the text result.
@@ -239,7 +242,7 @@ async def _spawn_subagent_impl(
 
         # 4. Run subagent with timeout (no db session needed for execution)
         result = await asyncio.wait_for(
-            _run_subagent(compiled_graph, task, provider_id=provider_id),
+            _run_subagent(compiled_graph, task, provider_id=provider_id, model_name=model_name, model_tier=model_tier),
             timeout=SUBAGENT_TIMEOUT_SECONDS,
         )
 
@@ -369,6 +372,8 @@ async def _run_subagent(
     graph: "CompiledStateGraph[Any, None, Any, Any]",
     task: str,
     provider_id: str | None = None,
+    model_name: str | None = None,
+    model_tier: str | None = None,
 ) -> str:
     """
     Run a subagent graph and collect the final text output.
@@ -390,7 +395,13 @@ async def _run_subagent(
     # Extract and record token usage from subagent messages
     from app.core.consume.consume_service import record_messages_usage_from_context
 
-    await record_messages_usage_from_context(messages, source="subagent", provider=provider_id)
+    await record_messages_usage_from_context(
+        messages,
+        source="subagent",
+        model_name=model_name or "unknown",
+        model_tier=model_tier,
+        provider_id=provider_id,
+    )
 
     # Walk backwards to find the latest final assistant message.
     for msg in reversed(messages):
