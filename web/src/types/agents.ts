@@ -48,6 +48,7 @@ export interface DailyStatsResponse {
  */
 export interface YesterdaySummary {
   agent_id: string;
+  topic_count: number;
   message_count: number;
   last_message_content?: string | null;
   summary?: string | null;
@@ -119,17 +120,4 @@ export type AgentWithLayout = Agent & {
   spatial_layout: AgentSpatialLayout;
   /** Aggregated usage stats for growth visualization; fetched from /agents/stats API */
   stats?: AgentStatsAggregated;
-};
-
-// System/builtin agents (official agents provided by the platform)
-export interface SystemAgent extends Agent {
-  is_official?: boolean;
-  is_builtin?: boolean;
-}
-
-// Type guard functions for better type safety
-export const isSystemAgent = (agent: Agent): agent is SystemAgent => {
-  return (
-    !!(agent as SystemAgent).is_official || !!(agent as SystemAgent).is_builtin
-  );
 };

@@ -1,9 +1,12 @@
 import nextMDX from '@next/mdx'
+import createNextIntlPlugin from 'next-intl/plugin'
 
 import { recmaPlugins } from './src/mdx/recma.mjs'
 import { rehypePlugins } from './src/mdx/rehype.mjs'
 import { remarkPlugins } from './src/mdx/remark.mjs'
 import withSearch from './src/mdx/search.mjs'
+
+const withNextIntl = createNextIntlPlugin('./src/i18n/request.ts')
 
 const withMDX = nextMDX({
   options: {
@@ -19,7 +22,6 @@ const nextConfig = {
   basePath: '/docs',
   pageExtensions: ['js', 'jsx', 'ts', 'tsx', 'mdx'],
   allowedDevOrigins: ['127.0.0.1'],
-  // 确保 standalone 模式下包含所有 MDX 文件
   outputFileTracingIncludes: {
     '**/*': ['./src/app/**/*.mdx'],
   },
@@ -40,4 +42,4 @@ const nextConfig = {
   },
 }
 
-export default withSearch(withMDX(nextConfig))
+export default withNextIntl(withSearch(withMDX(nextConfig)))

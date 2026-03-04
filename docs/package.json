@@ -4,7 +4,7 @@
   "version": "0.1.0",
   "private": true,
   "engines": {
-    "node": ">=18.18 <25"
+    "node": ">=18.18"
   },
   "scripts": {
     "dev": "next dev -p 32235",
@@ -45,20 +45,17 @@
     "fast-glob": "^3.3.0",
     "flexsearch": "^0.7.31",
     "framer-motion": "7.8.1",
-    "i18next": "^23.15.1",
-    "i18next-browser-languagedetector": "^7.2.0",
+    "next-intl": "^4.1.0",
     "mdast-util-to-string": "^3.2.0",
     "mdx-annotations": "^0.1.1",
     "mermaid": "^11.8.0",
     "next": "15.3.1",
     "next-themes": "^0.2.1",
-    "nodejieba": "^3.4.4",
     "pinyin": "2.11.2",
     "postcss": "^8.4.31",
     "react": "18.2.0",
     "react-dom": "18.2.0",
     "react-highlight-words": "^0.20.0",
-    "react-i18next": "^14.1.0",
     "remark": "^14.0.2",
     "remark-gfm": "^3.0.1",
     "remark-mdx": "^2.3.0",

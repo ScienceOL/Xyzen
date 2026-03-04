@@ -376,6 +376,7 @@ export const FloatingChatInput: React.FC<FloatingChatInputProps> = ({
                     <SkillsButton
                       agent={toolbar.currentAgent}
                       onAgentRefresh={toolbar.fetchAgents}
+                      onUpdateAgent={toolbar.updateAgent}
                       buttonClassName={toolbarButtonClass}
                     />
                   )}

@@ -3,8 +3,7 @@ import { NavGroup } from '@/@types/navigation'
 import { useAuthServiceContext } from '@/auth/AuthContext'
 import clsx from 'clsx'
 import { AnimatePresence, motion, useIsPresent } from 'framer-motion'
-import Link from 'next/link'
-import { usePathname } from 'next/navigation'
+import { Link, usePathname } from '@/i18n/navigation'
 import { useRef } from 'react'
 
 import { Button } from '@/components/Button'
@@ -308,9 +307,6 @@ export function Navigation({ navigation, ...props }: NavigationProps) {
   return (
     <nav {...props}>
       <ul role="list">
-        <TopLevelNavItem href="/">Studio</TopLevelNavItem>
-        <TopLevelNavItem href="/protium">Protium</TopLevelNavItem>
-        <TopLevelNavItem href="/development">Development</TopLevelNavItem>
         {navigation.map((group, groupIndex) => (
           <NavigationGroup
             key={group.title}

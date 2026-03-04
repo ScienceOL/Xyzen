@@ -1,6 +1,6 @@
 """Startup sync: seed plan_catalog limits → DB SubscriptionRole (upsert).
 
-Follows the same pattern as ``SystemAgentManager.ensure_system_agents()``.
+Uses an upsert pattern to ensure plan catalog limits are seeded in the DB.
 """
 
 import logging

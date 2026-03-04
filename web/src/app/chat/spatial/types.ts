@@ -27,6 +27,7 @@ export interface DailyActivityData {
  * Yesterday's summary data for agent.
  */
 export interface YesterdaySummaryData {
+  topicCount: number;
   messageCount: number;
   lastMessagePreview?: string | null;
 }

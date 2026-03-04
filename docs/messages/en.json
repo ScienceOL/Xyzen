@@ -1,0 +1,32 @@
+{
+  "nav": {
+    "docs": "Protocol API"
+  },
+  "navigation": {
+    "guides": "Guides",
+    "introduction": "Introduction",
+    "quickstart": "Quickstart",
+    "sdks": "SDKs",
+    "authentication": "Authentication",
+    "pagination": "Pagination",
+    "errors": "Errors",
+    "webhooks": "Webhooks",
+    "resources": "Resources",
+    "contacts": "Contacts",
+    "conversations": "Conversations",
+    "messages": "Messages",
+    "groups": "Groups",
+    "attachments": "Attachments"
+  },
+  "footer": {
+    "previous": "Previous",
+    "next": "Next"
+  },
+  "search": {
+    "placeholder": "Search docs..."
+  },
+  "common": {
+    "signIn": "Sign in",
+    "backToDocs": "Back to docs"
+  }
+}

@@ -1,4 +1,4 @@
-import Link from 'next/link'
+import { Link } from '@/i18n/navigation'
 import clsx from 'clsx'
 
 function ArrowIcon(props: React.ComponentPropsWithoutRef<'svg'>) {

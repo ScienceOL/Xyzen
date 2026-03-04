@@ -27,36 +27,71 @@ from app.tasks.chat_event_handlers import (
 logger = logging.getLogger(__name__)
 
 
-# Helper to publish to Redis
+# Helper to publish events to Redis Streams
 class RedisPublisher:
-    def __init__(self, connection_id: str):
+    def __init__(self, connection_id: str, topic_id: str | None = None):
         self.connection_id = connection_id
         self.redis_client = redis.from_url(configs.Redis.REDIS_URL, decode_responses=True)
-        self.channel = f"chat:{connection_id}"
         self.abort_key = f"abort:{connection_id}"
 
-    async def publish(self, message: str, max_retries: int = 3) -> bool:
-        """Publish a message to the Redis channel with retry for transient failures."""
+        from app.infra.redis.streams import StreamPublisher
+
+        self._stream: StreamPublisher | None = None
+        if topic_id:
+            self._stream = StreamPublisher(topic_id, self.redis_client)
+
+    async def publish(self, message: str, max_retries: int = 3) -> str | None:
+        """Publish a message to the Redis Stream with retry for transient failures.
+
+        Returns the Stream entry ID on success, ``None`` on failure.
+        """
+        if self._stream is None:
+            logger.error("RedisPublisher: No stream configured (missing topic_id)")
+            return None
+
         for attempt in range(max_retries):
             try:
-                await self.redis_client.publish(self.channel, message)
-                return True
+                parsed = json.loads(message)
+                event_type = parsed.get("type", "unknown")
+                entry_id = await self._stream.publish(event_type, message)
+                return entry_id
             except (redis.ConnectionError, redis.TimeoutError) as e:
                 if attempt < max_retries - 1:
                     delay = 0.1 * (2**attempt)  # 0.1s, 0.2s, 0.4s
                     logger.warning(
-                        f"Redis publish attempt {attempt + 1} failed for {self.channel}, retrying in {delay}s: {e}"
+                        f"Stream XADD attempt {attempt + 1} failed for {self._stream.stream_key}, retrying in {delay}s: {e}"
                     )
                     await asyncio.sleep(delay)
                 else:
-                    logger.error(f"Redis publish failed after {max_retries} attempts for {self.channel}: {e}")
-                    return False
+                    logger.error(f"Stream XADD failed after {max_retries} attempts for {self._stream.stream_key}: {e}")
+                    return None
             except Exception as e:
-                logger.error(f"Non-retryable Redis publish error for {self.channel}: {e}")
-                return False
-        return False
+                logger.error(f"Non-retryable Stream XADD error for {self._stream.stream_key}: {e}")
+                return None
+        return None
+
+    async def set_generation_cursor(self, entry_id: str) -> None:
+        """Mark *entry_id* as the generation cursor for the topic stream.
+
+        SSE first-connect clients use this cursor to skip past completed events
+        (the DB already holds these messages).  TTL is slightly longer than the
+        stream TTL (600 s) so late reconnects can still use the cursor.
+        """
+        if self._stream is None:
+            return
+        try:
+            cursor_key = f"{self._stream.stream_key}:cursor"
+            await self.redis_client.set(cursor_key, entry_id, ex=700)
+        except Exception as e:
+            logger.warning(f"Failed to set generation cursor: {e}")
 
     async def close(self) -> None:
+        # Set expiry on stream so it's cleaned up after grace period
+        if self._stream is not None:
+            try:
+                await self._stream.set_expire(600)
+            except Exception as e:
+                logger.warning(f"Failed to set stream expiry: {e}")
         await self.redis_client.aclose()
 
     async def check_abort(self) -> bool:
@@ -189,7 +224,7 @@ async def _process_chat_message_async(
     # Assuming user_id is string or int based on auth
     user_id = user_id_str
 
-    publisher = RedisPublisher(connection_id)
+    publisher = RedisPublisher(connection_id, topic_id=topic_id_str)
 
     # Clear any stale abort signal from previous task (e.g., from disconnect)
     # This prevents a race condition where a reconnected user's new task
@@ -396,7 +431,7 @@ async def _process_chat_message_async(
 
                     # Send message_saved so frontend can reconcile the stream message with the DB record
                     if msg and ctx.active_stream_id:
-                        await publisher.publish(
+                        entry_id = await publisher.publish(
                             json.dumps(
                                 {
                                     "type": ChatEventType.MESSAGE_SAVED,
@@ -408,6 +443,8 @@ async def _process_chat_message_async(
                                 }
                             )
                         )
+                        if entry_id:
+                            await publisher.set_generation_cursor(entry_id)
             except Exception as msg_save_error:
                 logger.warning(f"Failed to save message content on error: {msg_save_error}")
 
@@ -546,7 +583,7 @@ async def _resume_chat_from_interrupt_async(
     connection_id = f"{session_id}:{topic_id}"
     user_id = user_id_str
 
-    publisher = RedisPublisher(connection_id)
+    publisher = RedisPublisher(connection_id, topic_id=topic_id_str)
 
     logger.info(f"Resuming chat from interrupt: connection_id={connection_id}, question_id={question_id}")
 
@@ -848,7 +885,7 @@ async def _resume_chat_from_interrupt_async(
                         await msg_db.commit()
 
                     if msg and ai_message_active_stream_id:
-                        await publisher.publish(
+                        entry_id = await publisher.publish(
                             json.dumps(
                                 {
                                     "type": ChatEventType.MESSAGE_SAVED,
@@ -860,6 +897,8 @@ async def _resume_chat_from_interrupt_async(
                                 }
                             )
                         )
+                        if entry_id:
+                            await publisher.set_generation_cursor(entry_id)
             except Exception as msg_save_error:
                 logger.warning(f"Failed to save message content on error: {msg_save_error}")
 

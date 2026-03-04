@@ -220,6 +220,17 @@ export function handleMessageSaved(
   }
 
   if (messageIndex !== -1) {
+    // Safety net: if a DB-loaded message with the same db_id already exists
+    // (e.g. SSE replayed completed events after a page refresh), remove the
+    // SSE-replayed duplicate instead of creating a second copy.
+    const dbDuplicateIndex = channel.messages.findIndex(
+      (m, idx) => idx !== messageIndex && m.id === eventData.db_id,
+    );
+    if (dbDuplicateIndex !== -1) {
+      channel.messages.splice(messageIndex, 1);
+      return;
+    }
+
     const savedMessage = channel.messages[messageIndex];
     savedMessage.dbId = eventData.db_id;
     savedMessage.id = eventData.db_id;

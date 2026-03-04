@@ -1,8 +1,9 @@
-
 export interface NavGroup {
+  title: string
+  titleKey?: string
+  links: Array<{
     title: string
-    links: Array<{
-      title: string
-      href: string
-    }>
-  }
+    titleKey?: string
+    href: string
+  }>
+}

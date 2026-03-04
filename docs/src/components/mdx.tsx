@@ -1,6 +1,6 @@
 "use client";
 import clsx from 'clsx'
-import Link from 'next/link'
+import { Link } from '@/i18n/navigation'
 
 import { Feedback } from '@/components/Feedback'
 import { Heading } from '@/components/Heading'

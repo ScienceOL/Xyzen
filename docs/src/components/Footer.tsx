@@ -1,7 +1,7 @@
 'use client'
 
-import Link from 'next/link'
-import { usePathname } from 'next/navigation'
+import { useTranslations } from 'next-intl'
+import { Link, usePathname } from '@/i18n/navigation'
 
 import { type NavGroup } from '@/@types/navigation'
 import { Button } from '@/components/Button'
@@ -106,6 +106,7 @@ function SmallPrint() {
 }
 
 function PageNavigation({ navigation }: { navigation: NavGroup[] }) {
+  const t = useTranslations('footer')
   let pathname = usePathname()
   const allPages = navigation
     .flatMap((group) => group.links)
@@ -130,12 +131,12 @@ function PageNavigation({ navigation }: { navigation: NavGroup[] }) {
     <div className="flex">
       {previousPage && (
         <div className="flex flex-col items-start gap-3">
-          <PageLink label="Previous" page={previousPage} previous />
+          <PageLink label={t('previous')} page={previousPage} previous />
         </div>
       )}
       {nextPage && (
         <div className="ml-auto flex flex-col items-end gap-3">
-          <PageLink label="Next" page={nextPage} />
+          <PageLink label={t('next')} page={nextPage} />
         </div>
       )}
     </div>

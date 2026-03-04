@@ -67,6 +67,7 @@ class YesterdaySummary(BaseModel):
     """Summary of yesterday's activity for a session."""
 
     agent_id: UUID
+    topic_count: int = 0
     message_count: int
     last_message_content: str | None = None
     summary: str | None = None  # Optional AI-generated summary

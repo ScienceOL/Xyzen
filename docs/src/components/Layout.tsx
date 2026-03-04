@@ -2,7 +2,8 @@
 
 import { motion } from 'framer-motion'
 import Link from 'next/link'
-import { usePathname } from 'next/navigation'
+import { useTranslations } from 'next-intl'
+import { usePathname } from '@/i18n/navigation'
 
 import { type NavGroup } from '@/@types/navigation'
 import { Footer } from '@/components/Footer'
@@ -12,30 +13,37 @@ import { Navigation } from '@/components/Navigation'
 import { type Section, SectionProvider } from '@/components/SectionProvider'
 import { PrimarySite } from '@/config'
 
+function useLocalizedNavigation(
+  navigation: Array<NavGroup>,
+): Array<NavGroup> {
+  const t = useTranslations('navigation')
+  return navigation.map((group) => ({
+    ...group,
+    title: group.titleKey ? t(group.titleKey) : group.title,
+    links: group.links.map((link) => ({
+      ...link,
+      title: link.titleKey ? t(link.titleKey) : link.title,
+    })),
+  }))
+}
+
 export function Layout({
   children,
   allSections,
   navigation,
+  locale,
 }: {
   children: React.ReactNode
   allSections: Record<string, Array<Section>>
   navigation: Array<NavGroup>
+  locale: string
 }) {
   let pathname = usePathname()
-
-  // 添加调试日志（同时支持开发和生产环境）
-  if (typeof window !== 'undefined') {
-    console.log('[Layout Debug]', {
-      pathname,
-      allSectionsKeys: Object.keys(allSections),
-      currentPageSections: allSections[pathname],
-    })
-  }
+  const localizedNav = useLocalizedNavigation(navigation)
 
   return (
     <SectionProvider sections={allSections[pathname] ?? []}>
       <div className="h-full lg:ml-72 xl:ml-80">
-        {/* 侧边栏 + 顶部导航 */}
         <motion.header
           layoutScroll
           className="contents lg:pointer-events-none lg:fixed lg:inset-0 lg:z-40 lg:flex"
@@ -46,18 +54,17 @@ export function Layout({
                 <Logo className="h-6" />
               </Link>
             </div>
-            <Header navigation={navigation} />
+            <Header navigation={localizedNav} />
             <Navigation
-              navigation={navigation}
+              navigation={localizedNav}
               className="hidden lg:mt-10 lg:block"
             />
           </div>
         </motion.header>
 
-        {/* 主体 */}
         <div className="relative flex h-full flex-col px-4 pt-14 sm:px-6 lg:px-8">
           <main className="flex-auto">{children}</main>
-          <Footer navigation={navigation} />
+          <Footer navigation={localizedNav} />
         </div>
       </div>
     </SectionProvider>

@@ -62,6 +62,8 @@ services:
 
   docs:
     image: ghcr.io/scienceol/xyzen-docs:beta
+    environment:
+      - NODE_ENV=development
     volumes:
       - ../docs:/app
       - /app/node_modules

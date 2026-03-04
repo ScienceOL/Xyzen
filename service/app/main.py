@@ -81,32 +81,14 @@ async def lifespan(app: FastAPI) -> AsyncGenerator[None, None]:
 
     await validate_model_pricing_coverage()
 
-    # Initialize system agents (Chat agent)
     # Bootstrap Novu notification (auto-create admin, fetch API keys)
     from app.core.notification.bootstrap import ensure_novu_setup
-    from app.core.system_agent import SystemAgentManager
     from app.infra.database import AsyncSessionLocal
 
     try:
         await ensure_novu_setup()
     except Exception as e:
         logger.warning(f"Novu bootstrap skipped: {e}")
-
-    async def _ensure_system_agents() -> None:
-        async with AsyncSessionLocal() as db:
-            try:
-                system_manager = SystemAgentManager(db)
-                system_agents = await system_manager.ensure_system_agents()
-                await db.commit()
-
-                agent_names = [agent.name for agent in system_agents.values()]
-                logger.info(f"System agents initialized: {', '.join(agent_names)}")
-
-            except Exception as e:
-                logger.error(f"Failed to initialize system agents: {e}")
-                await db.rollback()
-
-    await run_once("startup:system_agents", _ensure_system_agents)
 
     # Publish builtin agents to marketplace
     from app.core.marketplace import BuiltinMarketplacePublisher

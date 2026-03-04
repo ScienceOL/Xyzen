@@ -32,17 +32,25 @@ class RunnerBackend(SandboxBackend):
     def __init__(self, user_id: str) -> None:
         self._user_id = user_id
 
-    async def _send_request(self, request_type: str, payload: dict[str, Any]) -> dict[str, Any]:
+    async def _send_request(
+        self,
+        request_type: str,
+        payload: dict[str, Any],
+        timeout: float | None = None,
+    ) -> dict[str, Any]:
         """Send a typed request to the runner and return the response payload."""
         from app.api.ws.v1.runner import send_runner_request
 
         request_id = f"req_{uuid.uuid4().hex[:12]}"
-        response = await send_runner_request(
-            user_id=self._user_id,
-            request_type=request_type,
-            payload=payload,
-            request_id=request_id,
-        )
+        kwargs: dict[str, Any] = {
+            "user_id": self._user_id,
+            "request_type": request_type,
+            "payload": payload,
+            "request_id": request_id,
+        }
+        if timeout is not None:
+            kwargs["timeout"] = timeout
+        response = await send_runner_request(**kwargs)
 
         if not response.get("success", False):
             error = response.get("payload", {}).get("error", "Runner request failed")
@@ -73,13 +81,19 @@ class RunnerBackend(SandboxBackend):
         cwd: str | None = None,
         timeout: int | None = None,
     ) -> ExecResult:
-        payload: dict[str, str | int | None] = {"command": command}
+        from app.configs import configs
+
+        effective_timeout = timeout or configs.Sandbox.Timeout
+        payload: dict[str, str | int | None] = {
+            "command": command,
+            "timeout": effective_timeout,
+        }
         if cwd:
             payload["cwd"] = cwd
-        if timeout:
-            payload["timeout"] = timeout
 
-        result = await self._send_request("exec", payload)
+        # Give the WebSocket wait extra buffer beyond the command timeout
+        ws_timeout = effective_timeout + 30
+        result = await self._send_request("exec", payload, timeout=ws_timeout)
         return ExecResult(
             exit_code=result.get("exit_code", -1),
             stdout=result.get("stdout", ""),

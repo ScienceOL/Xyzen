@@ -84,6 +84,7 @@ class TestYesterdaySummary:
     def test_optional_fields(self) -> None:
         aid = uuid4()
         summary = YesterdaySummary(agent_id=aid, message_count=5)
+        assert summary.topic_count == 0
         assert summary.last_message_content is None
         assert summary.summary is None
 
@@ -91,9 +92,11 @@ class TestYesterdaySummary:
         aid = uuid4()
         summary = YesterdaySummary(
             agent_id=aid,
+            topic_count=2,
             message_count=3,
             last_message_content="Latest reply",
             summary="A brief summary",
         )
+        assert summary.topic_count == 2
         assert summary.last_message_content == "Latest reply"
         assert summary.summary == "A brief summary"

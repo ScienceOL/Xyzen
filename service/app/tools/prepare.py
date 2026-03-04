@@ -101,7 +101,11 @@ async def prepare_tools(
     langchain_tools.extend(mcp_tools)
 
     # 4. Load skill tools (requires DB query + session binding)
-    skill_tools = await _load_skill_tools(db, agent, session_id, user_id)
+    # Check skills_auto flag from agent graph_config (default: True)
+    skills_auto = True
+    if agent and agent.graph_config and isinstance(agent.graph_config, dict):
+        skills_auto = agent.graph_config.get("skills_auto", True) is not False
+    skill_tools = await _load_skill_tools(db, agent, session_id, user_id, skills_auto=skills_auto)
     langchain_tools.extend(skill_tools)
 
     logger.info(f"Loaded {len(langchain_tools)} tools (builtin + MCP)")
@@ -278,6 +282,7 @@ async def _load_skill_tools(
     agent: "Agent | None",
     session_id: "UUID | None",
     user_id: str | None = None,
+    skills_auto: bool = True,
 ) -> list[BaseTool]:
     """
     Load skill activation tools if the agent has attached skills.
@@ -290,6 +295,7 @@ async def _load_skill_tools(
         agent: Agent instance
         session_id: Session UUID
         user_id: User ID for sandbox limit enforcement
+        skills_auto: When True, load all user-visible skills instead of only attached ones
 
     Returns:
         List of skill tools (activate_skill, list_skill_resources) or empty list
@@ -301,7 +307,10 @@ async def _load_skill_tools(
         from app.repos.skill import SkillRepository
 
         repo = SkillRepository(db)
-        skills = await repo.get_skills_for_agent(agent.id)
+        if skills_auto and user_id:
+            skills = await repo.get_user_and_builtin_skills(user_id)
+        else:
+            skills = await repo.get_skills_for_agent(agent.id)
         if not skills:
             return []
 

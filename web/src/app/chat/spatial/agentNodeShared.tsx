@@ -10,6 +10,7 @@ import {
 } from "@heroicons/react/24/outline";
 import { useReactFlow } from "@xyflow/react";
 import { useState } from "react";
+import { useTranslation } from "react-i18next";
 import type {
   AgentFlowNodeProps,
   AgentStatsDisplay,
@@ -90,6 +91,7 @@ export function YesterdayBubble({
   summary?: YesterdaySummaryData;
   className?: string;
 }) {
+  const { t } = useTranslation();
   if (!summary) return null;
 
   const hasActivity = summary.messageCount > 0;
@@ -107,7 +109,10 @@ export function YesterdayBubble({
       {hasActivity ? (
         <>
           <span className="font-medium">
-            昨日聊了 {summary.messageCount} 条
+            {t("agents.spatialNode.yesterdaySummary", {
+              topicCount: summary.topicCount,
+              messageCount: summary.messageCount,
+            })}
           </span>
           {summary.lastMessagePreview && (
             <p className="mt-1 text-[10px] opacity-80 line-clamp-2">
@@ -116,7 +121,9 @@ export function YesterdayBubble({
           )}
         </>
       ) : (
-        <span className="font-medium">你昨天没有和我聊天哟 😢</span>
+        <span className="font-medium">
+          {t("agents.spatialNode.yesterdayNoActivity")}
+        </span>
       )}
     </div>
   );

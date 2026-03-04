@@ -1,4 +1,4 @@
-import xyzenService from "@/service/xyzenService";
+import sseClient from "@/service/sseClient";
 
 /**
  * Module-level state for timers and guards.
@@ -8,7 +8,7 @@ import xyzenService from "@/service/xyzenService";
 // Track abort timeout IDs per channel to allow cleanup
 export const abortTimeoutIds = new Map<string, ReturnType<typeof setTimeout>>();
 
-// Per-topic stale-state watchdog interval IDs
+// Per-topic stale-state watchdog interval IDs (legacy — kept for compatibility)
 export const staleWatchdogIds = new Map<
   string,
   ReturnType<typeof setInterval>
@@ -21,11 +21,11 @@ export const CHANNEL_CONNECT_TIMEOUT_MS = 5000;
 export const CHANNEL_CONNECT_POLL_INTERVAL_MS = 100;
 
 /**
- * Clean up WebSocket connection and module-level timers for a given topic.
+ * Clean up SSE connection and module-level timers for a given topic.
  * Must be called before removing a channel from state.
  */
 export function cleanupTopicResources(topicId: string): void {
-  xyzenService.closeConnection(topicId);
+  sseClient.disconnect(topicId);
 
   const watchdog = staleWatchdogIds.get(topicId);
   if (watchdog) {
