@@ -91,7 +91,7 @@ export default function CommunityHub() {
             {/* Portal target — marketplace controls render here */}
             <div
               ref={setHeaderTarget}
-              className="flex min-w-0 flex-1 items-center gap-2 md:justify-end"
+              className="flex min-w-0 flex-1 items-center gap-2"
             />
           </div>
         </div>

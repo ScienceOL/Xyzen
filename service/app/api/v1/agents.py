@@ -364,7 +364,7 @@ async def update_agent(
                     detail=f"Root agent only allows editing: {', '.join(sorted(_allowed))}",
                 )
 
-        # Non-editable agents: only allow tool_filter changes in graph_config
+        # Non-editable agents: only allow tool_filter and skills_auto changes in graph_config
         if not agent.config_editable and agent_data.graph_config is not None:
             incoming_config = agent_data.graph_config
             existing_config = agent.graph_config or {}
@@ -384,16 +384,22 @@ async def update_agent(
                 # tool_filter explicitly set to null (enable all)
                 incoming_filter = "CLEAR"
 
-            if incoming_filter is not None:
-                # Apply only tool_filter to existing config, keep everything else
+            # Check for skills_auto change
+            has_skills_auto = "skills_auto" in incoming_config
+
+            if incoming_filter is not None or has_skills_auto:
+                # Apply only allowed fields to existing config, keep everything else
                 import copy
 
                 merged = copy.deepcopy(existing_config)
-                for node in merged.get("graph", {}).get("nodes", []):
-                    if node.get("kind") == "llm":
-                        if "config" not in node:
-                            node["config"] = {}
-                        node["config"]["tool_filter"] = None if incoming_filter == "CLEAR" else incoming_filter
+                if incoming_filter is not None:
+                    for node in merged.get("graph", {}).get("nodes", []):
+                        if node.get("kind") == "llm":
+                            if "config" not in node:
+                                node["config"] = {}
+                            node["config"]["tool_filter"] = None if incoming_filter == "CLEAR" else incoming_filter
+                if has_skills_auto:
+                    merged["skills_auto"] = incoming_config["skills_auto"]
                 agent_data.graph_config = merged
             else:
                 raise HTTPException(
