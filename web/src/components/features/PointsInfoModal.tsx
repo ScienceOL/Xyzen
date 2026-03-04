@@ -31,7 +31,6 @@ import {
   ClockIcon,
   CalendarDaysIcon,
   CommandLineIcon,
-  DocumentTextIcon,
   FolderIcon,
   GlobeAltIcon,
   LockClosedIcon,
@@ -75,6 +74,41 @@ const PLAN_PRIORITY: Record<string, number> = {
   professional: 2,
   ultra: 3,
 };
+
+// ---------- Shared motion presets (stable refs, zero per-render GC) ----------
+
+const FADE_INITIAL = { opacity: 0 } as const;
+const FADE_ANIMATE = { opacity: 1 } as const;
+const SLIDE_UP_SM_INITIAL = { opacity: 0, y: 10 } as const;
+const SLIDE_UP_INITIAL = { opacity: 0, y: 12 } as const;
+const SLIDE_UP_MD_INITIAL = { opacity: 0, y: 16 } as const;
+const SLIDE_UP_LG_INITIAL = { opacity: 0, y: 20 } as const;
+const SLIDE_UP_ANIMATE = { opacity: 1, y: 0 } as const;
+const SLIDE_DOWN_SM_INITIAL = { opacity: 0, y: -6 } as const;
+const SCALE_IN_INITIAL = { opacity: 0, scale: 0.9 } as const;
+const SCALE_IN_ANIMATE = { opacity: 1, scale: 1 } as const;
+const SCALE_X_INITIAL = { opacity: 0, scaleX: 0 } as const;
+const SCALE_X_ANIMATE = { opacity: 1, scaleX: 1 } as const;
+const ICON_SPRING_INITIAL = { scale: 0, rotate: -20 } as const;
+const ICON_SPRING_ANIMATE = { scale: 1, rotate: 0 } as const;
+const TITLE_INITIAL = { opacity: 0, y: 8 } as const;
+const WIDTH_ZERO = { width: 0 } as const;
+const HOVER_BTN = { scale: 1.02 } as const;
+const TAP_BTN = { scale: 0.98 } as const;
+const ORIGIN_LEFT = { transformOrigin: "left" } as const;
+
+const T_FADE_FAST = { duration: 0.25 } as const;
+const T_FADE = { duration: 0.3 } as const;
+const T_SLIDE = { duration: 0.5 } as const;
+const T_SCALE_X = { delay: 0.35, duration: 0.5 } as const;
+const T_ICON_SPRING = {
+  type: "spring" as const,
+  stiffness: 200,
+  damping: 14,
+  delay: 0.15,
+};
+const T_TITLE = { delay: 0.2 } as const;
+const T_BADGE = { delay: 0.28 } as const;
 
 // ---------- Payment brand icons ----------
 
@@ -366,12 +400,17 @@ function UsageBar({
   delay?: number;
 }) {
   const pct = max > 0 ? Math.min(100, (value / max) * 100) : 0;
+  const animateTo = useMemo(() => ({ width: `${Math.max(pct, 1)}%` }), [pct]);
+  const transition = useMemo(
+    () => ({ duration: 0.8, delay, ease: "easeOut" as const }),
+    [delay],
+  );
   return (
     <div className="h-2 w-full overflow-hidden rounded-full bg-neutral-200/60 dark:bg-neutral-700/40">
       <motion.div
-        initial={{ width: 0 }}
-        animate={{ width: `${Math.max(pct, 1)}%` }}
-        transition={{ duration: 0.8, delay, ease: "easeOut" }}
+        initial={WIDTH_ZERO}
+        animate={animateTo}
+        transition={transition}
         className={cn("h-full rounded-full", color)}
       />
     </div>
@@ -410,16 +449,16 @@ function MySubscriptionTab() {
 
   return (
     <motion.div
-      initial={{ opacity: 0 }}
-      animate={{ opacity: 1 }}
-      transition={{ duration: 0.3 }}
+      initial={FADE_INITIAL}
+      animate={FADE_ANIMATE}
+      transition={T_FADE}
       className="mt-4 space-y-5"
     >
       {/* Hero card */}
       <motion.div
-        initial={{ opacity: 0, y: 16 }}
-        animate={{ opacity: 1, y: 0 }}
-        transition={{ duration: 0.5 }}
+        initial={SLIDE_UP_MD_INITIAL}
+        animate={SLIDE_UP_ANIMATE}
+        transition={T_SLIDE}
         className={cn(
           "relative overflow-hidden rounded-2xl p-[1px]",
           `bg-gradient-to-br ${tier.gradient}`,
@@ -435,43 +474,12 @@ function MySubscriptionTab() {
             )}
           />
 
-          {/* Floating particles */}
-          {[...Array(5)].map((_, i) => (
-            <motion.div
-              key={i}
-              className={cn(
-                "pointer-events-none absolute rounded-full opacity-20 blur-sm",
-                `bg-gradient-to-br ${tier.gradient}`,
-              )}
-              style={{
-                width: 6 + i * 4,
-                height: 6 + i * 4,
-                top: `${15 + i * 16}%`,
-                right: `${5 + i * 8}%`,
-              }}
-              animate={{
-                y: [0, -10, 0],
-                opacity: [0.15, 0.3, 0.15],
-              }}
-              transition={{
-                duration: 3 + i * 0.5,
-                repeat: Infinity,
-                delay: i * 0.4,
-              }}
-            />
-          ))}
-
           <div className="relative flex flex-col items-center px-6 pt-8 pb-6 sm:px-8">
             {/* Icon */}
             <motion.div
-              initial={{ scale: 0, rotate: -20 }}
-              animate={{ scale: 1, rotate: 0 }}
-              transition={{
-                type: "spring",
-                stiffness: 200,
-                damping: 14,
-                delay: 0.15,
-              }}
+              initial={ICON_SPRING_INITIAL}
+              animate={ICON_SPRING_ANIMATE}
+              transition={T_ICON_SPRING}
               className={cn(
                 "mb-4 flex h-16 w-16 items-center justify-center rounded-2xl shadow-lg",
                 `bg-gradient-to-br ${tier.gradient} ${tier.glow}`,
@@ -482,9 +490,9 @@ function MySubscriptionTab() {
 
             {/* Title */}
             <motion.h2
-              initial={{ opacity: 0, y: 8 }}
-              animate={{ opacity: 1, y: 0 }}
-              transition={{ delay: 0.2 }}
+              initial={TITLE_INITIAL}
+              animate={SLIDE_UP_ANIMATE}
+              transition={T_TITLE}
               className={cn(
                 "bg-clip-text text-2xl font-extrabold tracking-tight text-transparent sm:text-3xl",
                 `bg-gradient-to-r ${tier.gradient}`,
@@ -496,9 +504,9 @@ function MySubscriptionTab() {
             {/* Expiry badge */}
             {daysLeft !== null && (
               <motion.div
-                initial={{ opacity: 0, scale: 0.9 }}
-                animate={{ opacity: 1, scale: 1 }}
-                transition={{ delay: 0.28 }}
+                initial={SCALE_IN_INITIAL}
+                animate={SCALE_IN_ANIMATE}
+                transition={T_BADGE}
                 className={cn(
                   "mt-2 flex items-center gap-1.5 rounded-full px-3 py-1 text-xs font-medium",
                   isExpired
@@ -522,15 +530,15 @@ function MySubscriptionTab() {
             {/* Expiry progress bar */}
             {daysLeft !== null && !isExpired && (
               <motion.div
-                initial={{ opacity: 0, scaleX: 0 }}
-                animate={{ opacity: 1, scaleX: 1 }}
-                transition={{ delay: 0.35, duration: 0.5 }}
+                initial={SCALE_X_INITIAL}
+                animate={SCALE_X_ANIMATE}
+                transition={T_SCALE_X}
                 className="mt-3 w-full max-w-xs"
-                style={{ transformOrigin: "left" }}
+                style={ORIGIN_LEFT}
               >
                 <div className="h-1.5 w-full overflow-hidden rounded-full bg-neutral-200/60 dark:bg-neutral-700/40">
                   <motion.div
-                    initial={{ width: 0 }}
+                    initial={WIDTH_ZERO}
                     animate={{ width: `${expiryPct}%` }}
                     transition={{ duration: 0.8, delay: 0.4, ease: "easeOut" }}
                     className={cn(
@@ -553,8 +561,8 @@ function MySubscriptionTab() {
       <div className="grid grid-cols-2 gap-3 sm:grid-cols-[2fr_2fr_1fr_1fr_1fr_1fr]">
         {/* Credits + Claim */}
         <motion.div
-          initial={{ opacity: 0, y: 12 }}
-          animate={{ opacity: 1, y: 0 }}
+          initial={SLIDE_UP_INITIAL}
+          animate={SLIDE_UP_ANIMATE}
           transition={{ delay: 0.3 }}
           className="rounded-xl border border-neutral-200 bg-white p-4 dark:border-neutral-700/60 dark:bg-neutral-800/50"
         >
@@ -592,8 +600,8 @@ function MySubscriptionTab() {
 
         {/* Storage */}
         <motion.div
-          initial={{ opacity: 0, y: 12 }}
-          animate={{ opacity: 1, y: 0 }}
+          initial={SLIDE_UP_INITIAL}
+          animate={SLIDE_UP_ANIMATE}
           transition={{ delay: 0.35 }}
           className="rounded-xl border border-neutral-200 bg-white p-4 dark:border-neutral-700/60 dark:bg-neutral-800/50"
         >
@@ -625,8 +633,8 @@ function MySubscriptionTab() {
 
         {/* Chats */}
         <motion.div
-          initial={{ opacity: 0, y: 12 }}
-          animate={{ opacity: 1, y: 0 }}
+          initial={SLIDE_UP_INITIAL}
+          animate={SLIDE_UP_ANIMATE}
           transition={{ delay: 0.4 }}
           className="rounded-xl border border-neutral-200 bg-white p-4 dark:border-neutral-700/60 dark:bg-neutral-800/50"
         >
@@ -645,8 +653,8 @@ function MySubscriptionTab() {
 
         {/* Sandboxes */}
         <motion.div
-          initial={{ opacity: 0, y: 12 }}
-          animate={{ opacity: 1, y: 0 }}
+          initial={SLIDE_UP_INITIAL}
+          animate={SLIDE_UP_ANIMATE}
           transition={{ delay: 0.45 }}
           className="rounded-xl border border-neutral-200 bg-white p-4 dark:border-neutral-700/60 dark:bg-neutral-800/50"
         >
@@ -665,8 +673,8 @@ function MySubscriptionTab() {
 
         {/* Scheduled Tasks */}
         <motion.div
-          initial={{ opacity: 0, y: 12 }}
-          animate={{ opacity: 1, y: 0 }}
+          initial={SLIDE_UP_INITIAL}
+          animate={SLIDE_UP_ANIMATE}
           transition={{ delay: 0.5 }}
           className="rounded-xl border border-neutral-200 bg-white p-4 dark:border-neutral-700/60 dark:bg-neutral-800/50"
         >
@@ -685,8 +693,8 @@ function MySubscriptionTab() {
 
         {/* Terminals */}
         <motion.div
-          initial={{ opacity: 0, y: 12 }}
-          animate={{ opacity: 1, y: 0 }}
+          initial={SLIDE_UP_INITIAL}
+          animate={SLIDE_UP_ANIMATE}
           transition={{ delay: 0.55 }}
           className="rounded-xl border border-neutral-200 bg-white p-4 dark:border-neutral-700/60 dark:bg-neutral-800/50"
         >
@@ -706,8 +714,8 @@ function MySubscriptionTab() {
 
       {/* Redeem prompt */}
       <motion.div
-        initial={{ opacity: 0, y: 10 }}
-        animate={{ opacity: 1, y: 0 }}
+        initial={SLIDE_UP_SM_INITIAL}
+        animate={SLIDE_UP_ANIMATE}
         transition={{ delay: 0.55 }}
         className={cn(
           "flex items-center gap-4 rounded-xl border p-4",
@@ -736,8 +744,8 @@ function MySubscriptionTab() {
       {/* Files usage bar */}
       {usage && (
         <motion.div
-          initial={{ opacity: 0, y: 10 }}
-          animate={{ opacity: 1, y: 0 }}
+          initial={SLIDE_UP_SM_INITIAL}
+          animate={SLIDE_UP_ANIMATE}
           transition={{ delay: 0.55 }}
           className="rounded-xl border border-neutral-200 bg-white p-4 dark:border-neutral-700/60 dark:bg-neutral-800/50"
         >
@@ -761,8 +769,8 @@ function MySubscriptionTab() {
       {/* Scheduled tasks usage bar */}
       {usage?.scheduled_tasks && usage.scheduled_tasks.limit > 0 && (
         <motion.div
-          initial={{ opacity: 0, y: 10 }}
-          animate={{ opacity: 1, y: 0 }}
+          initial={SLIDE_UP_SM_INITIAL}
+          animate={SLIDE_UP_ANIMATE}
           transition={{ delay: 0.6 }}
           className="rounded-xl border border-neutral-200 bg-white p-4 dark:border-neutral-700/60 dark:bg-neutral-800/50"
         >
@@ -815,8 +823,8 @@ function PlanCard({
 
   return (
     <motion.div
-      initial={{ opacity: 0, y: 20 }}
-      animate={{ opacity: 1, y: 0 }}
+      initial={SLIDE_UP_LG_INITIAL}
+      animate={SLIDE_UP_ANIMATE}
       transition={{ delay: index * 0.06, duration: 0.35 }}
       className={`relative flex flex-col rounded-xl border-2 p-3 transition-all sm:p-4 ${
         isLocked
@@ -1033,8 +1041,8 @@ function TopUpCard({
 
   return (
     <motion.div
-      initial={{ opacity: 0, y: 12 }}
-      animate={{ opacity: 1, y: 0 }}
+      initial={SLIDE_UP_INITIAL}
+      animate={SLIDE_UP_ANIMATE}
       transition={{ delay, duration: 0.35 }}
       className="rounded-lg border border-dashed border-neutral-300 bg-neutral-50/50 px-3 py-3 sm:px-4 dark:border-neutral-600 dark:bg-neutral-800/30"
     >
@@ -1121,8 +1129,8 @@ function SandboxPackCard({
 
   return (
     <motion.div
-      initial={{ opacity: 0, y: 12 }}
-      animate={{ opacity: 1, y: 0 }}
+      initial={SLIDE_UP_INITIAL}
+      animate={SLIDE_UP_ANIMATE}
       transition={{ delay, duration: 0.35 }}
       className="rounded-lg border border-dashed border-neutral-300 bg-neutral-50/50 px-3 py-3 sm:px-4 dark:border-neutral-600 dark:bg-neutral-800/30"
     >
@@ -1214,8 +1222,8 @@ function FullAccessCard({
 
   return (
     <motion.div
-      initial={{ opacity: 0, y: 12 }}
-      animate={{ opacity: 1, y: 0 }}
+      initial={SLIDE_UP_INITIAL}
+      animate={SLIDE_UP_ANIMATE}
       transition={{ delay, duration: 0.35 }}
       className={cn(
         "rounded-lg border border-dashed px-3 py-3 sm:px-4",
@@ -1505,9 +1513,9 @@ export function PointsInfoModal({ isOpen, onClose }: PointsInfoModalProps) {
 
                   <TabsContent value={regionTab}>
                     <motion.div
-                      initial={{ opacity: 0 }}
-                      animate={{ opacity: 1 }}
-                      transition={{ duration: 0.25 }}
+                      initial={FADE_INITIAL}
+                      animate={FADE_ANIMATE}
+                      transition={T_FADE_FAST}
                       className="mt-4 space-y-4"
                     >
                       {catalogLoading ? (
@@ -1518,8 +1526,8 @@ export function PointsInfoModal({ isOpen, onClose }: PointsInfoModalProps) {
                         <>
                           {!paymentEnabled && (
                             <motion.div
-                              initial={{ opacity: 0, y: -6 }}
-                              animate={{ opacity: 1, y: 0 }}
+                              initial={SLIDE_DOWN_SM_INITIAL}
+                              animate={SLIDE_UP_ANIMATE}
                               className="rounded-lg bg-amber-50/80 px-4 py-3 text-center text-[13px] text-amber-700 dark:bg-amber-950/20 dark:text-amber-400"
                             >
                               {t("subscription.betaNotice")}
@@ -1588,8 +1596,8 @@ export function PointsInfoModal({ isOpen, onClose }: PointsInfoModalProps) {
                           )}
                           {isChina && (
                             <motion.p
-                              initial={{ opacity: 0 }}
-                              animate={{ opacity: 1 }}
+                              initial={FADE_INITIAL}
+                              animate={FADE_ANIMATE}
                               transition={{ delay: 0.35 }}
                               className="text-center text-xs text-neutral-500 dark:text-neutral-400"
                             >
@@ -1602,52 +1610,14 @@ export function PointsInfoModal({ isOpen, onClose }: PointsInfoModalProps) {
                   </TabsContent>
                 </TabsContents>
               </Tabs>
-
-              {/* Survey link */}
-              <motion.a
-                initial={{ opacity: 0, scale: 0.98 }}
-                animate={{ opacity: 1, scale: 1 }}
-                transition={{ delay: 0.45 }}
-                whileHover={{ scale: 1.005 }}
-                whileTap={{ scale: 0.995 }}
-                href="https://sii-czxy.feishu.cn/share/base/form/shrcnYu8Y3GNgI7M14En1xJ7rMb"
-                target="_blank"
-                rel="noopener noreferrer"
-                className="group flex items-center gap-2 rounded-lg border border-indigo-200 bg-gradient-to-r from-indigo-50 to-purple-50 px-3 py-2.5 transition-all hover:border-indigo-300 hover:shadow-sm sm:gap-3 sm:px-4 sm:py-3 dark:border-indigo-500/30 dark:from-indigo-500/10 dark:to-purple-500/10 dark:hover:border-indigo-400/50"
-              >
-                <div className="flex h-10 w-10 shrink-0 items-center justify-center rounded-lg bg-gradient-to-br from-indigo-500 to-purple-500 text-white shadow-sm">
-                  <DocumentTextIcon className="h-5 w-5" />
-                </div>
-                <div className="flex-1 min-w-0">
-                  <div className="text-sm font-semibold text-indigo-900 dark:text-indigo-100">
-                    {t("subscription.surveyTitle")}
-                  </div>
-                  <div className="text-xs text-indigo-600/70 dark:text-indigo-300/70">
-                    {t("subscription.surveySubtitle")}
-                  </div>
-                </div>
-                <svg
-                  className="h-4 w-4 text-indigo-400 opacity-0 transition-all group-hover:translate-x-0.5 group-hover:opacity-100"
-                  fill="none"
-                  viewBox="0 0 24 24"
-                  stroke="currentColor"
-                >
-                  <path
-                    strokeLinecap="round"
-                    strokeLinejoin="round"
-                    strokeWidth={2}
-                    d="M14 5l7 7m0 0l-7 7m7-7H3"
-                  />
-                </svg>
-              </motion.a>
             </div>
           </div>
 
           {/* Fixed footer */}
           <div className="shrink-0 flex justify-end border-t border-neutral-100 px-4 pt-3 pb-3 sm:px-6 dark:border-neutral-800">
             <motion.button
-              whileHover={{ scale: 1.02 }}
-              whileTap={{ scale: 0.98 }}
+              whileHover={HOVER_BTN}
+              whileTap={TAP_BTN}
               type="button"
               onClick={onClose}
               className="rounded-lg bg-neutral-900 px-5 py-2 text-sm font-semibold text-white transition-colors hover:bg-neutral-800 focus:outline-none dark:bg-indigo-600 dark:hover:bg-indigo-500"
