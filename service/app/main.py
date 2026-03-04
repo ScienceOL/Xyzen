@@ -55,31 +55,30 @@ async def lifespan(app: FastAPI) -> AsyncGenerator[None, None]:
 
     await run_once("startup:providers", initialize_providers_on_startup)
 
-    # Sync subscription role definitions from plan catalog to DB
-    from app.core.subscription_bootstrap import ensure_subscription_roles
+    # EE-only startup tasks: subscription roles, FGA tuples, pricing validation
+    if is_ee():
+        from app.core.subscription_bootstrap import ensure_subscription_roles
 
-    await run_once("startup:subscription_roles", ensure_subscription_roles)
+        await run_once("startup:subscription_roles", ensure_subscription_roles)
 
-    # Sync plan→capability FGA tuples (best-effort, skip if FGA unavailable)
-    async def _ensure_fga_capability_tuples() -> None:
-        try:
-            from app.core.fga.subscription_tuples import ensure_capability_tuples
+        async def _ensure_fga_capability_tuples() -> None:
+            try:
+                from app.core.fga.subscription_tuples import ensure_capability_tuples
 
-            await ensure_capability_tuples()
-        except Exception as e:
-            logger.warning(f"FGA capability tuple sync skipped: {e}")
+                await ensure_capability_tuples()
+            except Exception as e:
+                logger.warning(f"FGA capability tuple sync skipped: {e}")
 
-    await run_once("startup:fga_capability_tuples", _ensure_fga_capability_tuples)
+        await run_once("startup:fga_capability_tuples", _ensure_fga_capability_tuples)
+
+        from app.core.consume.pricing import validate_model_pricing_coverage
+
+        await validate_model_pricing_coverage()
 
     # Register builtin tools (web_search, knowledge_*, etc.)
     from app.tools.registry import register_builtin_tools
 
     register_builtin_tools()
-
-    # Validate model pricing coverage (blocks startup if any model lacks cost data)
-    from app.core.consume.pricing import validate_model_pricing_coverage
-
-    await validate_model_pricing_coverage()
 
     # Bootstrap Novu notification (auto-create admin, fetch API keys)
     from app.core.notification.bootstrap import ensure_novu_setup

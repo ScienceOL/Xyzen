@@ -1,0 +1,82 @@
+# 快速开始
+
+在 5 分钟内让 Xyzen 在本地运行并开始对话。 {{ className: 'lead' }}
+
+## 前提条件
+
+开始之前，请确保已安装以下工具：
+
+- [Docker](https://docs.docker.com/get-docker/) 和 Docker Compose v2+
+- 至少一个 LLM 提供商的 API 密钥（OpenAI、AWS Bedrock、Google 等）
+
+## 1. 克隆仓库
+
+```bash
+git clone https://github.com/ScienceOL/Xyzen.git
+cd Xyzen
+```
+
+## 2. 配置环境
+
+启动脚本会在首次运行时自动从模板创建 `docker/.env.dev` 文件。要配置 LLM 提供商，请编辑该文件并取消注释相关配置。
+
+例如，使用 OpenAI：
+
+```bash {{ title: 'docker/.env.dev' }}
+XYZEN_LLM_providers=openai
+XYZEN_LLM_OpenAI_key=sk-your-key-here
+XYZEN_LLM_OpenAI_deployment=gpt-4o
+```
+
+或使用 AWS Bedrock 接入 Claude：
+
+```bash {{ title: 'docker/.env.dev' }}
+XYZEN_LLM_providers=bedrock
+XYZEN_LLM_Bedrock_key=YOUR_ACCESS_KEY:YOUR_SECRET_KEY
+XYZEN_LLM_Bedrock_project=us-east-1
+XYZEN_LLM_Bedrock_deployment=us.anthropic.claude-sonnet-4-20250514
+```
+
+<Note>
+  你需要配置至少一个 LLM 提供商。查看[配置](/configuration)页面获取完整的提供商列表，包括 Google、Azure OpenAI、通义千问等。
+</Note>
+
+## 3. 启动所有服务
+
+使用仓库中提供的启动脚本：
+
+```bash
+# macOS / Linux
+./launch/dev.sh
+
+# Windows (PowerShell)
+./launch/dev.ps1
+```
+
+该脚本会自动处理所有事项：检查 Docker、创建配置文件、设置 pre-commit 钩子、启动基础设施服务（PostgreSQL、Redis、Casdoor），以及启动开发栈（FastAPI 后端、Celery Worker、React 前端、Nginx）。
+
+使用 `-d` 参数在后台运行（守护进程模式），或使用 `-s` 停止正在运行的服务。
+
+<Note>
+  如果安装了 [just](https://github.com/casey/just)，也可以使用：`just dev`。或者直接运行 docker compose：`docker compose -f docker/docker-compose.base.yaml -f docker/docker-compose.dev.yaml --env-file docker/.env.dev up -d`
+</Note>
+
+## 4. 打开 Xyzen
+
+在浏览器中访问 [http://localhost](http://localhost)，你应该能看到 Xyzen 的对话界面。
+
+## 5. 开始对话
+
+Xyzen 内置了一个 **CEO** 智能体，开箱即用。在侧边栏点击它即可开始对话——CEO 智能体是一个通用的 ReAct 智能体，配备了网络搜索、代码执行等工具。
+
+你也可以点击侧边栏的 **+** 按钮创建自己的智能体，选择 LLM 模型，并配置工具和系统提示词。
+
+## 下一步
+
+Xyzen 已经运行起来了，接下来可以探索以下核心概念：
+
+- [智能体](/agents) — 了解智能体类型及其配置方法
+- [工具](/tools) — 浏览 40 多种内置工具
+- [架构](/architecture) — 了解系统工作原理
+- [配置](/configuration) — 完整的环境变量参考
+- [部署](/deployment) — 使用 Kubernetes 部署到生产环境

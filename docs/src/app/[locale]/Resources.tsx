@@ -11,11 +11,16 @@ import { Link } from '@/i18n/navigation'
 import { GridPattern } from '@/components/GridPattern'
 import { Heading } from '@/components/Heading'
 import {
-  ChatBubbleLeftRightIcon,
-  EnvelopeIcon,
-  PaperClipIcon,
-  UserIcon,
-  UsersIcon,
+  BoltIcon,
+  BookOpenIcon,
+  BriefcaseIcon,
+  CodeBracketIcon,
+  CommandLineIcon,
+  CpuChipIcon,
+  LightBulbIcon,
+  ServerStackIcon,
+  ShareIcon,
+  WrenchScrewdriverIcon,
 } from '@heroicons/react/24/outline'
 
 interface Resource {
@@ -29,73 +34,89 @@ interface Resource {
   >
 }
 
-const resources: Array<Resource> = [
+const productResources: Array<Resource> = [
   {
-    href: '/contacts',
-    name: 'Contacts',
+    href: '/skills',
+    name: 'Skills',
     description:
-      'Learn about the contact model and how to create, retrieve, update, delete, and list contacts.',
-    icon: UserIcon,
-    pattern: {
-      y: 16,
-      squares: [
-        [0, 1],
-        [1, 3],
-      ],
-    },
+      'Create reusable instruction packages with the SKILL.md format. Teach agents specialized capabilities.',
+    icon: LightBulbIcon,
+    pattern: { y: 16, squares: [[0, 1], [1, 3]] },
   },
   {
-    href: '/conversations',
-    name: 'Conversations',
+    href: '/knowledge',
+    name: 'Knowledge Bases',
     description:
-      'Learn about the conversation model and how to create, retrieve, update, delete, and list conversations.',
-    icon: ChatBubbleLeftRightIcon,
-    pattern: {
-      y: -6,
-      squares: [
-        [-1, 2],
-        [1, 3],
-      ],
-    },
+      'Upload documents for retrieval-augmented generation. Give agents access to your data.',
+    icon: BookOpenIcon,
+    pattern: { y: -6, squares: [[-1, 2], [1, 3]] },
   },
   {
-    href: '/messages',
-    name: 'Messages',
+    href: '/mcp',
+    name: 'MCP Servers',
     description:
-      'Learn about the message model and how to create, retrieve, update, delete, and list messages.',
-    icon: EnvelopeIcon,
-    pattern: {
-      y: 32,
-      squares: [
-        [0, 2],
-        [1, 4],
-      ],
-    },
+      'Connect external tool providers using the Model Context Protocol. Extend agent capabilities.',
+    icon: ServerStackIcon,
+    pattern: { y: 32, squares: [[0, 2], [1, 4]] },
   },
   {
-    href: '/groups',
-    name: 'Groups',
+    href: '/sandbox',
+    name: 'Sandbox',
     description:
-      'Learn about the group model and how to create, retrieve, update, delete, and list groups.',
-    icon: UsersIcon,
-    pattern: {
-      y: 22,
-      squares: [[0, 1]],
-    },
+      'Isolated code execution environments for running code, managing files, and previewing results.',
+    icon: CommandLineIcon,
+    pattern: { y: 22, squares: [[0, 1]] },
   },
   {
-    href: '/attachments',
-    name: 'Attachments',
+    href: '/marketplace',
+    name: 'Marketplace',
     description:
-      'Learn about the attachment model and how to create, retrieve, update, delete, and list attachments.',
-    icon: PaperClipIcon,
-    pattern: {
-      y: 24,
-      squares: [
-        [0, 2],
-        [1, 3],
-      ],
-    },
+      'Publish, discover, and fork agents and skills. Share your creations with the community.',
+    icon: BriefcaseIcon,
+    pattern: { y: 24, squares: [[0, 2], [1, 3]] },
+  },
+]
+
+const developerResources: Array<Resource> = [
+  {
+    href: '/configuration',
+    name: 'Configuration',
+    description:
+      'Complete environment variable reference for auth, databases, LLM providers, and all services.',
+    icon: WrenchScrewdriverIcon,
+    pattern: { y: 10, squares: [[0, 1], [1, 2]] },
+  },
+  {
+    href: '/api-reference',
+    name: 'API Reference',
+    description:
+      'REST endpoints, authentication, and SSE streaming events for building integrations.',
+    icon: CodeBracketIcon,
+    pattern: { y: -4, squares: [[-1, 1], [1, 3]] },
+  },
+  {
+    href: '/custom-agents',
+    name: 'Custom Agents',
+    description:
+      'Build custom agent workflows using the graph builder, reusable components, and compilation pipeline.',
+    icon: CpuChipIcon,
+    pattern: { y: 28, squares: [[0, 2], [1, 4]] },
+  },
+  {
+    href: '/custom-tools',
+    name: 'Custom Tools',
+    description:
+      'Extend Xyzen with builtin Python tools or external MCP servers.',
+    icon: BoltIcon,
+    pattern: { y: 18, squares: [[0, 1]] },
+  },
+  {
+    href: '/contributing',
+    name: 'Contributing',
+    description:
+      'Development setup, code style, testing, and pull request workflow.',
+    icon: ShareIcon,
+    pattern: { y: 20, squares: [[0, 2], [1, 3]] },
   },
 ]
 
@@ -189,15 +210,27 @@ function Resource({ resource }: { resource: Resource }) {
 
 export function Resources() {
   return (
-    <div className="my-16 xl:max-w-none">
-      <Heading level={2} id="resources" anchor>
-        Resources
-      </Heading>
-      <div className="not-prose mt-4 grid grid-cols-1 gap-8 border-t border-zinc-900/5 pt-10 dark:border-white/5 sm:grid-cols-2 xl:grid-cols-4">
-        {resources.map((resource) => (
-          <Resource key={resource.href} resource={resource} />
-        ))}
+    <>
+      <div className="my-16 xl:max-w-none">
+        <Heading level={2} id="product-guide" anchor>
+          Product Guide
+        </Heading>
+        <div className="not-prose mt-4 grid grid-cols-1 gap-8 border-t border-zinc-900/5 pt-10 dark:border-white/5 sm:grid-cols-2 xl:grid-cols-4">
+          {productResources.map((resource) => (
+            <Resource key={resource.href} resource={resource} />
+          ))}
+        </div>
       </div>
-    </div>
+      <div className="my-16 xl:max-w-none">
+        <Heading level={2} id="developer-guide" anchor>
+          Developer Guide
+        </Heading>
+        <div className="not-prose mt-4 grid grid-cols-1 gap-8 border-t border-zinc-900/5 pt-10 dark:border-white/5 sm:grid-cols-2 xl:grid-cols-4">
+          {developerResources.map((resource) => (
+            <Resource key={resource.href} resource={resource} />
+          ))}
+        </div>
+      </div>
+    </>
   )
 }

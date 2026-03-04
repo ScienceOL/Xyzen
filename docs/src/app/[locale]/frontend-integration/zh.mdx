@@ -1,0 +1,88 @@
+# 前端集成
+
+Xyzen Web 前端是一个基于 Next.js 构建的 React 应用，使用 Zustand 进行状态管理，TanStack Query 管理服务端状态。 {{ className: 'lead' }}
+
+## 架构
+
+```
+web/src/
+├── app/                 # Next.js App Router 页面
+├── components/          # UI 组件
+│   ├── layouts/         # 布局组件（聊天面板、侧边栏）
+│   └── ui/              # 通用 UI 组件
+├── core/                # 业务逻辑
+│   ├── agent/           # 智能体相关逻辑
+│   ├── auth.ts          # 认证流程
+│   └── chat/            # 聊天处理
+├── hooks/               # 自定义 React Hooks
+├── i18n/                # 国际化（中/英/日）
+├── service/             # API 服务层
+├── store/               # Zustand Store
+│   └── slices/          # Store 切片
+├── types/               # TypeScript 类型定义
+└── utils/               # 工具函数
+```
+
+## 状态管理
+
+Xyzen 使用 Zustand + Immer 中间件进行状态管理。Store 按功能切分为多个切片：
+
+- **chatSlice** — 对话状态、消息、流式传输
+- **uiSlice** — UI 状态、面板可见性、主题
+- **agentSlice** — 智能体列表和配置
+
+### 使用规则
+
+```tsx
+// 正确：始终使用选择器
+const messages = useXyzen((s) => s.messages)
+
+// 正确：对象解构使用 useShallow
+const { isOpen, toggle } = useXyzen(
+  useShallow((s) => ({ isOpen: s.isOpen, toggle: s.toggle }))
+)
+
+// 错误：不要不带选择器使用
+const store = useXyzen() // 会导致每次状态变化都重新渲染
+```
+
+## 流式处理
+
+前端通过 SSE（Server-Sent Events）接收实时的智能体执行事件：
+
+1. **SSE 客户端** (`sseClient.ts`) — 建立 SSE 连接，处理自动重连和事件回放
+2. **连接管理** (`connectionActions.ts`) — 管理每个话题的 SSE 连接生命周期
+3. **事件处理** (`streamingHandlers.ts`) — 将服务端事件转换为 Store 状态更新
+
+### 性能优化
+
+- **Chunk 缓冲** — `streaming_chunk` 和 `thinking_chunk` 事件以 requestAnimationFrame 频率（~60fps）批量刷新，而非每个事件独立更新状态
+- **派生状态** — 使用 `respondingChannelIds`、`runningAgentIds` 等派生字段，仅在状态转换时更新
+- **组件记忆化** — Markdown 渲染组件使用 `React.memo`，插件数组为模块级常量
+
+## 国际化
+
+Xyzen 支持中文、英文和日文三种语言。翻译文件位于 `web/src/i18n/locales/`。
+
+使用方式：
+
+```tsx
+import { useTranslation } from 'react-i18next'
+
+function MyComponent() {
+  const { t } = useTranslation('app')
+  return <h1>{t('title')}</h1>
+}
+```
+
+## 主题
+
+Xyzen 支持浅色和深色主题，使用 Tailwind CSS 的 `dark:` 变体实现：
+
+```tsx
+<div className="bg-white dark:bg-zinc-900">
+  <p className="text-zinc-900 dark:text-white">内容</p>
+</div>
+```
+
+主题跟随系统设置自动切换，用户也可以手动切换。

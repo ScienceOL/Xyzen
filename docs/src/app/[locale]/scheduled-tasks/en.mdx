@@ -1,0 +1,66 @@
+export const metadata = {
+  title: 'Scheduled Tasks',
+  description:
+    'Automate recurring agent tasks with cron schedules, daily routines, and weekly check-ins.',
+}
+
+export const sections = [
+  { title: 'Overview', id: 'overview' },
+  { title: 'Schedule Types', id: 'schedule-types' },
+  { title: 'Creating Tasks', id: 'creating-tasks' },
+  { title: 'Agent-Created Tasks', id: 'agent-created-tasks' },
+  { title: 'Managing Tasks', id: 'managing-tasks' },
+]
+
+# Scheduled Tasks
+
+Scheduled tasks let agents run automatically on a recurring basis. Set up daily summaries, weekly reports, monitoring checks, or any task that should happen without manual intervention. {{ className: 'lead' }}
+
+## Overview
+
+A scheduled task triggers an agent to execute a predefined prompt at specified intervals. The agent runs as if a user had sent the message, with full access to its tools, knowledge base, and memory.
+
+Use cases:
+- Daily news digests on specific topics
+- Weekly code review reports
+- Periodic data monitoring and alerts
+- Automated research on evolving topics
+
+## Schedule Types
+
+| Type | Description | Example |
+|---|---|---|
+| **Once** | Execute once at a specific time | "Run at 3pm tomorrow" |
+| **Daily** | Execute every day at a set time | "Every day at 9am" |
+| **Weekly** | Execute on specific days of the week | "Every Monday and Friday at 10am" |
+| **Cron** | Custom cron expression for complex schedules | `0 */6 * * *` (every 6 hours) |
+
+All schedules support timezone configuration.
+
+## Creating Tasks
+
+1. Navigate to the **Scheduled Tasks** section
+2. Click **Create Task**
+3. Configure:
+   - **Agent** — Which agent to run
+   - **Prompt** — The message to send to the agent
+   - **Schedule** — When to run (daily, weekly, cron)
+   - **Timezone** — Your local timezone
+   - **Max Runs** — Optional limit on total executions
+4. Save and activate
+
+## Agent-Created Tasks
+
+Agents can also create scheduled tasks themselves using the **scheduled task tool**. For example, if you ask an agent to "monitor this topic daily," the agent can create a recurring task to do so.
+
+This is particularly useful with the **CEO / Root Agent**, which uses autonomous exploration to discover content and schedule follow-up research.
+
+## Managing Tasks
+
+Active tasks can be viewed and managed:
+
+- **Pause** — Temporarily stop a task without deleting it
+- **Resume** — Reactivate a paused task
+- **Edit** — Change the schedule, prompt, or configuration
+- **Delete** — Permanently remove a task
+- **View history** — See past executions and their results

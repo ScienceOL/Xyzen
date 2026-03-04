@@ -6,33 +6,33 @@ const guides = [
     href: '/quickstart',
     name: 'Quickstart',
     description:
-      'Learn how to get Protocol set up in your project in under thirty minutes or it is free.',
+      'Get Xyzen running locally with Docker Compose and chat with your first AI agent in under 5 minutes.',
   },
   {
-    href: '/sdks',
-    name: 'SDKs',
+    href: '/agents',
+    name: 'Agents',
     description:
-      'Install one of our official SDKs in your favorite programming language and start making API calls.',
+      'Learn about ReAct, Deep Research, and custom agent types. Create and configure agents for your tasks.',
   },
   {
-    href: '/authentication',
-    name: 'Authentication',
+    href: '/tools',
+    name: 'Tools',
     description:
-      'Learn how to authenticate your API requests with our powerful token-based system.',
+      'Explore 40+ builtin tools for web search, code execution, knowledge management, and more.',
   },
   {
-    href: '/pagination',
-    name: 'Pagination',
+    href: '/deployment',
+    name: 'Deployment',
     description:
-      'Understand how to work with paginated responses and navigate through large data sets.',
+      'Deploy Xyzen to production with Docker Compose or Kubernetes. Configure scaling and high availability.',
   },
 ]
 
 export function Guides() {
   return (
     <div className="my-16 xl:max-w-none">
-      <Heading level={2} id="guides" anchor>
-        Guides
+      <Heading level={2} id="getting-started" anchor>
+        Getting Started
       </Heading>
       <div className="not-prose mt-4 grid grid-cols-1 gap-8 border-t border-zinc-900/5 pt-10 dark:border-white/5 sm:grid-cols-2 xl:grid-cols-4">
         {guides.map((guide) => (

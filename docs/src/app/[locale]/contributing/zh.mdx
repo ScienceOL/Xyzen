@@ -1,0 +1,116 @@
+# 贡献指南
+
+如何设置开发环境、遵循代码规范、运行测试和提交 Pull Request。 {{ className: 'lead' }}
+
+## 开发环境
+
+### 前提条件
+
+- Docker 和 Docker Compose v2+
+- [uv](https://github.com/astral-sh/uv)（Python 包管理器）
+- Node.js 18+ 和 Yarn
+- [just](https://github.com/casey/just) 命令运行器（推荐）
+
+### 启动步骤
+
+```bash
+git clone https://github.com/ScienceOL/Xyzen.git
+cd Xyzen
+./launch/dev.sh
+```
+
+启动脚本会自动：
+1. 检查 Docker 和配置文件
+2. 创建 Python 虚拟环境并安装 pre-commit 钩子
+3. 配置 VS Code 工作区
+4. 启动基础设施和开发服务
+
+## 项目结构
+
+```
+Xyzen/
+├── service/             # Python 后端（FastAPI + Celery）
+│   ├── app/
+│   │   ├── api/         # API 路由
+│   │   ├── core/        # 业务逻辑
+│   │   ├── models/      # SQLAlchemy 模型
+│   │   ├── repos/       # 数据访问层
+│   │   ├── tools/       # 智能体工具
+│   │   └── tasks/       # Celery 任务
+│   └── tests/           # 测试
+├── web/                 # React 前端（Next.js）
+│   └── src/
+├── docs/                # 文档站点（Next.js）
+├── docker/              # Docker 配置
+├── infra/               # 基础设施配置
+└── launch/              # 启动脚本
+```
+
+## 代码风格
+
+### Python
+
+- 使用 `list[T]`、`dict[K, V]`、`str | None`（不使用 `List`、`Dict`、`Optional`）
+- 使用 `ruff` 进行代码格式化和检查
+- 使用 `basedpyright` 进行类型检查
+- 异步优先：优先使用 `async/await`
+
+### TypeScript
+
+- 严格类型检查
+- 业务逻辑放在 `core/` 目录，不放在组件中
+- 使用 Zustand 选择器，不允许不带选择器使用 `useXyzen()`
+
+## 测试
+
+```bash
+# 后端测试
+just test-backend              # 运行所有 Python 测试
+just test-backend-cov          # 带覆盖率报告
+
+# 前端测试
+just test-web                  # 运行前端测试
+
+# 类型检查
+just type-backend              # basedpyright
+just type-web                  # TypeScript 类型检查
+
+# 代码检查
+just lint-backend              # ruff check
+just lint-web                  # eslint
+
+# 全部检查
+just check                     # 运行所有检查
+```
+
+## 数据库迁移
+
+在 service 容器中运行 Alembic 迁移：
+
+```bash
+just migrate "迁移描述"          # 自动生成迁移文件
+just migrate-up                 # 执行迁移
+just migrate-down               # 回滚一步
+just migrate-history            # 查看迁移历史
+```
+
+<Note>
+  创建迁移前，确保新模型已在 `models/__init__.py` 中注册。
+</Note>
+
+## Pull Request 流程
+
+1. **Fork 仓库** 并创建功能分支
+2. **编写代码** 并确保通过所有检查：`just check`
+3. **编写测试** 覆盖新功能或修复的 Bug
+4. **提交代码** 使用规范化提交信息：
+   - `feat:` — 新功能
+   - `fix:` — Bug 修复
+   - `refactor:` — 重构
+   - `chore:` — 杂项
+5. **创建 PR** 并填写清晰的描述
+6. **通过 CI** 检查并等待代码审查
+
+<Note>
+  **绝不使用 `--no-verify`。** Pre-commit 钩子（basedpyright、ruff）用于保证代码质量。如果钩子失败，请修复代码直到通过。
+</Note>

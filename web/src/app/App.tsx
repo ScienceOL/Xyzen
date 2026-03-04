@@ -21,7 +21,7 @@ import SharedChatPage from "@/app/share/SharedChatPage";
 import { CenteredInput } from "@/components/features";
 import { DEFAULT_BACKEND_URL } from "@/configs";
 import { MOBILE_BREAKPOINT } from "@/configs/common";
-import { resolveEdition } from "@/core/edition/edition";
+import { hasFeature, resolveEdition } from "@/core/edition/edition";
 import { resolveRegion } from "@/core/region/region";
 import useTheme from "@/hooks/useTheme";
 import { useWalletSync } from "@/hooks/useWalletSync";
@@ -342,6 +342,7 @@ export function Xyzen({
     if (sessionStorage.getItem("gift_dismissed")) return;
     giftCheckedRef.current = true;
 
+    if (!hasFeature("billing")) return;
     giftService
       .getActiveCampaigns()
       .then((campaigns) => {

@@ -1,0 +1,100 @@
+# 部署
+
+Xyzen 可以使用 Docker Compose 进行简单部署，也可以使用 Kubernetes 进行生产级部署。 {{ className: 'lead' }}
+
+## Docker Compose
+
+对于小型团队和单服务器部署，Docker Compose 是最简单的选择。
+
+### 生产配置
+
+```bash
+# 使用生产配置启动
+docker compose \
+  -f docker/docker-compose.base.yaml \
+  -f docker/docker-compose.prod.yaml \
+  --env-file docker/.env.prod \
+  up -d
+```
+
+生产配置与开发配置的区别：
+
+- 使用预构建的 Docker 镜像（而非源码挂载）
+- 启用 Nginx SSL/TLS 终止
+- 优化的资源限制和副本数
+- 禁用调试模式
+
+### 环境变量
+
+生产环境需要配置的关键变量：
+
+```bash {{ title: 'docker/.env.prod' }}
+XYZEN_Secret=your-secure-random-secret
+XYZEN_Env=prod
+XYZEN_Debug=False
+
+# 数据库（使用强密码）
+XYZEN_Database_Postgres_Password=secure-db-password
+
+# 至少配置一个 LLM 提供商
+XYZEN_LLM_providers=openai
+XYZEN_LLM_OpenAI_key=sk-your-production-key
+```
+
+## Kubernetes
+
+对于需要高可用、自动扩缩容的生产环境，推荐使用 Kubernetes。
+
+### 基本架构
+
+```
+Ingress (Nginx)
+    ├── /xyzen/api/*  → Service (FastAPI) × N
+    ├── /             → Service (Web) × 1
+    └── /docs/*       → Service (Docs) × 1
+
+StatefulSet: PostgreSQL
+StatefulSet: Redis
+Deployment: Celery Worker × M
+```
+
+### 部署步骤
+
+1. 构建并推送 Docker 镜像
+2. 创建 Kubernetes namespace 和 Secret
+3. 部署数据库和 Redis
+4. 部署后端服务和 Worker
+5. 部署前端和文档站
+6. 配置 Ingress
+
+## 必需的服务
+
+| 服务 | 用途 | 默认端口 |
+|------|------|----------|
+| PostgreSQL | 数据存储 | 5432 |
+| Redis | 缓存、发布/订阅、Streams | 6379 |
+| MinIO | 对象存储（文件） | 9000 |
+
+## 可选服务
+
+| 服务 | 用途 | 何时需要 |
+|------|------|----------|
+| Casdoor | OAuth 认证 | 需要用户认证时 |
+| SearXNG | 网络搜索 | 智能体需要搜索网络时 |
+| Daytona | 代码沙箱 | 智能体需要执行代码时 |
+| Jaeger | 链路追踪 | 需要可观测性时 |
+
+## 扩展
+
+### 水平扩展
+
+- **FastAPI 副本** — 增加 `SERVICE_REPLICAS` 来处理更多并发连接
+- **Celery Worker** — 增加 `CELERY_REPLICAS` 来处理更多 LLM 任务
+- **SearXNG** — 增加 `SEARXNG_REPLICAS` 来处理更多搜索请求
+
+### 建议
+
+- API 和 Worker 完全无状态，可以安全地水平扩展
+- PostgreSQL 和 Redis 建议使用托管服务（RDS、ElastiCache 等）
+- 对象存储建议使用 S3 或兼容服务
+- 使用 Nginx 或云负载均衡器做流量分发

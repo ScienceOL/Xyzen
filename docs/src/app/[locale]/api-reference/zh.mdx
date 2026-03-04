@@ -1,0 +1,243 @@
+# API 参考
+
+所有 Xyzen 功能都可通过 REST API 访问。API 使用 JSON 格式，通过 Bearer Token 进行认证。 {{ className: 'lead' }}
+
+## 基础 URL
+
+```
+http://localhost/xyzen/api/v1
+```
+
+所有端点都以 `/xyzen/api/v1` 为前缀。在生产环境中，请将 `localhost` 替换为你的域名。
+
+## 认证
+
+大部分端点需要认证。在请求头中传递 Bearer Token：
+
+```bash
+curl -H "Authorization: Bearer YOUR_ACCESS_TOKEN" \
+  http://localhost/xyzen/api/v1/agents
+```
+
+Token 通过 OAuth 流程获取。参见[配置](/configuration)中的认证部分。
+
+## 智能体
+
+### 列出智能体
+
+```text
+GET /agents
+```
+
+返回当前用户可见的所有智能体（系统智能体 + 用户智能体）。
+
+### 创建智能体
+
+```text
+POST /agents
+Content-Type: application/json
+
+{
+  "name": "我的智能体",
+  "agent_type": "react",
+  "model": "gpt-4o",
+  "system_prompt": "你是一个有用的助手。",
+  "tools": ["web_search", "code_execute"]
+}
+```
+
+### 获取智能体
+
+```text
+GET /agents/{agent_id}
+```
+
+### 更新智能体
+
+```text
+PUT /agents/{agent_id}
+Content-Type: application/json
+```
+
+### 删除智能体
+
+```text
+DELETE /agents/{agent_id}
+```
+
+## 会话与话题
+
+### 创建会话
+
+```text
+POST /sessions
+Content-Type: application/json
+
+{
+  "agent_id": "agent-uuid"
+}
+```
+
+会话是一个包含多个话题（对话线程）的容器。
+
+### 列出话题
+
+```text
+GET /sessions/{session_id}/topics
+```
+
+### 创建话题
+
+```text
+POST /topics
+Content-Type: application/json
+
+{
+  "session_id": "session-uuid"
+}
+```
+
+## 聊天
+
+### 发送消息
+
+```text
+POST /topics/{topic_id}/messages
+Content-Type: application/json
+
+{
+  "content": "你好，帮我搜索一下最新的 AI 新闻",
+  "files": []
+}
+```
+
+### 中止执行
+
+```text
+POST /topics/{topic_id}/abort
+```
+
+### 重新生成
+
+```text
+POST /topics/{topic_id}/regenerate
+```
+
+## 流式事件
+
+### SSE 连接
+
+```text
+GET /topics/{topic_id}/events
+Accept: text/event-stream
+Last-Event-ID: {last_id}  // 可选，用于断线重连
+```
+
+返回 Server-Sent Events 流。事件格式：
+
+```
+id: 1234567890-0
+event: streaming_chunk
+data: {"content": "你好", "phase_id": "..."}
+```
+
+### 事件类型
+
+| 事件 | 说明 |
+|------|------|
+| `loading` | 任务排队中 |
+| `agent_start` | 智能体开始执行 |
+| `node_start` | 新的执行阶段开始 |
+| `streaming_chunk` | 文本内容块 |
+| `thinking_chunk` | 思考/推理内容 |
+| `node_end` | 执行阶段结束 |
+| `agent_end` | 智能体执行完成 |
+| `message_saved` | 消息已保存到数据库 |
+| `error` | 执行出错 |
+
+## 文件
+
+### 上传文件
+
+```text
+POST /files/upload
+Content-Type: multipart/form-data
+```
+
+### 列出文件
+
+```text
+GET /files
+```
+
+## 知识库
+
+### 列出知识库
+
+```text
+GET /knowledge-sets
+```
+
+### 创建知识库
+
+```text
+POST /knowledge-sets
+Content-Type: application/json
+
+{
+  "name": "项目文档",
+  "description": "项目相关的技术文档"
+}
+```
+
+### 向知识库添加文件
+
+```text
+POST /knowledge-sets/{set_id}/files
+Content-Type: application/json
+
+{
+  "file_ids": ["file-uuid-1", "file-uuid-2"]
+}
+```
+
+## 技能
+
+### 列出技能
+
+```text
+GET /skills
+```
+
+### 创建技能
+
+```text
+POST /skills
+Content-Type: application/json
+
+{
+  "name": "翻译助手",
+  "content": "# 翻译助手\n\n你是一个翻译专家..."
+}
+```
+
+## MCP
+
+### 列出 MCP 服务器
+
+```text
+GET /mcp/servers
+```
+
+### 添加 MCP 服务器
+
+```text
+POST /mcp/servers
+Content-Type: application/json
+
+{
+  "name": "示例服务器",
+  "url": "http://example.com/mcp",
+  "transport": "sse"
+}
+```

@@ -1,0 +1,84 @@
+export const metadata = {
+  title: 'Knowledge Bases',
+  description:
+    'Create and manage knowledge bases in Xyzen. Upload documents for retrieval-augmented generation (RAG).',
+}
+
+export const sections = [
+  { title: 'Overview', id: 'overview' },
+  { title: 'Creating a Knowledge Base', id: 'creating-a-knowledge-base' },
+  { title: 'Uploading Files', id: 'uploading-files' },
+  { title: 'Linking to Agents', id: 'linking-to-agents' },
+  { title: 'How Retrieval Works', id: 'how-retrieval-works' },
+]
+
+# Knowledge Bases
+
+Knowledge bases allow agents to access your documents and data during conversations. Upload files, and agents will retrieve relevant content to provide informed, grounded responses. {{ className: 'lead' }}
+
+## Overview
+
+A knowledge base is a collection of documents that an agent can search and reference. When a user asks a question, the agent uses **retrieval-augmented generation (RAG)** to find relevant passages from the knowledge base and incorporate them into its response.
+
+This is useful for:
+- Company documentation and internal wikis
+- Research papers and literature
+- Product manuals and FAQs
+- Any domain-specific content the agent should know about
+
+## Creating a Knowledge Base
+
+1. Navigate to the **Knowledge** section in the sidebar
+2. Click **Create Knowledge Base**
+3. Give it a name and description
+4. Start uploading files
+
+You can also create knowledge bases via the API:
+
+```bash
+curl -X POST /xyzen/api/v1/knowledge-sets \
+  -H "Authorization: Bearer {token}" \
+  -H "Content-Type: application/json" \
+  -d '{
+    "name": "Product Docs",
+    "description": "Product documentation and guides"
+  }'
+```
+
+## Uploading Files
+
+Supported file formats:
+- **Documents** — PDF, DOCX, TXT, Markdown
+- **Data** — CSV, JSON
+- **Code** — Source code files
+
+Files are processed upon upload: text is extracted, chunked, and indexed for retrieval.
+
+Upload via the web interface by dragging files into the knowledge base, or via API:
+
+```bash
+curl -X POST /xyzen/api/v1/knowledge-sets/{id}/files \
+  -H "Authorization: Bearer {token}" \
+  -F "file=@document.pdf"
+```
+
+## Linking to Agents
+
+To give an agent access to a knowledge base:
+
+1. Open the agent configuration
+2. In the **Knowledge Base** section, select a knowledge base
+3. The agent now has access to the knowledge retrieval tools
+
+Each agent can be linked to one knowledge base. The agent automatically gets access to the `knowledge_read` and `knowledge_write` tools.
+
+## How Retrieval Works
+
+When an agent needs information from the knowledge base:
+
+1. The agent calls the **knowledge read** tool with a search query
+2. The system performs similarity search across the indexed documents
+3. The most relevant document chunks are returned to the agent
+4. The agent incorporates the retrieved content into its response
+
+The agent decides when to search the knowledge base based on the user's question and the conversation context. It can also write new entries to the knowledge base to store information for future retrieval.

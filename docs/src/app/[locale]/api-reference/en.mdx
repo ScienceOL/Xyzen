@@ -1,0 +1,169 @@
+export const metadata = {
+  title: 'API Reference',
+  description:
+    'REST API endpoints, authentication, and SSE streaming events in Xyzen.',
+}
+
+export const sections = [
+  { title: 'Base URL', id: 'base-url' },
+  { title: 'Authentication', id: 'authentication' },
+  { title: 'Agents', id: 'agents' },
+  { title: 'Sessions & Topics', id: 'sessions-and-topics' },
+  { title: 'Chat', id: 'chat' },
+  { title: 'Streaming Events', id: 'streaming-events' },
+  { title: 'Files', id: 'files' },
+  { title: 'Knowledge', id: 'knowledge' },
+  { title: 'Skills', id: 'skills' },
+  { title: 'MCP', id: 'mcp' },
+]
+
+# API Reference
+
+All Xyzen functionality is accessible via REST API. The API uses JSON for request and response bodies, Bearer token authentication, and SSE for real-time streaming. {{ className: 'lead' }}
+
+## Base URL
+
+All API endpoints are prefixed with `/xyzen/api/v1/`:
+
+```
+https://your-domain.com/xyzen/api/v1/
+```
+
+## Authentication
+
+Most endpoints require a Bearer token in the `Authorization` header:
+
+```bash
+curl -H "Authorization: Bearer {access_token}" \
+  https://your-domain.com/xyzen/api/v1/agents
+```
+
+### Auth Endpoints
+
+| Method | Endpoint | Description |
+|---|---|---|
+| `GET` | `/auth/status` | Check if auth is configured |
+| `GET` | `/auth/config` | Get OAuth provider configuration |
+| `POST` | `/auth/login/casdoor` | Exchange OAuth code for token |
+| `POST` | `/auth/validate` | Validate token, get user info |
+
+## Agents
+
+| Method | Endpoint | Description |
+|---|---|---|
+| `GET` | `/agents` | List all agents |
+| `POST` | `/agents` | Create a new agent |
+| `GET` | `/agents/{id}` | Get agent details |
+| `PUT` | `/agents/{id}` | Update agent configuration |
+| `DELETE` | `/agents/{id}` | Delete an agent |
+| `GET` | `/agents/{id}/stats/daily` | Get daily usage statistics |
+
+## Sessions & Topics
+
+| Method | Endpoint | Description |
+|---|---|---|
+| `POST` | `/sessions` | Create a session (with default topic) |
+| `GET` | `/topics/{id}` | Get topic details |
+| `GET` | `/topics/{id}/messages` | List messages in a topic |
+| `GET` | `/topics/{id}/token-stats` | Get token usage for a topic |
+
+## Chat
+
+Chat uses REST endpoints for sending messages and SSE for receiving responses:
+
+### Sending Messages
+
+| Method | Endpoint | Description |
+|---|---|---|
+| `POST` | `/topics/{id}/messages` | Send a message |
+| `POST` | `/topics/{id}/abort` | Abort current generation |
+| `POST` | `/topics/{id}/regenerate` | Regenerate last response |
+| `POST` | `/topics/{id}/question-response` | Respond to agent question |
+
+### Receiving Events
+
+```bash
+# Connect to SSE stream for a topic
+curl -N -H "Authorization: Bearer {token}" \
+  -H "Accept: text/event-stream" \
+  https://your-domain.com/xyzen/api/v1/topics/{id}/events
+```
+
+The SSE endpoint supports `Last-Event-ID` for reconnection. See [Streaming Events](#streaming-events) for event types.
+
+## Streaming Events
+
+Events are delivered via SSE with the following format:
+
+```
+id: 1234567890-0
+event: streaming_chunk
+data: {"content": "Hello", "node_id": "response"}
+```
+
+### Event Types
+
+| Event | Data Fields | Description |
+|---|---|---|
+| `loading` | `message` | Agent is starting up |
+| `agent_start` | `agent_type` | Agent execution began |
+| `node_start` | `node_id`, `node_type` | A new phase started |
+| `streaming_start` | — | Streaming content is beginning |
+| `streaming_chunk` | `content`, `node_id` | A chunk of text content |
+| `thinking_chunk` | `content` | A chunk of reasoning content |
+| `node_end` | `node_id` | Phase completed |
+| `streaming_end` | — | Streaming complete |
+| `agent_end` | `status` | Agent execution finished |
+| `message_saved` | `message_id` | Message persisted to database |
+
+### Reconnection
+
+If the SSE connection drops, reconnect with the `Last-Event-ID` header:
+
+```bash
+curl -N -H "Last-Event-ID: 1234567890-0" \
+  -H "Authorization: Bearer {token}" \
+  https://your-domain.com/xyzen/api/v1/topics/{id}/events
+```
+
+The server replays all events after the given ID, then switches to live streaming. This guarantees zero data loss.
+
+## Files
+
+| Method | Endpoint | Description |
+|---|---|---|
+| `POST` | `/files` | Upload a file |
+| `GET` | `/files/{id}` | Get file metadata |
+| `GET` | `/files/{id}/download` | Download file content |
+| `DELETE` | `/files/{id}` | Delete a file |
+
+## Knowledge
+
+| Method | Endpoint | Description |
+|---|---|---|
+| `GET` | `/knowledge-sets` | List knowledge bases |
+| `POST` | `/knowledge-sets` | Create a knowledge base |
+| `GET` | `/knowledge-sets/{id}` | Get knowledge base details |
+| `PUT` | `/knowledge-sets/{id}` | Update knowledge base |
+| `DELETE` | `/knowledge-sets/{id}` | Delete knowledge base |
+| `POST` | `/knowledge-sets/{id}/files` | Upload file to knowledge base |
+
+## Skills
+
+| Method | Endpoint | Description |
+|---|---|---|
+| `GET` | `/skills` | List skills |
+| `POST` | `/skills` | Create a skill |
+| `GET` | `/skills/{id}` | Get skill details |
+| `PUT` | `/skills/{id}` | Update skill |
+| `DELETE` | `/skills/{id}` | Delete skill |
+
+## MCP
+
+| Method | Endpoint | Description |
+|---|---|---|
+| `GET` | `/mcps` | List MCP servers |
+| `POST` | `/mcps` | Add an MCP server |
+| `GET` | `/mcps/{id}` | Get MCP server details |
+| `DELETE` | `/mcps/{id}` | Remove an MCP server |
+| `POST` | `/mcps/{id}/test` | Test an MCP tool |

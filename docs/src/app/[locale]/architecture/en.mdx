@@ -1,0 +1,156 @@
+export const metadata = {
+  title: 'Architecture',
+  description:
+    'System architecture overview: service layers, streaming pipeline, and data flow in Xyzen.',
+}
+
+export const sections = [
+  { title: 'System Overview', id: 'system-overview' },
+  { title: 'Service Layer', id: 'service-layer' },
+  { title: 'Streaming Pipeline', id: 'streaming-pipeline' },
+  { title: 'Agent Compilation', id: 'agent-compilation' },
+  { title: 'Data Layer', id: 'data-layer' },
+]
+
+# Architecture
+
+An overview of how Xyzen's components fit together, from the user's browser to the LLM provider and back. {{ className: 'lead' }}
+
+## System Overview
+
+Xyzen consists of several services that communicate through Redis and PostgreSQL:
+
+```
+┌─────────┐     ┌─────────┐     ┌──────────────┐
+│  Nginx  │────▶│ Next.js │     │   Casdoor    │
+│ (proxy) │     │  (web)  │     │   (OAuth)    │
+└────┬────┘     └─────────┘     └──────────────┘
+     │
+     ├──▶ /xyzen/api/* ──▶ ┌──────────────┐
+     │                      │   FastAPI     │
+     │                      │  (service)   │──┐
+     │                      └──────────────┘  │
+     │                                         │ Celery task
+     └──▶ /docs/* ───────▶ ┌──────────────┐  │
+                            │   Next.js    │  ▼
+                            │   (docs)     │  ┌──────────────┐
+                            └──────────────┘  │    Celery     │
+                                              │  (worker)    │
+     ┌──────────────┐  ┌──────────────┐       └──────┬───────┘
+     │  PostgreSQL  │  │    Redis     │              │
+     │  (database)  │  │ (cache/pub)  │◀─────────────┘
+     └──────────────┘  └──────────────┘
+```
+
+- **Nginx** — Reverse proxy, routes traffic to the appropriate backend
+- **FastAPI (service)** — REST API, SSE streaming, auth, file uploads
+- **Celery (worker)** — LLM orchestration, agent execution, background tasks
+- **Next.js (web)** — React frontend with Zustand state management
+- **Next.js (docs)** — Documentation site (this site)
+- **PostgreSQL** — Persistent storage for all entities
+- **Redis** — Pub/sub channels, streaming event persistence, caching
+- **Casdoor** — OAuth/OIDC identity provider (optional)
+
+## Service Layer
+
+The backend follows a layered architecture:
+
+```
+API Routes (app/api/)
+    ↓
+Core Services (app/core/)
+    ↓
+Repositories (app/repos/)
+    ↓
+Database Models (app/models/)
+```
+
+- **API routes** handle HTTP concerns: request parsing, auth, response formatting
+- **Core services** contain business logic: agent orchestration, subscription enforcement, file management
+- **Repositories** provide data access: SQL queries, caching, pagination
+- **Models** define database schema via SQLAlchemy
+
+## Streaming Pipeline
+
+When a user sends a message, events flow through a pipeline from the Celery worker to the browser:
+
+```
+User ──POST──▶ FastAPI ──task──▶ Celery Worker
+                                      │
+                                 LangGraph execution
+                                      │
+                              Redis Streams (events:{topic_id})
+                                      │
+                              FastAPI SSE endpoint ◀── GET /events
+                                      │
+                                   Browser
+```
+
+### Event Types
+
+The streaming event system uses a structured set of event types:
+
+| Event | Purpose |
+|---|---|
+| `loading` / `processing` | Show loading indicator in the UI |
+| `agent_start` | Create an agent execution message |
+| `node_start` | Start a new phase within the execution |
+| `streaming_start` | Mark the message as actively streaming |
+| `streaming_chunk` | Append text content to the current phase |
+| `thinking_chunk` | Append reasoning/thinking content |
+| `node_end` | Mark the current phase as completed |
+| `streaming_end` | Finalize streaming for the message |
+| `agent_end` | Mark the entire execution as completed |
+| `message_saved` | Confirm the message was persisted to the database |
+
+### Reconnection
+
+Events are persisted in Redis Streams with `MAXLEN ~10000`. When a client reconnects, it sends the `Last-Event-ID` header. The SSE endpoint replays missed events via `XRANGE`, then switches to live `XREAD` tailing. This guarantees zero data loss across reconnections.
+
+## Agent Compilation
+
+Agents are defined as JSON configurations and compiled into executable LangGraph workflows:
+
+```
+Agent Config (JSON)
+    ↓ canonicalize
+Canonical Config
+    ↓ validate
+Validated Config
+    ↓ compile
+LangGraph StateGraph
+    ↓ .compile()
+Runnable Graph
+```
+
+1. **Canonicalize** — Normalize the config into a deterministic format, resolve component references
+2. **Validate** — Check structural integrity, verify node connections, validate tool references
+3. **Compile** — Build LangGraph nodes and edges from the canonical config
+4. **Execute** — Run the compiled graph with streaming callbacks
+
+This pipeline supports builtin agent types (ReAct, Deep Research) and custom user-defined graph configurations.
+
+## Data Layer
+
+### PostgreSQL
+
+All persistent entities are stored in PostgreSQL:
+
+- **Agents** — Configuration, scope (system/user), provider settings
+- **Sessions & Topics** — Conversation containers, message history
+- **Messages** — User and agent content with citations
+- **Files** — Metadata, storage keys, knowledge set links
+- **Skills** — Custom capabilities with SKILL.md format
+- **Subscriptions** — Plans, quotas, consumption tracking
+
+### Redis
+
+Redis serves multiple roles:
+
+- **Pub/Sub** — Real-time event delivery between workers and API pods
+- **Streams** — Persistent event storage for SSE reconnection
+- **Cache** — Session data, rate limiting, temporary state
+
+### Object Storage
+
+Files are stored in S3-compatible object storage (MinIO in development, any S3 provider in production). PostgreSQL stores metadata and references; the actual file bytes live in object storage.

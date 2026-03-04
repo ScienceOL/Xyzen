@@ -1,0 +1,113 @@
+# 配置
+
+Xyzen 完全通过环境变量配置，所有变量以 `XYZEN_` 为前缀。嵌套使用 `_` 分隔，字段名使用 camelCase。 {{ className: 'lead' }}
+
+## 核心设置
+
+| 变量 | 说明 | 默认值 |
+|------|------|--------|
+| `XYZEN_Secret` | JWT 签名密钥 | 内置默认值（生产环境请更改） |
+| `XYZEN_Env` | 运行环境 | `dev` |
+| `XYZEN_Debug` | 调试模式 | `True` |
+| `XYZEN_Host` | 监听地址 | `0.0.0.0` |
+| `XYZEN_Port` | 监听端口 | `48196` |
+| `XYZEN_Workers` | Uvicorn Worker 数量 | `1` |
+
+## 认证
+
+| 变量 | 说明 |
+|------|------|
+| `XYZEN_Auth_Provider` | 认证提供商：`casdoor`、`bohrium`、`bohr_app` |
+| `XYZEN_Auth_Casdoor_Issuer` | Casdoor 公开 URL |
+| `XYZEN_Auth_Casdoor_Endpoint` | Casdoor 内部端点（容器间通信） |
+| `XYZEN_Auth_Casdoor_Audience` | OAuth Client ID |
+| `XYZEN_Auth_Casdoor_ClientSecret` | OAuth Client Secret |
+| `XYZEN_Auth_Casdoor_Algorithm` | JWT 签名算法（默认 `RS256`） |
+
+## 数据库和 Redis
+
+### PostgreSQL
+
+| 变量 | 说明 | 默认值 |
+|------|------|--------|
+| `XYZEN_Database_Engine` | 数据库引擎 | `postgres` |
+| `XYZEN_Database_Postgres_Host` | 主机地址 | `postgresql` |
+| `XYZEN_Database_Postgres_Port` | 端口 | `5432` |
+| `XYZEN_Database_Postgres_User` | 用户名 | `postgres` |
+| `XYZEN_Database_Postgres_Password` | 密码 | `postgres` |
+| `XYZEN_Database_Postgres_DBName` | 数据库名 | `postgres` |
+
+### Redis
+
+| 变量 | 说明 | 默认值 |
+|------|------|--------|
+| `XYZEN_Redis_HOST` | 主机地址 | `redis` |
+| `XYZEN_Redis_PORT` | 端口 | `6379` |
+| `XYZEN_Redis_DB` | 数据库编号 | `0` |
+| `XYZEN_Redis_PASSWORD` | 密码 | 空 |
+
+## LLM 提供商
+
+使用 `XYZEN_LLM_providers` 指定启用的提供商（逗号分隔），然后配置每个提供商的凭据。
+
+```bash {{ title: '示例：同时启用 OpenAI 和 Bedrock' }}
+XYZEN_LLM_providers=openai,bedrock
+
+# OpenAI
+XYZEN_LLM_OpenAI_key=sk-...
+XYZEN_LLM_OpenAI_deployment=gpt-4o
+
+# AWS Bedrock
+XYZEN_LLM_Bedrock_key=ACCESS_KEY:SECRET_KEY
+XYZEN_LLM_Bedrock_project=us-east-1
+XYZEN_LLM_Bedrock_deployment=us.anthropic.claude-sonnet-4-20250514
+```
+
+### 支持的提供商
+
+| 提供商 | 前缀 | 必需字段 |
+|--------|------|----------|
+| Azure OpenAI | `AzureOpenAI` | `key`、`endpoint`、`version`、`deployment` |
+| OpenAI | `OpenAI` | `key`、`deployment` |
+| Google GenAI | `Google` | `key` |
+| Google Vertex | `GoogleVertex` | `key`（base64 服务账号）、`project` |
+| GPUGeek | `GPUGeek` | `key` |
+| 通义千问 | `Qwen` | `key` |
+| AWS Bedrock | `Bedrock` | `key`（ACCESS:SECRET 格式）、`project`（区域） |
+
+## 对象存储
+
+| 变量 | 说明 | 默认值 |
+|------|------|--------|
+| `XYZEN_OSS_Endpoint` | MinIO/S3 内部端点 | `http://host.docker.internal:9000` |
+| `XYZEN_OSS_PublicEndpoint` | 公开访问端点 | `http://localhost:9000` |
+| `XYZEN_OSS_AccessKey` | 访问密钥 | `minioadmin` |
+| `XYZEN_OSS_SecretKey` | 密钥 | `minioadmin` |
+| `XYZEN_OSS_BucketName` | 存储桶名称 | `xyzen` |
+
+## 沙箱
+
+| 变量 | 说明 | 默认值 |
+|------|------|--------|
+| `XYZEN_SANDBOX_Enable` | 启用沙箱 | `false` |
+| `XYZEN_SANDBOX_Backend` | 后端类型 | `daytona` |
+| `XYZEN_SANDBOX_DaytonaApiUrl` | Daytona API 地址 | `http://host.docker.internal:13000/api` |
+| `XYZEN_SANDBOX_DaytonaApiKey` | Daytona API 密钥 | `xyzen-dev-admin-key` |
+| `XYZEN_SANDBOX_Timeout` | 执行超时（秒） | `120` |
+
+## 搜索
+
+| 变量 | 说明 | 默认值 |
+|------|------|--------|
+| `XYZEN_SearXNG_Enable` | 启用 SearXNG | `True` |
+| `XYZEN_SearXNG_BaseUrl` | SearXNG 服务地址 | `http://searxng:8080` |
+| `XYZEN_SearXNG_MaxResults` | 最大搜索结果数 | `10` |
+
+## 通知
+
+| 变量 | 说明 |
+|------|------|
+| `XYZEN_Novu_Enable` | 启用 Novu 通知服务 |
+| `XYZEN_Novu_ApiUrl` | Novu API 地址 |
+| `XYZEN_Novu_SecretKey` | Novu 密钥 |
+| `XYZEN_Novu_AppIdentifier` | 应用标识符 |

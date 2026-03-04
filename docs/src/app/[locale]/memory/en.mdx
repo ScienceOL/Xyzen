@@ -1,0 +1,67 @@
+export const metadata = {
+  title: 'Memory',
+  description:
+    'How Xyzen agents remember information across conversations using core memory and long-term memory.',
+}
+
+export const sections = [
+  { title: 'Core Memory', id: 'core-memory' },
+  { title: 'Memory Sections', id: 'memory-sections' },
+  { title: 'Long-Term Memory', id: 'long-term-memory' },
+  { title: 'How Agents Learn', id: 'how-agents-learn' },
+]
+
+# Memory
+
+Xyzen agents can remember information across conversations. The memory system has two layers: **core memory** for structured, always-available context, and **long-term memory** for searchable item-based storage. {{ className: 'lead' }}
+
+## Core Memory
+
+Core memory is a set of structured sections that are always included in the agent's system prompt. This gives the agent persistent context about the user and the current working state.
+
+Core memory is small and focused — it's the information the agent should always have at hand.
+
+## Memory Sections
+
+Each agent has four core memory sections:
+
+| Section | Purpose |
+|---|---|
+| **User Summary** | Who the user is, their role, background, and preferences |
+| **Preferences** | How the user likes to receive responses (format, detail level, language) |
+| **Active Context** | Current working state, ongoing projects, recent topics |
+| **Working Rules** | Custom rules and guidelines the agent should follow |
+
+Agents can read and update these sections during conversations. For example, if a user says "I prefer concise responses," the agent can update the **Preferences** section to remember this.
+
+### Viewing and Editing Memory
+
+You can view and edit an agent's core memory through the web interface:
+
+1. Open the agent settings
+2. Navigate to the **Memory** section
+3. View or edit each memory section
+
+## Long-Term Memory
+
+Beyond core memory, agents have access to a **long-term memory store** backed by LangGraph Store. This is a searchable collection of individual memory items.
+
+Long-term memory is useful for:
+- Storing facts learned during conversations
+- Remembering user corrections ("Actually, our API uses v2, not v1")
+- Accumulating knowledge over time
+
+Agents can search, create, update, and delete memory items using the memory tools.
+
+## How Agents Learn
+
+Agents learn from conversations through two mechanisms:
+
+1. **Explicit updates** — When the agent recognizes important information, it writes to core memory or creates a long-term memory item
+2. **User corrections** — When a user corrects the agent, it can update its memory to avoid repeating the mistake
+
+Memory persists across sessions. The next time the user starts a conversation, the agent already knows what it learned previously.
+
+<Note>
+  Memory is per-agent, per-user. Each user's interactions with an agent build a separate memory profile. Agents don't share memories between users.
+</Note>

@@ -1,0 +1,32 @@
+import { Guides } from './Guides'
+import { Resources } from './Resources'
+import { HeroPattern } from '@/components/HeroPattern'
+
+<HeroPattern />
+
+# Xyzen 文档
+
+Xyzen 是一个开源的 AI 实验室服务器，用于多智能体 LLM 编排、实时对话和文档处理。构建、部署和管理能够搜索网络、执行代码、管理知识并自主协作的智能体。 {{ className: 'lead' }}
+
+<div className="not-prose mb-16 mt-6 flex gap-3">
+  <Button href="/quickstart" arrow="right">
+    <>快速开始</>
+  </Button>
+  <Button href="/architecture" variant="outline">
+    <>系统架构</>
+  </Button>
+</div>
+
+## 快速入门 {{ anchor: false }}
+
+使用 Docker Compose 在几分钟内部署 Xyzen，创建你的第一个智能体并开始对话。Xyzen 支持多种 LLM 提供商（OpenAI、Anthropic via Bedrock、Google 等）、实时流式传输和丰富的内置工具集。 {{ className: 'lead' }}
+
+<div className="not-prose">
+  <Button href="/quickstart" variant="text" arrow="right">
+    <>开始使用 Xyzen</>
+  </Button>
+</div>
+
+<Guides />
+
+<Resources />

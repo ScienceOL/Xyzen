@@ -225,6 +225,11 @@ class ChatModelFactory:
         if endpoint:
             kwargs["endpoint_url"] = endpoint
 
+        # Remove credential keys that were already consumed above
+        runtime_kwargs.pop("bedrock_access_key_id", None)
+        runtime_kwargs.pop("bedrock_secret_access_key", None)
+        runtime_kwargs.pop("bedrock_region", None)
+
         kwargs.update(runtime_kwargs)
 
         llm = ChatBedrockConverse(**kwargs)

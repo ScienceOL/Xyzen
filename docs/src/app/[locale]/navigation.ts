@@ -4,35 +4,79 @@ import { NavGroup } from '@/@types/navigation'
 // Titles are resolved at render time via useTranslations('navigation')
 const navigation: Array<NavGroup> = [
   {
-    titleKey: 'guides',
-    title: 'Guides',
+    titleKey: 'overview',
+    title: 'Overview',
     links: [
       { titleKey: 'introduction', title: 'Introduction', href: `/` },
       { titleKey: 'quickstart', title: 'Quickstart', href: `/quickstart` },
-      { titleKey: 'sdks', title: 'SDKs', href: `/sdks` },
+      { titleKey: 'philosophy', title: 'Philosophy', href: `/philosophy` },
       {
-        titleKey: 'authentication',
-        title: 'Authentication',
-        href: `/authentication`,
+        titleKey: 'architecture',
+        title: 'Architecture',
+        href: `/architecture`,
       },
-      { titleKey: 'pagination', title: 'Pagination', href: `/pagination` },
-      { titleKey: 'errors', title: 'Errors', href: `/errors` },
-      { titleKey: 'webhooks', title: 'Webhooks', href: `/webhooks` },
+      { titleKey: 'roadmap', title: 'Roadmap', href: `/roadmap` },
     ],
   },
   {
-    titleKey: 'resources',
-    title: 'Resources',
+    titleKey: 'product_guide',
+    title: 'Product Guide',
     links: [
-      { titleKey: 'contacts', title: 'Contacts', href: `/contacts` },
+      { titleKey: 'agents', title: 'Agents', href: `/agents` },
+      { titleKey: 'tools', title: 'Tools', href: `/tools` },
+      { titleKey: 'skills', title: 'Skills', href: `/skills` },
+      { titleKey: 'knowledge', title: 'Knowledge Bases', href: `/knowledge` },
+      { titleKey: 'memory', title: 'Memory', href: `/memory` },
+      { titleKey: 'mcp', title: 'MCP Servers', href: `/mcp` },
+      { titleKey: 'sandbox', title: 'Sandbox', href: `/sandbox` },
       {
-        titleKey: 'conversations',
-        title: 'Conversations',
-        href: `/conversations`,
+        titleKey: 'marketplace',
+        title: 'Marketplace',
+        href: `/marketplace`,
       },
-      { titleKey: 'messages', title: 'Messages', href: `/messages` },
-      { titleKey: 'groups', title: 'Groups', href: `/groups` },
-      { titleKey: 'attachments', title: 'Attachments', href: `/attachments` },
+      {
+        titleKey: 'scheduled_tasks',
+        title: 'Scheduled Tasks',
+        href: `/scheduled-tasks`,
+      },
+      { titleKey: 'sharing', title: 'Sharing', href: `/sharing` },
+    ],
+  },
+  {
+    titleKey: 'developer_guide',
+    title: 'Developer Guide',
+    links: [
+      { titleKey: 'deployment', title: 'Deployment', href: `/deployment` },
+      {
+        titleKey: 'configuration',
+        title: 'Configuration',
+        href: `/configuration`,
+      },
+      {
+        titleKey: 'api_reference',
+        title: 'API Reference',
+        href: `/api-reference`,
+      },
+      {
+        titleKey: 'frontend_integration',
+        title: 'Frontend Integration',
+        href: `/frontend-integration`,
+      },
+      {
+        titleKey: 'custom_agents',
+        title: 'Custom Agents',
+        href: `/custom-agents`,
+      },
+      {
+        titleKey: 'custom_tools',
+        title: 'Custom Tools',
+        href: `/custom-tools`,
+      },
+      {
+        titleKey: 'contributing',
+        title: 'Contributing',
+        href: `/contributing`,
+      },
     ],
   },
 ]

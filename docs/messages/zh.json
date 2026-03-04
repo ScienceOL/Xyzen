@@ -1,22 +1,33 @@
 {
   "nav": {
-    "docs": "Protocol API"
+    "docs": "Xyzen 文档"
   },
   "navigation": {
-    "guides": "指南",
+    "overview": "概览",
     "introduction": "简介",
     "quickstart": "快速开始",
-    "sdks": "SDKs",
-    "authentication": "身份认证",
-    "pagination": "分页",
-    "errors": "错误处理",
-    "webhooks": "Webhooks",
-    "resources": "资源",
-    "contacts": "联系人",
-    "conversations": "会话",
-    "messages": "消息",
-    "groups": "群组",
-    "attachments": "附件"
+    "philosophy": "设计理念",
+    "architecture": "架构",
+    "roadmap": "路线图",
+    "product_guide": "产品指南",
+    "agents": "智能体",
+    "tools": "工具",
+    "skills": "技能",
+    "knowledge": "知识库",
+    "memory": "记忆",
+    "mcp": "MCP 服务",
+    "sandbox": "沙箱",
+    "marketplace": "市场",
+    "scheduled_tasks": "定时任务",
+    "sharing": "分享",
+    "developer_guide": "开发者指南",
+    "deployment": "部署",
+    "configuration": "配置",
+    "api_reference": "API 参考",
+    "frontend_integration": "前端集成",
+    "custom_agents": "自定义智能体",
+    "custom_tools": "自定义工具",
+    "contributing": "贡献指南"
   },
   "footer": {
     "previous": "上一篇",

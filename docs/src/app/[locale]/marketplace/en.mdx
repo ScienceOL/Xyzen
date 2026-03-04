@@ -1,0 +1,63 @@
+export const metadata = {
+  title: 'Marketplace',
+  description:
+    'Publish, discover, and fork agents and skills in the Xyzen marketplace.',
+}
+
+export const sections = [
+  { title: 'Browsing', id: 'browsing' },
+  { title: 'Publishing Agents', id: 'publishing-agents' },
+  { title: 'Forking Agents', id: 'forking-agents' },
+  { title: 'Skill Marketplace', id: 'skill-marketplace' },
+]
+
+# Marketplace
+
+The marketplace is where users share agents and skills with the community. Publish your creations for others to discover, or fork existing agents to customize them for your needs. {{ className: 'lead' }}
+
+## Browsing
+
+The marketplace is organized into sections:
+
+- **Official Picks** — Curated agents recommended by the Xyzen team
+- **Trending** — Popular agents based on recent activity
+- **Recently Published** — The latest community contributions
+
+You can search by name, description, or capability. Each listing shows the agent's description, tools, and usage statistics.
+
+## Publishing Agents
+
+To publish an agent to the marketplace:
+
+1. Open the agent you want to publish
+2. Click **Publish to Marketplace**
+3. Choose the fork mode:
+   - **Editable** — Other users can see and modify the agent configuration
+   - **Locked** — The configuration is hidden; users can use the agent but not see how it's built
+4. Add a description and tags
+5. Submit for listing
+
+Published agents are **snapshots** — the marketplace listing reflects the agent's configuration at the time of publishing. Updates to your local agent don't automatically propagate to the published version.
+
+## Forking Agents
+
+When you find an agent you like in the marketplace:
+
+1. Open the agent listing
+2. Click **Fork**
+3. A copy is created in your personal agent list
+4. Customize the forked agent as needed
+
+Forked agents are fully independent — changes you make don't affect the original, and vice versa.
+
+If the original agent was published as **Locked**, the fork preserves the agent's configuration but hides it from editing. You can still use the agent and modify its name, description, and tool selection.
+
+## Skill Marketplace
+
+Skills have their own section in the marketplace with the same publishing and discovery flow:
+
+- **Browse** available skills by category
+- **Publish** your skills for others to install
+- **Install** community skills and attach them to your agents
+
+See [Skills](/skills) for details on creating skill packages.

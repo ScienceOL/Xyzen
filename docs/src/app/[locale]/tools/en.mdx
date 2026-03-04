@@ -1,0 +1,97 @@
+export const metadata = {
+  title: 'Tools',
+  description:
+    'Overview of the 40+ builtin tools available in Xyzen for search, code execution, knowledge management, and more.',
+}
+
+export const sections = [
+  { title: 'Search & Research', id: 'search-and-research' },
+  { title: 'Code Execution', id: 'code-execution' },
+  { title: 'Knowledge & Memory', id: 'knowledge-and-memory' },
+  { title: 'File Operations', id: 'file-operations' },
+  { title: 'Multimedia', id: 'multimedia' },
+  { title: 'Agent Management', id: 'agent-management' },
+  { title: 'User Interaction', id: 'user-interaction' },
+]
+
+# Tools
+
+Tools are capabilities that agents can invoke during execution. Xyzen ships with 40+ builtin tools across several categories. {{ className: 'lead' }}
+
+Tools are enabled per-agent in the agent configuration. When an agent has a tool enabled, the LLM can choose to call it during the tool-calling loop.
+
+## Search & Research
+
+| Tool | Description |
+|---|---|
+| **Web Search** | Search the web using SearXNG and return relevant results |
+| **Academic Research** | Search academic databases for papers and citations |
+| **Literature Search** | Find and analyze scientific literature |
+| **URL Fetch** | Fetch and extract content from any URL |
+
+## Code Execution
+
+| Tool | Description |
+|---|---|
+| **Sandbox Execute** | Run code in an isolated sandbox environment |
+| **Sandbox File Write** | Write files to the sandbox filesystem |
+| **Sandbox File Read** | Read files from the sandbox filesystem |
+| **Sandbox Directory List** | List files and directories in the sandbox |
+
+The sandbox tools execute code in isolated environments. See [Sandbox](/sandbox) for details on the execution environment.
+
+## Knowledge & Memory
+
+| Tool | Description |
+|---|---|
+| **Knowledge Read** | Retrieve documents from the agent's linked knowledge base |
+| **Knowledge Write** | Add or update documents in the knowledge base |
+| **Memory Read** | Read from the agent's core memory sections |
+| **Memory Write** | Update core memory (user summary, preferences, context, rules) |
+| **Memory Search** | Search the agent's long-term memory store |
+
+See [Knowledge Bases](/knowledge) and [Memory](/memory) for more details.
+
+## File Operations
+
+| Tool | Description |
+|---|---|
+| **File Read** | Read uploaded files (PDF, documents, images, etc.) |
+| **File Upload** | Handle user-uploaded files |
+
+The file reader supports multiple formats including PDF, DOCX, plain text, and images.
+
+## Multimedia
+
+| Tool | Description |
+|---|---|
+| **Image Generation** | Generate images using AI models |
+| **Video Generation** | Generate videos using Google Veo via Vertex AI |
+
+## Agent Management
+
+| Tool | Description |
+|---|---|
+| **Create Agent** | Dynamically create new agents during execution |
+| **Delegate to Sub-Agent** | Delegate a subtask to another agent |
+| **Scheduled Task** | Create scheduled tasks for recurring automation |
+
+## User Interaction
+
+| Tool | Description |
+|---|---|
+| **Ask User Question** | Pause execution and ask the user for input |
+
+This tool allows agents to request clarification or additional information from the user mid-execution, then continue with the response.
+
+## Enabling Tools
+
+Tools are configured per-agent in the agent settings. You can enable or disable individual tools based on the agent's purpose:
+
+1. Open the agent configuration
+2. Navigate to the **Tools** section
+3. Toggle the tools you want the agent to have access to
+
+<Note>
+  Some tools require additional configuration. For example, web search requires a SearXNG instance, and sandbox tools require a sandbox backend (Daytona or local Docker).
+</Note>

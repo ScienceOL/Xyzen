@@ -1,0 +1,93 @@
+export const metadata = {
+  title: 'Sandbox',
+  description:
+    'Isolated code execution environments in Xyzen for running code, managing files, and previewing results.',
+}
+
+export const sections = [
+  { title: 'Overview', id: 'overview' },
+  { title: 'Code Execution', id: 'code-execution' },
+  { title: 'File Operations', id: 'file-operations' },
+  { title: 'IDE Preview', id: 'ide-preview' },
+  { title: 'Sandbox Backends', id: 'sandbox-backends' },
+]
+
+# Sandbox
+
+The sandbox provides isolated environments where agents can execute code, manage files, and produce artifacts safely. Each sandbox runs in its own container with no access to the host system. {{ className: 'lead' }}
+
+## Overview
+
+When an agent needs to run code — data analysis, file processing, generating visualizations — it uses the sandbox. The sandbox provides:
+
+- Isolated execution environment
+- File system for reading and writing files
+- Support for multiple languages (Python, JavaScript, shell)
+- Persistent workspace within a session
+
+## Code Execution
+
+Agents execute code using the sandbox tools:
+
+```python
+# The agent can run Python code like this
+import pandas as pd
+import matplotlib.pyplot as plt
+
+df = pd.read_csv('data.csv')
+df.plot(kind='bar', x='category', y='value')
+plt.savefig('chart.png')
+```
+
+The execution environment comes pre-installed with common packages. The agent can also install additional packages at runtime.
+
+### Supported Languages
+
+- **Python** — Full CPython environment with scientific computing packages
+- **JavaScript / Node.js** — Server-side JavaScript execution
+- **Shell** — Bash commands for system operations
+
+## File Operations
+
+Agents can read and write files in the sandbox:
+
+| Operation | Description |
+|---|---|
+| **Write file** | Create or overwrite a file in the sandbox |
+| **Read file** | Read file contents from the sandbox |
+| **List directory** | Browse the sandbox file system |
+
+Files persist within a sandbox session. Agents can write code to a file, execute it, and read the output — all within the same conversation.
+
+## IDE Preview
+
+The sandbox includes a web-based IDE (code-server) that you can access directly from the Xyzen interface. This lets you:
+
+- Browse and edit files created by the agent
+- Run commands in a terminal
+- Preview generated HTML, images, and other outputs
+
+The IDE preview is accessible from the sandbox panel in the chat interface.
+
+## Sandbox Backends
+
+Xyzen supports multiple sandbox backends:
+
+### Runner Backend (Default)
+
+A lightweight container-based execution environment built into Xyzen. Suitable for most code execution tasks.
+
+### Daytona Backend
+
+For more demanding workloads, Xyzen can use [Daytona](https://daytona.io) as a sandbox backend. Daytona provides full development environments with customizable resource limits.
+
+Configure the sandbox backend in your environment variables:
+
+```bash
+XYZEN_SANDBOX_BACKEND=runner     # or "daytona"
+XYZEN_SANDBOX_TIMEOUT=300        # seconds
+```
+
+<Note>
+  Sandboxes are ephemeral by default. Files and state are lost when the sandbox session ends. For persistent storage, use the file upload system or knowledge bases.
+</Note>

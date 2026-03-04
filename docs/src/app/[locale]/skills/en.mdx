@@ -1,0 +1,91 @@
+export const metadata = {
+  title: 'Skills',
+  description:
+    'Create and install reusable skill packages for Xyzen agents using the SKILL.md format.',
+}
+
+export const sections = [
+  { title: 'What are Skills?', id: 'what-are-skills' },
+  { title: 'SKILL.md Format', id: 'skillmd-format' },
+  { title: 'Creating a Skill', id: 'creating-a-skill' },
+  { title: 'Attaching Skills to Agents', id: 'attaching-skills-to-agents' },
+  { title: 'Skill Marketplace', id: 'skill-marketplace' },
+]
+
+# Skills
+
+Skills are reusable instruction packages that give agents specialized capabilities. They are defined using the SKILL.md format and can include resource files, templates, and structured prompts. {{ className: 'lead' }}
+
+## What are Skills?
+
+A skill is a bundle of instructions and resources that teaches an agent how to perform a specific task. Unlike tools (which are code that executes), skills are **prompt-based** — they provide context, examples, and guidelines that shape the agent's behavior.
+
+Examples of skills:
+- A code review skill with coding standards and checklist
+- A translation skill with terminology glossaries
+- A data analysis skill with report templates
+- A writing skill with style guides
+
+## SKILL.md Format
+
+Every skill has a `SKILL.md` file that defines its instructions. The format is Markdown with structured metadata:
+
+```markdown
+# Skill Name
+
+## Description
+What this skill does and when to use it.
+
+## Instructions
+Step-by-step instructions for the agent to follow.
+
+## Examples
+Example inputs and expected outputs.
+
+## Resources
+References to attached resource files.
+```
+
+Skills can also include resource files (PDFs, images, data files) that the agent can reference during execution.
+
+## Creating a Skill
+
+1. Navigate to the **Skills** section in the sidebar
+2. Click **Create Skill**
+3. Write your SKILL.md content in the editor
+4. Optionally upload resource files
+5. Organize files into folders if needed
+6. Save the skill
+
+You can also create skills programmatically via the API:
+
+```bash
+curl -X POST /xyzen/api/v1/skills \
+  -H "Authorization: Bearer {token}" \
+  -H "Content-Type: application/json" \
+  -d '{
+    "name": "Code Review",
+    "description": "Reviews code for quality and best practices"
+  }'
+```
+
+## Attaching Skills to Agents
+
+Skills are attached to agents in the agent configuration:
+
+1. Open the agent settings
+2. Navigate to the **Skills** section
+3. Select skills to attach
+4. The agent will now have access to the skill instructions during execution
+
+When an agent has skills attached, the skill instructions are included in the agent's context. The agent can reference skill guidelines, templates, and resources when responding.
+
+## Skill Marketplace
+
+Skills can be published to the marketplace for other users to discover and install:
+
+- **Publishing** — Share your skills with the community
+- **Browsing** — Discover skills created by others
+- **Installing** — Add community skills to your agents
+
+See [Marketplace](/marketplace) for details on publishing and discovery.

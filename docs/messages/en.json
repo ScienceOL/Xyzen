@@ -1,22 +1,33 @@
 {
   "nav": {
-    "docs": "Protocol API"
+    "docs": "Xyzen Docs"
   },
   "navigation": {
-    "guides": "Guides",
+    "overview": "Overview",
     "introduction": "Introduction",
     "quickstart": "Quickstart",
-    "sdks": "SDKs",
-    "authentication": "Authentication",
-    "pagination": "Pagination",
-    "errors": "Errors",
-    "webhooks": "Webhooks",
-    "resources": "Resources",
-    "contacts": "Contacts",
-    "conversations": "Conversations",
-    "messages": "Messages",
-    "groups": "Groups",
-    "attachments": "Attachments"
+    "philosophy": "Philosophy",
+    "architecture": "Architecture",
+    "roadmap": "Roadmap",
+    "product_guide": "Product Guide",
+    "agents": "Agents",
+    "tools": "Tools",
+    "skills": "Skills",
+    "knowledge": "Knowledge Bases",
+    "memory": "Memory",
+    "mcp": "MCP Servers",
+    "sandbox": "Sandbox",
+    "marketplace": "Marketplace",
+    "scheduled_tasks": "Scheduled Tasks",
+    "sharing": "Sharing",
+    "developer_guide": "Developer Guide",
+    "deployment": "Deployment",
+    "configuration": "Configuration",
+    "api_reference": "API Reference",
+    "frontend_integration": "Frontend Integration",
+    "custom_agents": "Custom Agents",
+    "custom_tools": "Custom Tools",
+    "contributing": "Contributing"
   },
   "footer": {
     "previous": "Previous",

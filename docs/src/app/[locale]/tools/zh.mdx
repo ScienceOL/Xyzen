@@ -1,0 +1,75 @@
+# 工具
+
+工具是智能体在执行过程中可以调用的能力。Xyzen 内置了 40 多种工具，涵盖多个类别。 {{ className: 'lead' }}
+
+## 搜索与研究
+
+| 工具 | 说明 |
+|------|------|
+| `web_search` | 通过 SearXNG 进行网络搜索 |
+| `web_browse` | 获取并解析网页内容 |
+| `arxiv_search` | 搜索学术论文 |
+| `wikipedia_search` | 搜索维基百科文章 |
+| `youtube_search` | 搜索 YouTube 视频 |
+| `news_search` | 搜索新闻文章 |
+
+## 代码执行
+
+| 工具 | 说明 |
+|------|------|
+| `code_execute` | 在沙箱中执行 Python 代码 |
+| `shell_execute` | 在沙箱中运行 Shell 命令 |
+| `code_analyze` | 分析代码结构和质量 |
+
+## 知识与记忆
+
+| 工具 | 说明 |
+|------|------|
+| `knowledge_search` | 搜索关联的知识库 |
+| `knowledge_upload` | 向知识库上传文件 |
+| `memory_read` | 读取核心记忆片段 |
+| `memory_update` | 更新核心记忆片段 |
+| `memory_search` | 搜索长期记忆 |
+| `memory_save` | 保存信息到长期记忆 |
+
+## 文件操作
+
+| 工具 | 说明 |
+|------|------|
+| `file_read` | 读取已上传的文件 |
+| `file_write` | 在沙箱中写入文件 |
+| `file_list` | 列出用户文件 |
+| `image_generate` | 使用 AI 生成图片 |
+| `slides_generate` | 生成演示文稿幻灯片 |
+
+## 多媒体
+
+| 工具 | 说明 |
+|------|------|
+| `image_generate` | 使用 DALL-E 或其他模型生成 AI 图片 |
+| `video_generate` | 使用 Veo 生成视频 |
+| `tts` | 文字转语音 |
+
+## 智能体管理
+
+| 工具 | 说明 |
+|------|------|
+| `delegate` | 将子任务委派给另一个智能体 |
+| `create_agent` | 动态创建新智能体 |
+| `schedule_task` | 创建定时任务 |
+
+## 用户交互
+
+| 工具 | 说明 |
+|------|------|
+| `ask_question` | 向用户提出澄清性问题 |
+| `show_options` | 向用户展示多选选项 |
+| `notify` | 发送推送通知 |
+
+## 启用工具
+
+创建或编辑智能体时，你可以从可用工具列表中选择要启用的工具。智能体只能使用显式启用的工具。
+
+<Note>
+  某些工具需要额外的基础设施。例如，`code_execute` 需要[沙箱](/sandbox)后端运行，`web_search` 需要 SearXNG 服务。详情请参阅各功能的文档页面。
+</Note>

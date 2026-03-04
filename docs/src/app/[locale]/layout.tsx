@@ -11,8 +11,8 @@ import navigation from './navigation'
 
 export const metadata: Metadata = {
   title: {
-    template: '%s - Protocol API',
-    default: 'Protocol API',
+    template: '%s - Xyzen Docs',
+    default: 'Xyzen Docs',
   },
 }
 
@@ -35,11 +35,11 @@ export default async function LocaleLayout({
   setRequestLocale(locale)
   const messages = await getMessages()
 
-  let pages = await glob('**/*.mdx', { cwd: 'src/app/[locale]' })
+  let pages = await glob('**/en.mdx', { cwd: 'src/app/[locale]' })
 
   let allSectionsEntries = (await Promise.all(
     pages.map(async (filename) => [
-      '/' + filename.replace(/(^|\/)page\.mdx$/, ''),
+      '/' + filename.replace(/(^|\/)en\.mdx$/, ''),
       (await import(`./${filename}`)).sections,
     ]),
   )) as Array<[string, Array<Section>]>
