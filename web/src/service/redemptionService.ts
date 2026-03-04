@@ -474,6 +474,13 @@ class RedemptionService {
     });
   }
 
+  async getCreditSources(adminSecret: string): Promise<string[]> {
+    return http.get("/xyzen/api/v1/redemption/admin/stats/credit-sources", {
+      auth: false,
+      headers: { "X-Admin-Secret": adminSecret },
+    });
+  }
+
   async getCreditHeatmap(
     adminSecret: string,
     year: number,

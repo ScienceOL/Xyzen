@@ -9,12 +9,13 @@ export const TIER_BADGE_COLORS: Record<string, string> = {
 };
 
 export const TIER_DISPLAY_NAMES: Record<string, string> = {
-  free: "Free",
+  free: "Lite",
   lite: "Lite",
   standard: "Standard",
   pro: "Pro",
-  professional: "Professional",
+  professional: "Pro",
   ultra: "Ultra",
+  unknown: "Unknown",
 };
 
 export const TIER_COLORS: Record<string, string> = {

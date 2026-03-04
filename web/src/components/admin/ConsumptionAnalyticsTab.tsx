@@ -149,6 +149,18 @@ export function ConsumptionAnalyticsTab({
   const handleProviderChange = useCallback((provider: string) => {
     setSelectedProvider(provider);
     setSelectedModel("");
+    setSelectedTool("");
+  }, []);
+
+  const handleModelChange = useCallback((model: string) => {
+    setSelectedModel(model);
+    setSelectedTool("");
+  }, []);
+
+  const handleToolChange = useCallback((tool: string) => {
+    setSelectedTool(tool);
+    setSelectedProvider("");
+    setSelectedModel("");
   }, []);
 
   if (error) {
@@ -176,14 +188,14 @@ export function ConsumptionAnalyticsTab({
           selectedTier={selectedTier}
           onTierChange={setSelectedTier}
           selectedModel={selectedModel}
-          onModelChange={setSelectedModel}
+          onModelChange={handleModelChange}
           selectedProvider={selectedProvider}
           onProviderChange={handleProviderChange}
           providerOptions={providerOptions}
           modelOptions={modelOptions}
           tierOptions={tierOptions}
           selectedTool={selectedTool}
-          onToolChange={setSelectedTool}
+          onToolChange={handleToolChange}
           toolOptions={toolOptions}
           showTierFilter
           showModelFilter
