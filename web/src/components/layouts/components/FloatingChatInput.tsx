@@ -15,10 +15,14 @@ import { cn } from "@/lib/utils";
 import { useXyzen } from "@/store";
 import {
   ArrowPathIcon,
+  ChevronDownIcon,
+  DocumentTextIcon,
   EllipsisHorizontalIcon,
   PaperAirplaneIcon,
   StopIcon,
+  XMarkIcon,
 } from "@heroicons/react/24/outline";
+import { AnimatePresence, motion } from "framer-motion";
 import React, { useCallback, useEffect, useRef, useState } from "react";
 import { useTranslation } from "react-i18next";
 import { useShallow } from "zustand/react/shallow";
@@ -59,6 +63,9 @@ const toolbarButtonClass = cn(
   "[&>svg]:h-5 [&>svg]:w-5",
 );
 
+const PASTE_COLLAPSE_CHARS = 500;
+const PASTE_COLLAPSE_LINES = 8;
+
 export const FloatingChatInput: React.FC<FloatingChatInputProps> = ({
   onSendMessage,
   disabled = false,
@@ -77,6 +84,8 @@ export const FloatingChatInput: React.FC<FloatingChatInputProps> = ({
   const [inputMessage, setInputMessage] = useState(initialValue);
   const [isComposing, setIsComposing] = useState(false);
   const textareaRef = useRef<HTMLTextAreaElement>(null);
+  const [pastedContent, setPastedContent] = useState<string | null>(null);
+  const [isPastedExpanded, setIsPastedExpanded] = useState(false);
 
   const { addFiles, canAddMoreFiles, fileUploadOptions } = useXyzen(
     useShallow((s) => ({
@@ -147,11 +156,14 @@ export const FloatingChatInput: React.FC<FloatingChatInputProps> = ({
   }, [responding, aborting, onAbort]);
 
   const handleSendMessage = useCallback(() => {
-    if (!inputMessage.trim()) return;
-    const result = onSendMessage(inputMessage);
+    const parts = [pastedContent, inputMessage.trim()].filter(Boolean);
+    const fullMessage = parts.join("\n\n");
+    if (!fullMessage) return;
+    const result = onSendMessage(fullMessage);
     if (result !== false) {
       setInputMessage("");
-      // Reset textarea height after clearing
+      setPastedContent(null);
+      setIsPastedExpanded(false);
       requestAnimationFrame(() => {
         const el = textareaRef.current;
         if (el) {
@@ -160,7 +172,7 @@ export const FloatingChatInput: React.FC<FloatingChatInputProps> = ({
         }
       });
     }
-  }, [inputMessage, onSendMessage]);
+  }, [pastedContent, inputMessage, onSendMessage]);
 
   // Handle paste for images/files
   const handlePaste = useCallback(
@@ -197,6 +209,16 @@ export const FloatingChatInput: React.FC<FloatingChatInputProps> = ({
             console.error("Failed to add pasted files:", error);
           }
         }
+      } else {
+        const text = e.clipboardData.getData("text/plain");
+        if (
+          text &&
+          (text.length > PASTE_COLLAPSE_CHARS ||
+            text.split("\n").length > PASTE_COLLAPSE_LINES)
+        ) {
+          e.preventDefault();
+          setPastedContent((prev) => (prev ? prev + "\n" + text : text));
+        }
       }
     },
     [addFiles, canAddMoreFiles, fileUploadOptions],
@@ -215,7 +237,13 @@ export const FloatingChatInput: React.FC<FloatingChatInputProps> = ({
   return (
     <div className="px-3 pb-3 pt-1" {...dragProps}>
       <AutoHeight
-        deps={[inputMessage, toolbar.uploadedFiles.length, sendBlocked]}
+        deps={[
+          inputMessage,
+          toolbar.uploadedFiles.length,
+          sendBlocked,
+          pastedContent,
+          isPastedExpanded,
+        ]}
         style={{ overflow: "visible" }}
       >
         <div
@@ -250,6 +278,75 @@ export const FloatingChatInput: React.FC<FloatingChatInputProps> = ({
           {/* Context usage warning */}
           {toolbar.activeChatChannel && (
             <ContextUsageBanner topicId={toolbar.activeChatChannel} />
+          )}
+
+          {/* Pasted content capsule */}
+          {pastedContent && (
+            <div className="mx-3 mt-2">
+              <div className="bg-neutral-100/60 dark:bg-white/[0.04] rounded-lg overflow-hidden">
+                <div
+                  className="flex items-center gap-2 px-3 py-2 cursor-pointer select-none"
+                  onClick={() => setIsPastedExpanded((v) => !v)}
+                >
+                  <DocumentTextIcon className="h-4 w-4 text-neutral-400 shrink-0" />
+                  <span className="text-[13px] text-neutral-600 dark:text-neutral-300 truncate min-w-0 flex-1">
+                    {pastedContent.split("\n")[0].slice(0, 80)}
+                  </span>
+                  <span className="text-xs text-neutral-400 dark:text-neutral-500 shrink-0 tabular-nums whitespace-nowrap">
+                    {pastedContent.split("\n").length} lines
+                    {" · "}
+                    {pastedContent.length >= 1000
+                      ? `${(pastedContent.length / 1000).toFixed(1)}k`
+                      : pastedContent.length}{" "}
+                    chars
+                  </span>
+                  <ChevronDownIcon
+                    className={cn(
+                      "h-3.5 w-3.5 text-neutral-400 transition-transform duration-200 shrink-0",
+                      isPastedExpanded && "rotate-180",
+                    )}
+                  />
+                  <button
+                    onClick={(e) => {
+                      e.stopPropagation();
+                      setPastedContent(null);
+                      setIsPastedExpanded(false);
+                    }}
+                    className="h-5 w-5 flex items-center justify-center rounded text-neutral-400 hover:text-neutral-600 hover:bg-neutral-200/60 dark:hover:text-neutral-300 dark:hover:bg-white/[0.08] transition-colors shrink-0"
+                  >
+                    <XMarkIcon className="h-3.5 w-3.5" />
+                  </button>
+                </div>
+                <AnimatePresence initial={false}>
+                  {isPastedExpanded && (
+                    <motion.div
+                      initial={{ height: 0, opacity: 0 }}
+                      animate={{ height: "auto", opacity: 1 }}
+                      exit={{ height: 0, opacity: 0 }}
+                      transition={{ duration: 0.2, ease: [0.4, 0, 0.2, 1] }}
+                      className="overflow-hidden"
+                    >
+                      <div className="px-3 pb-2.5">
+                        <textarea
+                          value={pastedContent}
+                          onChange={(e) =>
+                            setPastedContent(e.target.value || null)
+                          }
+                          className={cn(
+                            "w-full resize-none rounded-md bg-white/80 dark:bg-neutral-900/50 px-3 py-2 text-[13px] text-neutral-700 dark:text-neutral-300",
+                            "border border-neutral-200/60 dark:border-neutral-700/40",
+                            "focus:outline-none focus:ring-1 focus:ring-neutral-300 dark:focus:ring-neutral-600",
+                            "custom-scrollbar",
+                          )}
+                          rows={Math.min(pastedContent.split("\n").length, 12)}
+                          style={{ maxHeight: 240 }}
+                        />
+                      </div>
+                    </motion.div>
+                  )}
+                </AnimatePresence>
+              </div>
+            </div>
           )}
 
           {/* Auto-expanding textarea */}
@@ -464,7 +561,9 @@ export const FloatingChatInput: React.FC<FloatingChatInputProps> = ({
                     <TooltipTrigger asChild>
                       <button
                         onClick={handleSendMessage}
-                        disabled={disabled || !inputMessage.trim()}
+                        disabled={
+                          disabled || (!inputMessage.trim() && !pastedContent)
+                        }
                         className={cn(
                           "flex h-8 w-8 items-center justify-center rounded-full transition-all duration-200",
                           inputMessage.trim()
