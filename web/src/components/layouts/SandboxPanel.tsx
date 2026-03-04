@@ -26,6 +26,7 @@ import {
   DOCK_SAFE_AREA,
 } from "@/components/layouts/BottomDock";
 import { MOBILE_BREAKPOINT } from "@/configs/common";
+import { useXyzen } from "@/store";
 
 const SandboxWorkspace = React.lazy(() => import("./SandboxWorkspace"));
 
@@ -170,6 +171,18 @@ export default function SandboxPanel() {
     },
     [t],
   );
+
+  const setDockMinimized = useXyzen((s) => s.setDockMinimized);
+
+  // Minimize dock when workspace is open, restore on close/unmount
+  useEffect(() => {
+    if (selectedSandbox) {
+      setDockMinimized(true);
+    } else {
+      setDockMinimized(false);
+    }
+    return () => setDockMinimized(false);
+  }, [selectedSandbox, setDockMinimized]);
 
   // --- Workspace view ---
   if (selectedSandbox) {

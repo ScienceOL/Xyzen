@@ -412,6 +412,15 @@
     "stopped": "已停止",
     "deleteConfirmTitle": "删除沙盒",
     "deleteConfirmMessage": "确定要删除沙盒「{{name}}」吗？此操作不可恢复。",
+    "ide": {
+      "starting": "正在启动 IDE...",
+      "installing": "正在安装 code-server...",
+      "ready": "IDE 已就绪",
+      "error": "启动 IDE 失败",
+      "unavailable": "此沙盒中 code-server 不可用",
+      "retry": "重试",
+      "sandboxNotActive": "没有活跃的沙盒，请先启动一个沙盒。"
+    },
     "config": {
       "title": "沙盒配置",
       "subtitle": "自定义沙盒默认资源和生命周期设置",

@@ -792,6 +792,7 @@ export function BottomDock({
   const mouseX = useMotionValue(Infinity);
   const checkIn = useCheckIn();
   const [showCheckInModal, setShowCheckInModal] = useState(false);
+  const dockMinimized = useXyzen((s) => s.dockMinimized);
 
   const isAuthedForUi = auth.isAuthenticated || !!auth.token;
 
@@ -856,41 +857,42 @@ export function BottomDock({
     [onPanelChange],
   );
 
+  if (dockMinimized) {
+    return null;
+  }
+
   return (
     <>
       <div
-        className={cn("fixed bottom-0 left-0 right-0 z-50 pb-2", className)}
+        className={cn("fixed bottom-0 left-0 z-50 pb-2", className)}
         style={{
           paddingLeft: DOCK_HORIZONTAL_MARGIN,
           paddingRight: DOCK_HORIZONTAL_MARGIN,
         }}
       >
-        <motion.div
-          initial={{ opacity: 0, y: 20 }}
-          animate={{ opacity: 1, y: 0 }}
-          transition={{ duration: 0.3 }}
+        <div
           className={cn(
-            "w-full",
+            "h-14 rounded-2xl px-4",
             "bg-white/80 dark:bg-neutral-900/60",
             "backdrop-blur-2xl",
             "border border-neutral-200/50 dark:border-neutral-700/50",
-            "rounded-2xl",
           )}
           style={{
+            width: `calc(100vw - ${DOCK_HORIZONTAL_MARGIN * 2}px)`,
             boxShadow:
-              "0 8px 32px rgba(0, 0, 0, 0.12), 0 2px 8px rgba(0, 0, 0, 0.06), inset 0 1px 0 rgba(255, 255, 255, 0.15)",
+              "0 8px 32px rgba(0,0,0,.10), 0 2px 8px rgba(0,0,0,.06), inset 0 1px 0 rgba(255,255,255,.12)",
           }}
         >
-          <div className="flex items-center justify-between h-14 px-4">
-            {/* Left Section: Avatar + Navigation */}
-            <div className="flex items-center gap-3">
-              {/* User Avatar */}
+          <div className="flex h-full items-center">
+            {/* Avatar */}
+            <div className="shrink-0">
               <UserAvatar compact />
+            </div>
 
-              {/* Divider */}
-              <div className="h-8 w-px bg-neutral-300/80 dark:bg-neutral-600/30" />
+            {/* Left: divider + nav tabs */}
+            <div className="flex items-center gap-3">
+              <div className="h-8 w-px bg-neutral-300/80 dark:bg-neutral-600/30 ml-3" />
 
-              {/* Navigation Tabs */}
               <div
                 className="flex items-end gap-1.5"
                 onMouseMove={(e) => mouseX.set(e.pageX)}
@@ -908,15 +910,14 @@ export function BottomDock({
               </div>
             </div>
 
-            {/* Right Section: Status Bar */}
-            <div className="flex items-center gap-2">
-              {/* Version Info - GitHub + Version + Region */}
-              <VersionInfo />
+            {/* Spacer */}
+            <div className="flex-1" />
 
-              {/* Divider */}
+            {/* Right: status bar */}
+            <div className="flex items-center gap-2 shrink-0">
+              <VersionInfo />
               <div className="h-6 w-px bg-neutral-300/80 dark:bg-neutral-600/30" />
 
-              {/* Check-in Button (only for authenticated users with checkIn feature) */}
               {checkIn && isAuthedForUi && (
                 <motion.button
                   whileHover={{ scale: 1.1 }}
@@ -935,17 +936,12 @@ export function BottomDock({
                 </motion.button>
               )}
 
-              {/* Divider */}
               <div className="h-6 w-px bg-neutral-300/80 dark:bg-neutral-600/30" />
-
-              {/* Subscription Badge */}
               <SubscriptionBadge />
-
-              {/* Notification Center (rightmost) */}
               <NotificationCenter />
             </div>
           </div>
-        </motion.div>
+        </div>
       </div>
 
       {/* Check-in Modal */}

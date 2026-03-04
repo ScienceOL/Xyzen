@@ -494,6 +494,10 @@ class SandboxManager:
         """Get preview URL for an existing sandbox without provisioning."""
         return await self._backend.get_preview_url(sandbox_id, port)
 
+    async def exec_readonly(self, sandbox_id: str, command: str, timeout: int = 30) -> ExecResult:
+        """Execute a command in an existing sandbox without provisioning."""
+        return await self._backend.exec(sandbox_id, command, timeout=timeout)
+
 
 # --- Redis helpers (backward compat: old keys are plain strings, new keys are hashes) ---
 

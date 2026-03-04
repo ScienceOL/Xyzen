@@ -17,6 +17,12 @@ export interface SandboxPreviewResponse {
   port: number;
 }
 
+export interface SandboxIdeResponse {
+  url: string;
+  port: number;
+  status: "ready" | "starting" | "unavailable";
+}
+
 export interface SandboxEntry {
   sandbox_id: string;
   session_id: string;
@@ -119,6 +125,16 @@ class SandboxService {
   ): Promise<SandboxPreviewResponse> {
     return http.get(`/xyzen/api/v1/sessions/${sessionId}/sandbox/preview`, {
       params: { port },
+    });
+  }
+
+  /** Start code-server IDE in the sandbox and return its URL. */
+  async startIde(
+    sessionId: string,
+    theme: "light" | "dark" = "dark",
+  ): Promise<SandboxIdeResponse> {
+    return http.post(`/xyzen/api/v1/sessions/${sessionId}/sandbox/ide`, {
+      theme,
     });
   }
 

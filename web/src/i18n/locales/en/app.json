@@ -414,6 +414,15 @@
     "stopped": "Stopped",
     "deleteConfirmTitle": "Delete Sandbox",
     "deleteConfirmMessage": "Are you sure you want to delete the sandbox \"{{name}}\"? This action cannot be undone.",
+    "ide": {
+      "starting": "Starting IDE...",
+      "installing": "Installing code-server...",
+      "ready": "IDE ready",
+      "error": "Failed to start IDE",
+      "unavailable": "Code-server is not available in this sandbox",
+      "retry": "Retry",
+      "sandboxNotActive": "No active sandbox. Start a sandbox first."
+    },
     "config": {
       "title": "Sandbox Configuration",
       "subtitle": "Customize default sandbox resources and lifecycle settings",

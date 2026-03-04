@@ -412,6 +412,15 @@
     "stopped": "停止中",
     "deleteConfirmTitle": "サンドボックスを削除",
     "deleteConfirmMessage": "サンドボックス「{{name}}」を削除してもよろしいですか？この操作は元に戻せません。",
+    "ide": {
+      "starting": "IDE を起動中...",
+      "installing": "code-server をインストール中...",
+      "ready": "IDE 準備完了",
+      "error": "IDE の起動に失敗しました",
+      "unavailable": "このサンドボックスでは code-server を利用できません",
+      "retry": "再試行",
+      "sandboxNotActive": "アクティブなサンドボックスがありません。先にサンドボックスを起動してください。"
+    },
     "config": {
       "title": "サンドボックス設定",
       "subtitle": "サンドボックスのデフォルトリソースとライフサイクル設定をカスタマイズ",
