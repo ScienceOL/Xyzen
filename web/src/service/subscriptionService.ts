@@ -66,6 +66,11 @@ export interface AdminAssignRoleRequest {
   expires_at?: string | null;
 }
 
+export interface NewUsersHeatmapEntry {
+  date: string;
+  new_users: number;
+}
+
 export interface UsageBucket {
   used: number;
   limit: number;
@@ -211,6 +216,21 @@ class SubscriptionService {
       auth: false,
       headers: { "X-Admin-Secret": adminSecret },
     });
+  }
+
+  async getNewUsersHeatmap(
+    adminSecret: string,
+    year: number,
+    tz?: string,
+  ): Promise<NewUsersHeatmapEntry[]> {
+    return http.get(
+      "/xyzen/api/v1/subscription/admin/stats/new-users-heatmap",
+      {
+        auth: false,
+        headers: { "X-Admin-Secret": adminSecret },
+        params: { year, tz },
+      },
+    );
   }
 }
 

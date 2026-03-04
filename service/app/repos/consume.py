@@ -4,7 +4,7 @@ from typing import Any, cast
 from uuid import UUID
 from zoneinfo import ZoneInfo, ZoneInfoNotFoundError
 
-from sqlalchemy import case, func, update
+from sqlalchemy import case, func, or_, update
 from sqlalchemy import select as sa_select
 from sqlmodel import col, select
 from sqlmodel.ext.asyncio.session import AsyncSession
@@ -720,12 +720,14 @@ class ConsumeRepository:
             col(ConsumeRecord.created_at) <= end_utc,
         )
 
-        # Distinct providers
+        # Distinct providers (only records with token consumption)
+        prov_expr = func.coalesce(func.nullif(col(ConsumeRecord.provider), ""), "unknown")
         prov_stmt = (
-            sa_select(func.distinct(ConsumeRecord.provider))
+            sa_select(func.distinct(prov_expr))
             .where(*base_filter)
-            .where(col(ConsumeRecord.provider).isnot(None))
-            .order_by(ConsumeRecord.provider)
+            .where(col(ConsumeRecord.total_tokens).isnot(None))
+            .where(col(ConsumeRecord.total_tokens) > 0)
+            .order_by(prov_expr)
         )
         prov_rows = (await self.db.exec(cast(Any, prov_stmt))).scalars().all()
         raw_providers = [str(p) for p in prov_rows if p]
@@ -739,6 +741,7 @@ class ConsumeRepository:
             "google_vertex": "GoogleVertex",
             "gpugeek": "GPUGeek",
             "qwen": "Qwen",
+            "unknown": "Unknown",
         }
 
         uuid_values: list[UUID] = []
@@ -770,38 +773,37 @@ class ConsumeRepository:
                     }
                 )
 
-        # Distinct models (optionally filtered by provider)
+        # Distinct models (only records with token consumption, optionally filtered by provider)
+        model_expr = func.coalesce(func.nullif(col(ConsumeRecord.model_name), ""), "unknown")
         model_stmt = (
-            sa_select(func.distinct(ConsumeRecord.model_name))
+            sa_select(func.distinct(model_expr))
             .where(*base_filter)
-            .where(col(ConsumeRecord.model_name).isnot(None))
+            .where(col(ConsumeRecord.total_tokens).isnot(None))
+            .where(col(ConsumeRecord.total_tokens) > 0)
         )
         if provider:
+            prov_coalesce = func.coalesce(func.nullif(col(ConsumeRecord.provider), ""), "unknown")
             if "," in provider:
-                model_stmt = model_stmt.where(col(ConsumeRecord.provider).in_(provider.split(",")))
+                model_stmt = model_stmt.where(prov_coalesce.in_(provider.split(",")))
             else:
-                model_stmt = model_stmt.where(col(ConsumeRecord.provider) == provider)
-        model_stmt = model_stmt.order_by(ConsumeRecord.model_name)
+                model_stmt = model_stmt.where(prov_coalesce == provider)
+        model_stmt = model_stmt.order_by(model_expr)
         model_rows = (await self.db.exec(cast(Any, model_stmt))).scalars().all()
         models = [str(m) for m in model_rows if m]
 
-        # Distinct model tiers
-        tier_stmt = (
-            sa_select(func.distinct(ConsumeRecord.model_tier))
-            .where(*base_filter)
-            .where(col(ConsumeRecord.model_tier).isnot(None))
-            .order_by(ConsumeRecord.model_tier)
-        )
+        # Distinct model tiers (all records)
+        tier_expr = func.coalesce(func.nullif(col(ConsumeRecord.model_tier), ""), "unknown")
+        tier_stmt = sa_select(func.distinct(tier_expr)).where(*base_filter).order_by(tier_expr)
         tier_rows = (await self.db.exec(cast(Any, tier_stmt))).scalars().all()
         tiers = [str(t) for t in tier_rows if t]
 
-        # Distinct tool names (only from tool_call records)
+        # Distinct tool names (only records without token consumption)
+        tool_expr = func.coalesce(func.nullif(col(ConsumeRecord.tool_name), ""), "unknown")
         tool_stmt = (
-            sa_select(func.distinct(ConsumeRecord.tool_name))
+            sa_select(func.distinct(tool_expr))
             .where(*base_filter)
-            .where(col(ConsumeRecord.tool_name).isnot(None))
-            .where(col(ConsumeRecord.record_type) == "tool_call")
-            .order_by(ConsumeRecord.tool_name)
+            .where(or_(col(ConsumeRecord.total_tokens).is_(None), col(ConsumeRecord.total_tokens) == 0))
+            .order_by(tool_expr)
         )
         tool_rows = (await self.db.exec(cast(Any, tool_stmt))).scalars().all()
         tools = [str(t) for t in tool_rows if t]
@@ -828,23 +830,29 @@ class ConsumeRepository:
         end_utc = end_local.astimezone(tz_module.utc)
 
         date_expr = func.to_char(func.timezone(tz, ConsumeRecord.created_at), "YYYY-MM-DD")
-        tier_expr = func.coalesce(col(ConsumeRecord.model_tier), "unknown")
+        tier_expr = func.coalesce(func.nullif(col(ConsumeRecord.model_tier), ""), "unknown")
 
         base_filter: list[Any] = [
             col(ConsumeRecord.created_at) >= start_utc,
             col(ConsumeRecord.created_at) <= end_utc,
         ]
         if model_tier:
-            base_filter.append(col(ConsumeRecord.model_tier) == model_tier)
+            base_filter.append(func.coalesce(func.nullif(col(ConsumeRecord.model_tier), ""), "unknown") == model_tier)
         if model_name:
-            base_filter.append(col(ConsumeRecord.model_name) == model_name)
+            base_filter.append(col(ConsumeRecord.total_tokens).isnot(None))
+            base_filter.append(col(ConsumeRecord.total_tokens) > 0)
+            base_filter.append(func.coalesce(func.nullif(col(ConsumeRecord.model_name), ""), "unknown") == model_name)
         if provider:
+            base_filter.append(col(ConsumeRecord.total_tokens).isnot(None))
+            base_filter.append(col(ConsumeRecord.total_tokens) > 0)
+            prov_expr = func.coalesce(func.nullif(col(ConsumeRecord.provider), ""), "unknown")
             if "," in provider:
-                base_filter.append(col(ConsumeRecord.provider).in_(provider.split(",")))
+                base_filter.append(prov_expr.in_(provider.split(",")))
             else:
-                base_filter.append(col(ConsumeRecord.provider) == provider)
+                base_filter.append(prov_expr == provider)
         if tool_name:
-            base_filter.append(col(ConsumeRecord.tool_name) == tool_name)
+            base_filter.append(or_(col(ConsumeRecord.total_tokens).is_(None), col(ConsumeRecord.total_tokens) == 0))
+            base_filter.append(func.coalesce(func.nullif(col(ConsumeRecord.tool_name), ""), "unknown") == tool_name)
 
         stmt = (
             sa_select(
@@ -950,16 +958,22 @@ class ConsumeRepository:
         )
 
         if model_tier:
-            stmt = stmt.where(col(ConsumeRecord.model_tier) == model_tier)
+            stmt = stmt.where(func.coalesce(func.nullif(col(ConsumeRecord.model_tier), ""), "unknown") == model_tier)
         if model_name:
-            stmt = stmt.where(col(ConsumeRecord.model_name) == model_name)
+            stmt = stmt.where(col(ConsumeRecord.total_tokens).isnot(None))
+            stmt = stmt.where(col(ConsumeRecord.total_tokens) > 0)
+            stmt = stmt.where(func.coalesce(func.nullif(col(ConsumeRecord.model_name), ""), "unknown") == model_name)
         if provider:
+            stmt = stmt.where(col(ConsumeRecord.total_tokens).isnot(None))
+            stmt = stmt.where(col(ConsumeRecord.total_tokens) > 0)
+            prov_expr = func.coalesce(func.nullif(col(ConsumeRecord.provider), ""), "unknown")
             if "," in provider:
-                stmt = stmt.where(col(ConsumeRecord.provider).in_(provider.split(",")))
+                stmt = stmt.where(prov_expr.in_(provider.split(",")))
             else:
-                stmt = stmt.where(col(ConsumeRecord.provider) == provider)
+                stmt = stmt.where(prov_expr == provider)
         if tool_name:
-            stmt = stmt.where(col(ConsumeRecord.tool_name) == tool_name)
+            stmt = stmt.where(or_(col(ConsumeRecord.total_tokens).is_(None), col(ConsumeRecord.total_tokens) == 0))
+            stmt = stmt.where(func.coalesce(func.nullif(col(ConsumeRecord.tool_name), ""), "unknown") == tool_name)
 
         stmt = stmt.group_by(date_expr).order_by(date_expr)
         rows = (await self.db.exec(cast(Any, stmt))).all()
@@ -1008,18 +1022,24 @@ class ConsumeRepository:
             col(ConsumeRecord.created_at) <= end_utc,
         ]
         if model_tier:
-            base_filter.append(col(ConsumeRecord.model_tier) == model_tier)
+            base_filter.append(func.coalesce(func.nullif(col(ConsumeRecord.model_tier), ""), "unknown") == model_tier)
         if model_name:
-            base_filter.append(col(ConsumeRecord.model_name) == model_name)
+            base_filter.append(col(ConsumeRecord.total_tokens).isnot(None))
+            base_filter.append(col(ConsumeRecord.total_tokens) > 0)
+            base_filter.append(func.coalesce(func.nullif(col(ConsumeRecord.model_name), ""), "unknown") == model_name)
         if search:
             base_filter.append(col(ConsumeRecord.user_id).ilike(f"%{search}%"))
         if provider:
+            base_filter.append(col(ConsumeRecord.total_tokens).isnot(None))
+            base_filter.append(col(ConsumeRecord.total_tokens) > 0)
+            prov_expr = func.coalesce(func.nullif(col(ConsumeRecord.provider), ""), "unknown")
             if "," in provider:
-                base_filter.append(col(ConsumeRecord.provider).in_(provider.split(",")))
+                base_filter.append(prov_expr.in_(provider.split(",")))
             else:
-                base_filter.append(col(ConsumeRecord.provider) == provider)
+                base_filter.append(prov_expr == provider)
         if tool_name:
-            base_filter.append(col(ConsumeRecord.tool_name) == tool_name)
+            base_filter.append(or_(col(ConsumeRecord.total_tokens).is_(None), col(ConsumeRecord.total_tokens) == 0))
+            base_filter.append(func.coalesce(func.nullif(col(ConsumeRecord.tool_name), ""), "unknown") == tool_name)
 
         stmt = sa_select(
             col(ConsumeRecord.user_id),
@@ -1077,7 +1097,7 @@ class ConsumeRepository:
 
         if include_tiers and results:
             user_ids = [str(r["user_id"]) for r in results]
-            tier_expr = func.coalesce(col(ConsumeRecord.model_tier), "unknown")
+            tier_expr = func.coalesce(func.nullif(col(ConsumeRecord.model_tier), ""), "unknown")
             tier_stmt = (
                 sa_select(
                     col(ConsumeRecord.user_id),

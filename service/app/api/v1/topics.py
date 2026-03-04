@@ -314,10 +314,16 @@ async def compact_topic(
 
     # Generate summary
     user_provider_manager = await get_user_provider_manager(user, db)
+
+    session_repo = SessionRepository(db)
+    session = await session_repo.get_session_by_id(topic.session_id)
+    model_tier = session.model_tier.value if session and session.model_tier else None
+
     summary = await generate_conversation_summary(
         messages=lc_messages,
         user_id=user,
         user_provider_manager=user_provider_manager,
+        model_tier=model_tier,
     )
 
     # Create new topic in the same session

@@ -337,7 +337,7 @@ async def handle_token_usage(ctx: ChatTaskContext, stream_event: dict[str, Any])
         model_name = token_data.get("model_name") or "unknown"
         provider_id = token_data.get("provider_id")
 
-        # First time we receive model metadata: backfill ctx cache + TrackingContext
+        # First time we receive model metadata: backfill ctx cache
         if not ctx.session_info_loaded and model_tier_value:
             try:
                 ctx.cached_model_tier = ModelTier(model_tier_value)
@@ -346,10 +346,6 @@ async def handle_token_usage(ctx: ChatTaskContext, stream_event: dict[str, Any])
             ctx.cached_model_name = model_name
             ctx.cached_provider_id = provider_id
             ctx.session_info_loaded = True
-
-            tracking_ctx = get_tracking_context()
-            if tracking_ctx is not None:
-                tracking_ctx.model_tier = model_tier_value
 
         # Use cached values when available
         provider_id = ctx.cached_provider_id or provider_id
@@ -365,7 +361,7 @@ async def handle_token_usage(ctx: ChatTaskContext, stream_event: dict[str, Any])
             auth_provider=ctx.auth_provider,
             model_name=model_name or "unknown",
             model_tier=model_tier_value,
-            provider=provider_id,
+            provider_id=provider_id,
             input_tokens=ctx.input_tokens,
             output_tokens=ctx.output_tokens,
             total_tokens=ctx.total_tokens,
@@ -469,10 +465,6 @@ async def handle_tool_call_response(ctx: ChatTaskContext, stream_event: dict[str
                 ctx.cached_model_name = resp.get("model_name")
                 ctx.cached_provider_id = resp.get("provider_id")
                 ctx.session_info_loaded = True
-
-                tracking_ctx = get_tracking_context()
-                if tracking_ctx is not None:
-                    tracking_ctx.model_tier = event_model_tier
 
             model_tier_value = ctx.cached_model_tier.value if ctx.cached_model_tier else None
 

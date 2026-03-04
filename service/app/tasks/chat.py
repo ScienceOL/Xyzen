@@ -236,7 +236,6 @@ async def _process_chat_message_async(
             session_id=session_id,
             topic_id=topic_id,
             message_id=None,  # Updated after AI message is created
-            model_tier=None,  # Updated at settlement time
             db_session_factory=TaskSessionLocal,
         )
     )
@@ -579,7 +578,6 @@ async def _resume_chat_from_interrupt_async(
             session_id=session_id,
             topic_id=topic_id,
             message_id=None,
-            model_tier=None,
             db_session_factory=TaskSessionLocal,
         )
     )
@@ -668,6 +666,7 @@ async def _resume_chat_from_interrupt_async(
                 provider_id=provider_id,
                 model_name=model_name,
                 system_prompt=prompt_build.prompt,
+                model_tier=_resolved_tier,
             )
 
             # Build stream context
@@ -678,6 +677,9 @@ async def _resume_chat_from_interrupt_async(
                 event_ctx=event_ctx,
                 session_id=str(session_id),
                 topic_id=str(topic_id),
+                model_tier=_resolved_tier,
+                provider_id=provider_id,
+                model_name=model_name,
             )
             if event_ctx:
                 event_ctx.stream_id = stream_id

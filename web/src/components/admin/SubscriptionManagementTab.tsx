@@ -1,11 +1,9 @@
+import ConfirmationModal from "@/components/modals/ConfirmationModal";
 import { DEFAULT_TIMEZONE } from "@/configs/common";
-import {
-  redemptionService,
-  type NewUsersHeatmapEntry,
-} from "@/service/redemptionService";
 import {
   subscriptionService,
   type AdminSubscriptionEntry,
+  type NewUsersHeatmapEntry,
   type SubscriptionRoleRead,
 } from "@/service/subscriptionService";
 import { useCallback, useEffect, useMemo, useState } from "react";
@@ -38,6 +36,11 @@ export function SubscriptionManagementTab({
   const [loadingHeatmap, setLoadingHeatmap] = useState(true);
   const [assigning, setAssigning] = useState<string | null>(null);
   const [error, setError] = useState<string | null>(null);
+  const [confirmAction, setConfirmAction] = useState<{
+    userId: string;
+    roleId: string;
+    roleName: string;
+  } | null>(null);
 
   // Debounce search
   useEffect(() => {
@@ -66,7 +69,7 @@ export function SubscriptionManagementTab({
     async (signal?: AbortSignal) => {
       setLoadingHeatmap(true);
       try {
-        const data = await redemptionService.getNewUsersHeatmap(
+        const data = await subscriptionService.getNewUsersHeatmap(
           adminSecret,
           year,
           DEFAULT_TIMEZONE,
@@ -244,6 +247,9 @@ export function SubscriptionManagementTab({
                     Created
                   </th>
                   <th className="px-4 py-2 text-left text-xs text-neutral-400">
+                    Updated
+                  </th>
+                  <th className="px-4 py-2 text-left text-xs text-neutral-400">
                     Actions
                   </th>
                 </tr>
@@ -252,7 +258,7 @@ export function SubscriptionManagementTab({
                 {filteredEntries.length === 0 ? (
                   <tr>
                     <td
-                      colSpan={5}
+                      colSpan={6}
                       className="py-8 text-center text-neutral-500"
                     >
                       No users found
@@ -294,16 +300,24 @@ export function SubscriptionManagementTab({
                         <td className="px-4 py-2 text-neutral-400 text-sm">
                           {formatDate(entry.subscription.created_at)}
                         </td>
+                        <td className="px-4 py-2 text-neutral-400 text-sm">
+                          {formatDate(entry.subscription.updated_at)}
+                        </td>
                         <td className="px-4 py-2">
                           <select
                             value={entry.subscription.role_id}
                             disabled={assigning === entry.subscription.user_id}
-                            onChange={(e) =>
-                              handleAssignRole(
-                                entry.subscription.user_id,
-                                e.target.value,
-                              )
-                            }
+                            onChange={(e) => {
+                              const selectedPlan = plans.find(
+                                (p) => p.id === e.target.value,
+                              );
+                              setConfirmAction({
+                                userId: entry.subscription.user_id,
+                                roleId: e.target.value,
+                                roleName:
+                                  selectedPlan?.display_name ?? "Unknown",
+                              });
+                            }}
                             className="rounded-md border border-neutral-700 bg-neutral-800 px-2 py-1 text-xs text-white disabled:opacity-50"
                           >
                             {plans.map((plan) => (
@@ -323,6 +337,21 @@ export function SubscriptionManagementTab({
           </div>
         )}
       </div>
+
+      <ConfirmationModal
+        isOpen={confirmAction !== null}
+        onClose={() => setConfirmAction(null)}
+        onConfirm={() => {
+          if (confirmAction) {
+            handleAssignRole(confirmAction.userId, confirmAction.roleId);
+          }
+          setConfirmAction(null);
+        }}
+        title="Assign Role"
+        message={`Are you sure you want to assign ${confirmAction?.roleName ?? ""} to this user?`}
+        confirmLabel="Assign"
+        destructive={false}
+      />
     </div>
   );
 }

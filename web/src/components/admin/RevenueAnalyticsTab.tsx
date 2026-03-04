@@ -4,19 +4,20 @@ import {
   type CreditHeatmapEntry,
   type CreditRankingEntry,
 } from "@/service/redemptionService";
-import { subscriptionService } from "@/service/subscriptionService";
 import { useCallback, useEffect, useMemo, useState } from "react";
 import { AdminFilterBar } from "./shared/AdminFilterBar";
 import { AdminHeatmap } from "./shared/AdminHeatmap";
 import { AdminStatCards } from "./shared/AdminStatCards";
-import { formatCompact } from "./shared/constants";
+import { TIER_DISPLAY_NAMES, formatCompact } from "./shared/constants";
 
-const SOURCE_OPTIONS = [
-  { value: "", label: "All" },
-  { value: "welcome_bonus", label: "Welcome Bonus" },
-  { value: "redemption_code", label: "Redemption Code" },
-  { value: "subscription_monthly", label: "Subscription Monthly" },
-  { value: "daily_checkin", label: "Daily Check-in" },
+const TIER_OPTIONS = [
+  { value: "free", label: TIER_DISPLAY_NAMES["free"] ?? "Lite" },
+  { value: "standard", label: TIER_DISPLAY_NAMES["standard"] ?? "Standard" },
+  {
+    value: "professional",
+    label: TIER_DISPLAY_NAMES["professional"] ?? "Pro",
+  },
+  { value: "ultra", label: TIER_DISPLAY_NAMES["ultra"] ?? "Ultra" },
 ];
 
 const LIMIT_OPTIONS = [10, 20, 50, 100];
@@ -38,21 +39,19 @@ export function RevenueAnalyticsTab({ adminSecret }: RevenueAnalyticsTabProps) {
   const [loading, setLoading] = useState(true);
   const [loadingRankings, setLoadingRankings] = useState(false);
   const [error, setError] = useState<string | null>(null);
-  const [tierOptions, setTierOptions] = useState<
+  const [sourceOptions, setSourceOptions] = useState<
     { value: string; label: string }[]
   >([]);
 
-  // Load tier options from plans API
+  // Load source options dynamically
   useEffect(() => {
-    subscriptionService
-      .getPlans()
-      .then((res) => {
-        setTierOptions(
-          res.plans.map((p) => ({ value: p.name, label: p.display_name })),
-        );
+    redemptionService
+      .getCreditSources(adminSecret)
+      .then((sources) => {
+        setSourceOptions(sources.map((s) => ({ value: s, label: s })));
       })
       .catch(() => {});
-  }, []);
+  }, [adminSecret]);
 
   // Debounce search
   useEffect(() => {
@@ -69,7 +68,7 @@ export function RevenueAnalyticsTab({ adminSecret }: RevenueAnalyticsTabProps) {
           adminSecret,
           year,
           DEFAULT_TIMEZONE,
-          undefined,
+          selectedSource || undefined,
           selectedTier || undefined,
         );
         if (!signal?.aborted) setHeatmapData(data);
@@ -80,7 +79,7 @@ export function RevenueAnalyticsTab({ adminSecret }: RevenueAnalyticsTabProps) {
         if (!signal?.aborted) setLoading(false);
       }
     },
-    [adminSecret, year, selectedTier],
+    [adminSecret, year, selectedSource, selectedTier],
   );
 
   const fetchRankings = useCallback(
@@ -91,7 +90,7 @@ export function RevenueAnalyticsTab({ adminSecret }: RevenueAnalyticsTabProps) {
           adminSecret,
           year,
           DEFAULT_TIMEZONE,
-          undefined,
+          selectedSource || undefined,
           selectedTier || undefined,
           selectedDate ?? undefined,
           selectedLimit,
@@ -110,6 +109,7 @@ export function RevenueAnalyticsTab({ adminSecret }: RevenueAnalyticsTabProps) {
     [
       adminSecret,
       year,
+      selectedSource,
       selectedTier,
       selectedDate,
       selectedLimit,
@@ -197,7 +197,7 @@ export function RevenueAnalyticsTab({ adminSecret }: RevenueAnalyticsTabProps) {
           className="rounded-md border border-neutral-700 bg-neutral-800 px-3 py-1.5 text-sm text-white focus:border-blue-500 focus:outline-none focus:ring-1 focus:ring-blue-500"
         >
           <option value="">All Tiers</option>
-          {tierOptions.map((opt) => (
+          {TIER_OPTIONS.map((opt) => (
             <option key={opt.value} value={opt.value}>
               {opt.label}
             </option>
@@ -209,7 +209,8 @@ export function RevenueAnalyticsTab({ adminSecret }: RevenueAnalyticsTabProps) {
           onChange={(e) => setSelectedSource(e.target.value)}
           className="rounded-md border border-neutral-700 bg-neutral-800 px-3 py-1.5 text-sm text-white focus:border-blue-500 focus:outline-none focus:ring-1 focus:ring-blue-500"
         >
-          {SOURCE_OPTIONS.map((opt) => (
+          <option value="">All</option>
+          {sourceOptions.map((opt) => (
             <option key={opt.value} value={opt.value}>
               {opt.label}
             </option>
