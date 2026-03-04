@@ -28,7 +28,7 @@ async function handleResponse<T>(
     return response.json();
   }
 
-  // Auto-logout on 401 for authenticated endpoints (same pattern as xyzenService.ts WS 4401)
+  // Auto-logout on 401 for authenticated endpoints
   if (response.status === 401 && triggersAutoLogout) {
     import("@/core/auth").then((m) => m.logout()).catch(() => {});
   }

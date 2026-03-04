@@ -18,22 +18,19 @@ async def generate_and_update_topic_title(
     topic_id: UUID,
     session_id: UUID,
     user_id: str,
-    connection_id: str,
 ) -> None:
     """
     Background task to generate a concise title for a topic based on its content
     and update it in the database.
 
-    This function publishes the update to Redis pub/sub instead of using a local
-    ConnectionManager, ensuring the update reaches the client regardless of which
-    pod handles the WebSocket connection.
+    Publishes the result to the topic's Redis Stream so that all connected
+    SSE clients (including cross-device) receive the update in real time.
 
     Args:
         message_text: The user's message to generate a title from
         topic_id: The UUID of the topic to update
         session_id: The session UUID (unused but kept for API compatibility)
         user_id: The user ID (for LLM access)
-        connection_id: The WebSocket connection ID (used as Redis channel key)
     """
     logger.info(f"Starting background title generation for topic {topic_id}")
 
@@ -77,21 +74,25 @@ async def generate_and_update_topic_title(
             if updated_topic:
                 logger.info(f"Updated topic {topic_id} title to: {new_title}")
                 event = {
-                    "type": "topic_updated",  # Custom event type
+                    "type": "topic_updated",
                     "data": {
                         "id": str(updated_topic.id),
                         "name": updated_topic.name,
                         "updated_at": updated_topic.updated_at.isoformat(),
                     },
                 }
-                # Publish to Redis channel for cross-pod delivery
-                # The redis_listener in chat.py subscribes to this channel
+                # Publish to topic's Redis Stream for SSE delivery
                 from app.infra.redis import get_redis_client
 
                 r = await get_redis_client()
-                channel = f"chat:{connection_id}"
-                await r.publish(channel, json.dumps(event))
-                logger.debug(f"Published topic_updated event to Redis channel: {channel}")
+                encoded = json.dumps(event, default=str, ensure_ascii=False)
+                await r.xadd(
+                    f"events:{topic_id}",
+                    {"type": "topic_updated", "payload": encoded},
+                    maxlen=10000,
+                    approximate=True,
+                )
+                logger.debug(f"Published topic_updated event to stream events:{topic_id}")
 
         except Exception as e:
             logger.error(f"Error in title generation task: {e}")

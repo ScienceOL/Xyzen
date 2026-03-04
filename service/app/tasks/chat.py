@@ -2,8 +2,9 @@ import asyncio
 import json
 import logging
 import time
+from collections.abc import AsyncIterator
 from datetime import datetime, timezone
-from typing import Any
+from typing import Any, TypeVar
 from uuid import UUID
 
 import redis.asyncio as redis
@@ -140,6 +141,62 @@ def extract_content_text(content: Any) -> str:
     return str(content)
 
 
+_T = TypeVar("_T")
+
+
+async def _abortable_stream(
+    stream: AsyncIterator[_T],
+    publisher: RedisPublisher,
+    interval: float = 0.5,
+) -> AsyncIterator[tuple[_T | None, bool]]:
+    """Wrap *stream* with a concurrent abort-checking background task.
+
+    Yields ``(event, False)`` for each stream event.  When an abort signal is
+    detected in Redis, yields ``(None, True)`` once and stops — even if the
+    underlying stream is blocked inside a long-running tool execution.
+    """
+    abort_event = asyncio.Event()
+
+    async def _poller() -> None:
+        while not abort_event.is_set():
+            if await publisher.check_abort():
+                abort_event.set()
+                return
+            await asyncio.sleep(interval)
+
+    poller = asyncio.create_task(_poller())
+    stream_iter = stream.__aiter__()
+    try:
+        while True:
+            next_task = asyncio.ensure_future(stream_iter.__anext__())
+            abort_task = asyncio.ensure_future(abort_event.wait())
+            done, pending = await asyncio.wait(
+                {next_task, abort_task},
+                return_when=asyncio.FIRST_COMPLETED,
+            )
+            for t in pending:
+                t.cancel()
+                try:
+                    await t
+                except (asyncio.CancelledError, StopAsyncIteration):
+                    pass
+
+            if abort_task in done:
+                yield None, True
+                return
+
+            try:
+                yield next_task.result(), False
+            except StopAsyncIteration:
+                return
+    finally:
+        poller.cancel()
+        try:
+            await poller
+        except asyncio.CancelledError:
+            pass
+
+
 @celery_app.task(name="process_chat_message")
 def process_chat_message(
     session_id_str: str,
@@ -255,7 +312,7 @@ async def _process_chat_message_async(
 
     set_session_factory(TaskSessionLocal)
 
-    # Set tracking context for consumption recording in tool implementations
+    # Set tracking context for consumption recording in tool implementations (EE only)
 
     from app.core.consume.consume_service import (
         TrackingContext,
@@ -263,17 +320,19 @@ async def _process_chat_message_async(
         get_tracking_context,
         set_tracking_context,
     )
+    from app.ee import is_ee
 
-    set_tracking_context(
-        TrackingContext(
-            user_id=user_id,
-            auth_provider=auth_provider,
-            session_id=session_id,
-            topic_id=topic_id,
-            message_id=None,  # Updated after AI message is created
-            db_session_factory=TaskSessionLocal,
+    if is_ee():
+        set_tracking_context(
+            TrackingContext(
+                user_id=user_id,
+                auth_provider=auth_provider,
+                session_id=session_id,
+                topic_id=topic_id,
+                message_id=None,  # Updated after AI message is created
+                db_session_factory=TaskSessionLocal,
+            )
         )
-    )
 
     # Record task start time for scoping exception-path settlement queries
     task_start_time = datetime.now(timezone.utc)
@@ -316,26 +375,18 @@ async def _process_chat_message_async(
                 await publisher.publish(json.dumps({"type": ChatEventType.ERROR, "data": topic_error_data}))
                 return
 
-            # Abort checking configuration - use time-based throttling for efficiency
-            ABORT_CHECK_INTERVAL_SEC = 0.5  # Check every N seconds (responsive but not too frequent)
-            last_abort_check_time = time.time()
-
-            # Stream response
-            async for stream_event in get_ai_response_stream(
-                db, message_text, topic, user_id, None, publisher, connection_id, context, stream_id=stream_id or ""
+            # Stream response with concurrent abort checking
+            async for stream_event, aborted in _abortable_stream(
+                get_ai_response_stream(db, message_text, topic, user_id, None, context, stream_id=stream_id or ""),
+                publisher,
             ):
+                if aborted:
+                    logger.info(f"Abort signal detected for {connection_id}")
+                    ctx.is_aborted = True
+                    break
+
+                assert stream_event is not None
                 event_type = stream_event["type"]
-
-                # Time-based abort check (check every ABORT_CHECK_INTERVAL_SEC seconds)
-                current_time = time.time()
-                if current_time - last_abort_check_time >= ABORT_CHECK_INTERVAL_SEC:
-                    abort_detected = await publisher.check_abort()
-                    last_abort_check_time = current_time
-                    if abort_detected:
-                        logger.info(f"Abort signal detected for {connection_id}")
-                        ctx.is_aborted = True
-                        break
-
                 handler = EVENT_HANDLERS.get(event_type)
                 if handler:
                     await handler(ctx, stream_event)
@@ -449,50 +500,51 @@ async def _process_chat_message_async(
                 logger.warning(f"Failed to save message content on error: {msg_save_error}")
 
         # Exception-path settlement: individual ConsumeRecords were already
-        # created during streaming. Query pending records and settle.
-        try:
-            from app.core.consume.settlement_service import settle_chat_records
-            from app.repos.consume import ConsumeRepository
+        # created during streaming. Query pending records and settle. (EE only)
+        if is_ee():
+            try:
+                from app.core.consume.settlement_service import settle_chat_records
+                from app.repos.consume import ConsumeRepository
 
-            async with TaskSessionLocal() as settle_db:
-                # Query pending ConsumeRecords for this task
-                repo = ConsumeRepository(settle_db)
-                records = await repo.list_records_for_exception_settlement(
-                    user_id=user_id,
-                    session_id=session_id,
-                    topic_id=topic_id,
-                    since=task_start_time,
-                )
+                async with TaskSessionLocal() as settle_db:
+                    # Query pending ConsumeRecords for this task
+                    repo = ConsumeRepository(settle_db)
+                    records = await repo.list_records_for_exception_settlement(
+                        user_id=user_id,
+                        session_id=session_id,
+                        topic_id=topic_id,
+                        since=task_start_time,
+                    )
 
-                if records:
-                    record_ids = [r.id for r in records]
-                    record_amounts_sum = sum(r.amount for r in records)
+                    if records:
+                        record_ids = [r.id for r in records]
+                        record_amounts_sum = sum(r.amount for r in records)
 
-                    # Total = sum of record amounts
-                    total_cost = record_amounts_sum
+                        # Total = sum of record amounts
+                        total_cost = record_amounts_sum
 
-                    if total_cost > 0:
-                        await settle_chat_records(
-                            db=settle_db,
-                            user_id=user_id,
-                            auth_provider=auth_provider,
-                            record_ids=record_ids,
-                            total_amount=int(total_cost),
-                            marketplace_id=ctx.marketplace_id,
-                            developer_user_id=ctx.developer_user_id,
-                            developer_fork_mode=ctx.developer_fork_mode,
-                            session_id=session_id,
-                            topic_id=topic_id,
-                            message_id=ctx.ai_message_obj.id if ctx.ai_message_obj else None,
-                        )
-                    elif record_ids:
-                        # No billing but still mark as success
-                        await repo.bulk_update_consume_state(record_ids, "success")
+                        if total_cost > 0:
+                            await settle_chat_records(
+                                db=settle_db,
+                                user_id=user_id,
+                                auth_provider=auth_provider,
+                                record_ids=record_ids,
+                                total_amount=int(total_cost),
+                                marketplace_id=ctx.marketplace_id,
+                                developer_user_id=ctx.developer_user_id,
+                                developer_fork_mode=ctx.developer_fork_mode,
+                                session_id=session_id,
+                                topic_id=topic_id,
+                                message_id=ctx.ai_message_obj.id if ctx.ai_message_obj else None,
+                            )
+                        elif record_ids:
+                            # No billing but still mark as success
+                            await repo.bulk_update_consume_state(record_ids, "success")
 
-                    logger.info("Exception-path settlement completed: %d credits", total_cost)
-                    await settle_db.commit()
-        except Exception as settle_error:
-            logger.warning(f"Exception-path settlement failed (non-fatal): {settle_error}")
+                        logger.info("Exception-path settlement completed: %d credits", total_cost)
+                        await settle_db.commit()
+            except Exception as settle_error:
+                logger.warning(f"Exception-path settlement failed (non-fatal): {settle_error}")
     finally:
         # Clear tracking context
         clear_tracking_context()
@@ -607,17 +659,19 @@ async def _resume_chat_from_interrupt_async(
     set_session_factory(TaskSessionLocal)
 
     from app.core.consume.consume_service import TrackingContext, clear_tracking_context, set_tracking_context
+    from app.ee import is_ee
 
-    set_tracking_context(
-        TrackingContext(
-            user_id=user_id,
-            auth_provider=auth_provider,
-            session_id=session_id,
-            topic_id=topic_id,
-            message_id=None,
-            db_session_factory=TaskSessionLocal,
+    if is_ee():
+        set_tracking_context(
+            TrackingContext(
+                user_id=user_id,
+                auth_provider=auth_provider,
+                session_id=session_id,
+                topic_id=topic_id,
+                message_id=None,
+                db_session_factory=TaskSessionLocal,
+            )
         )
-    )
 
     # Agent run tracking — declared outside db context for error handling access
     agent_run_id: UUID | None = None
@@ -778,24 +832,18 @@ async def _resume_chat_from_interrupt_async(
                 db.add(existing_msg)
                 await db.commit()
 
-            # Abort checking — same pattern as the original task
-            ABORT_CHECK_INTERVAL_SEC = 0.5
-            last_abort_check_time = time.time()
+            # Resume the agent with concurrent abort checking
+            async for stream_event, aborted in _abortable_stream(
+                resume_agent_from_interrupt(langchain_agent, user_response, thread_id, ctx),
+                publisher,
+            ):
+                if aborted:
+                    logger.info(f"Abort signal detected during resume for {connection_id}")
+                    task_ctx.is_aborted = True
+                    break
 
-            # Resume the agent
-            async for stream_event in resume_agent_from_interrupt(langchain_agent, user_response, thread_id, ctx):
+                assert stream_event is not None
                 event_type = stream_event["type"]
-
-                # Time-based abort check
-                current_time = time.time()
-                if current_time - last_abort_check_time >= ABORT_CHECK_INTERVAL_SEC:
-                    abort_detected = await publisher.check_abort()
-                    last_abort_check_time = current_time
-                    if abort_detected:
-                        logger.info(f"Abort signal detected during resume for {connection_id}")
-                        task_ctx.is_aborted = True
-                        break
-
                 handler = EVENT_HANDLERS.get(event_type)
                 if handler:
                     await handler(task_ctx, stream_event)
@@ -902,46 +950,47 @@ async def _resume_chat_from_interrupt_async(
             except Exception as msg_save_error:
                 logger.warning(f"Failed to save message content on error: {msg_save_error}")
 
-        # Exception-path settlement
-        try:
-            from app.core.consume.pricing import calculate_settlement_total
-            from app.core.consume.settlement_service import settle_chat_records
-            from app.repos.consume import ConsumeRepository
+        # Exception-path settlement (EE only)
+        if is_ee():
+            try:
+                from app.core.consume.pricing import calculate_settlement_total
+                from app.core.consume.settlement_service import settle_chat_records
+                from app.repos.consume import ConsumeRepository
 
-            async with TaskSessionLocal() as settle_db:
-                repo = ConsumeRepository(settle_db)
-                records = await repo.list_records_for_exception_settlement(
-                    user_id=user_id,
-                    session_id=session_id,
-                    topic_id=topic_id,
-                    since=task_start_time,
-                )
+                async with TaskSessionLocal() as settle_db:
+                    repo = ConsumeRepository(settle_db)
+                    records = await repo.list_records_for_exception_settlement(
+                        user_id=user_id,
+                        session_id=session_id,
+                        topic_id=topic_id,
+                        since=task_start_time,
+                    )
 
-                if records:
-                    record_ids = [r.id for r in records]
-                    record_amounts_sum = sum(r.amount for r in records)
-                    total_cost = calculate_settlement_total(record_amounts_sum, 1.0)
-                    remaining = total_cost - pre_deducted_amount
+                    if records:
+                        record_ids = [r.id for r in records]
+                        record_amounts_sum = sum(r.amount for r in records)
+                        total_cost = calculate_settlement_total(record_amounts_sum, 1.0)
+                        remaining = total_cost - pre_deducted_amount
 
-                    if remaining > 0:
-                        await settle_chat_records(
-                            db=settle_db,
-                            user_id=user_id,
-                            auth_provider=auth_provider,
-                            record_ids=record_ids,
-                            total_amount=int(remaining),
-                            marketplace_id=ctx_marketplace_id,
-                            developer_user_id=ctx_developer_user_id,
-                            session_id=session_id,
-                            topic_id=topic_id,
-                            message_id=ai_message_id,
-                        )
-                    elif record_ids:
-                        await repo.bulk_update_consume_state(record_ids, "success")
+                        if remaining > 0:
+                            await settle_chat_records(
+                                db=settle_db,
+                                user_id=user_id,
+                                auth_provider=auth_provider,
+                                record_ids=record_ids,
+                                total_amount=int(remaining),
+                                marketplace_id=ctx_marketplace_id,
+                                developer_user_id=ctx_developer_user_id,
+                                session_id=session_id,
+                                topic_id=topic_id,
+                                message_id=ai_message_id,
+                            )
+                        elif record_ids:
+                            await repo.bulk_update_consume_state(record_ids, "success")
 
-                    await settle_db.commit()
-        except Exception as settle_error:
-            logger.warning(f"Exception-path settlement failed (non-fatal): {settle_error}")
+                        await settle_db.commit()
+            except Exception as settle_error:
+                logger.warning(f"Exception-path settlement failed (non-fatal): {settle_error}")
     finally:
         clear_tracking_context()
         if checkpointer:

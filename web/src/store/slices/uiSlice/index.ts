@@ -1,12 +1,8 @@
 import { DEFAULT_BACKEND_URL, DEFAULT_LAYOUT_STYLE } from "@/configs";
 import { DEFAULT_WIDTH } from "@/configs/common";
-import xyzenService from "@/service/xyzenService";
 import type { StateCreator } from "zustand";
 import type { Theme, UiSettingType, XyzenState } from "../../types";
 import { type InputPosition, type LayoutStyle } from "./types";
-
-// Ensure xyzen service is aware of the default backend on startup
-xyzenService.setBackendUrl(DEFAULT_BACKEND_URL);
 
 export type ActivityPanel =
   | "chat"
@@ -165,7 +161,6 @@ export const createUiSlice: StateCreator<
   },
   setBackendUrl: (url) => {
     set({ backendUrl: url });
-    xyzenService.setBackendUrl(url);
   },
   openMcpListModal: () => set({ isMcpListModalOpen: true }),
   closeMcpListModal: () => set({ isMcpListModalOpen: false }),

@@ -37,7 +37,6 @@ from app.schemas.chat_event_types import ToolCallStatus
 from app.tools.builtin.subagent.schemas import parse_subagent_outcome
 
 if TYPE_CHECKING:
-    from app.core.chat.interfaces import ChatPublisher
     from app.core.prompts.builder import SystemPromptLayers
     from app.models.agent import Agent
 
@@ -50,8 +49,6 @@ async def get_ai_response_stream_langchain_legacy(
     topic: TopicModel,
     user_id: str,
     agent: "Agent | None" = None,
-    connection_manager: "ChatPublisher | None" = None,
-    connection_id: str | None = None,
     context: dict[str, Any] | None = None,
     stream_id: str = "",
 ) -> AsyncGenerator[StreamingEvent, None]:
@@ -67,8 +64,6 @@ async def get_ai_response_stream_langchain_legacy(
         topic: Topic/conversation context
         user_id: User ID for provider management
         agent: Optional agent configuration
-        connection_manager: WebSocket connection manager (unused, for compatibility)
-        connection_id: WebSocket connection ID (unused, for compatibility)
         context: Optional additional context
 
     Yields:

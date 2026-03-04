@@ -261,7 +261,6 @@ async def send_message(
                         topic_id,
                         session.id,
                         user,
-                        connection_id,
                     )
                 )
     finally:
