@@ -2,6 +2,12 @@
 
 All notable changes to Xyzen will be documented in this file.
 
+## [1.6.19](https://github.com/ScienceOL/Xyzen/compare/v1.6.18...v1.6.19) (2026-03-04)
+
+### 🐛 Bug Fixes
+
+* add docs ([7f8ff99](https://github.com/ScienceOL/Xyzen/commit/7f8ff990440dba62ba5c15e9a39e65a21b4f5a5c)), closes [#297](https://github.com/ScienceOL/Xyzen/issues/297)
+
 ## [1.6.18](https://github.com/ScienceOL/Xyzen/compare/v1.6.17...v1.6.18) (2026-03-03)
 
 ### 🐛 Bug Fixes
