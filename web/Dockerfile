@@ -37,20 +37,13 @@ RUN \
   else echo "Lockfile not found." && exit 1; \
   fi
 
-# Stage 2: Serve the application using a lightweight Node.js server
-FROM base AS runner
-WORKDIR /app
+# Stage 2: Serve with nginx (lightweight, dotfiles supported, SPA routing)
+FROM nginx:alpine AS runner
 
-# Copy only the built application assets from the build stage
-COPY --from=builder /app/site ./
+COPY --from=builder /app/site /usr/share/nginx/html
+COPY nginx.conf /etc/nginx/conf.d/default.conf
 
-# Expose the port the app will run on
 EXPOSE 32233
-
-# Start a production-ready server for SPAs using 'serve'
-# npx will download and run 'serve' without needing it in package.json
-# The '-s' flag handles SPA routing by redirecting all requests to index.html
-CMD ["npx", "-y", "serve", "-s", ".", "-l", "32233"]
 
 LABEL org.opencontainers.image.source=https://github.com/scienceol/xyzen
 LABEL org.opencontainers.image.description="AI Research Interface"
