@@ -24,6 +24,7 @@ class ChatErrorCode(StrEnum):
     PROVIDER_CONTEXT_TOO_LONG = "provider.context_too_long"
     PROVIDER_UNAVAILABLE = "provider.unavailable"
     PROVIDER_INVALID_RESPONSE = "provider.invalid_response"
+    PROVIDER_QUOTA_EXHAUSTED = "provider.quota_exhausted"
 
     # Content moderation
     CONTENT_FILTERED = "content.filtered"
@@ -57,6 +58,7 @@ class ChatErrorCode(StrEnum):
         return self not in (
             ChatErrorCode.SYSTEM_INTERNAL_ERROR,
             ChatErrorCode.SYSTEM_SERVICE_UNAVAILABLE,
+            ChatErrorCode.PROVIDER_QUOTA_EXHAUSTED,
         )
 
     @property
@@ -65,6 +67,7 @@ class ChatErrorCode(StrEnum):
         return self in (
             ChatErrorCode.PROVIDER_RATE_LIMITED,
             ChatErrorCode.PROVIDER_UNAVAILABLE,
+            ChatErrorCode.PROVIDER_QUOTA_EXHAUSTED,
             ChatErrorCode.AGENT_TIMEOUT,
             ChatErrorCode.TOOL_TIMEOUT,
             ChatErrorCode.SYSTEM_SERVICE_UNAVAILABLE,
@@ -81,6 +84,7 @@ _DEFAULT_MESSAGES: dict[ChatErrorCode, str] = {
     ),
     ChatErrorCode.PROVIDER_UNAVAILABLE: "The AI service is temporarily unavailable. Please try again later.",
     ChatErrorCode.PROVIDER_INVALID_RESPONSE: "Received an invalid response from the AI provider.",
+    ChatErrorCode.PROVIDER_QUOTA_EXHAUSTED: "The AI service provider encountered an internal error. Please try again later.",
     ChatErrorCode.CONTENT_FILTERED: "Your message was flagged by the content filter. Please rephrase and try again.",
     ChatErrorCode.CONTENT_UNSAFE: "The content was blocked for safety reasons.",
     ChatErrorCode.AGENT_EXECUTION_FAILED: "The agent encountered an error during execution.",
@@ -129,6 +133,8 @@ def classify_exception(e: Exception) -> ClassifiedError:
         code = ChatErrorCode.AGENT_TIMEOUT
     elif "recursion limit" in error_str or "recursion_limit" in error_str:
         code = ChatErrorCode.AGENT_RECURSION_LIMIT
+    elif "没有可用token" in str(e):
+        code = ChatErrorCode.PROVIDER_QUOTA_EXHAUSTED
     else:
         code = ChatErrorCode.SYSTEM_INTERNAL_ERROR
 

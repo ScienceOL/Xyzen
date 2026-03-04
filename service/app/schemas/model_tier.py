@@ -52,20 +52,20 @@ class TierModelCandidate:
 _GLOBAL_TIER_MODEL_CANDIDATES: dict[ModelTier, list[TierModelCandidate]] = {
     ModelTier.ULTRA: [
         TierModelCandidate(
-            model="Vendor2/Claude-4.6-Opus",
-            provider_type=ProviderType.GPUGEEK,
+            model="us.anthropic.claude-opus-4-6-v1",
+            provider_type=ProviderType.BEDROCK,
             is_fallback=True,
             priority=99,
             capabilities=["reasoning", "creative", "coding"],
             description="Best for coding and choose this for most tasks. Exceptional in complex coding, agentic tasks, and reasoning; highly reliable for software engineering.",
         ),
         TierModelCandidate(
-            model="us.anthropic.claude-opus-4-6-v1",
-            provider_type=ProviderType.BEDROCK,
+            model="Vendor2/Claude-4.6-Opus",
+            provider_type=ProviderType.GPUGEEK,
             is_fallback=True,
             priority=100,
             capabilities=["reasoning", "creative", "coding"],
-            description="Bedrock fallback. Same model as above via AWS Bedrock.",
+            description="GPUGeek fallback. Same model as above via GPUGeek.",
         ),
         # TierModelCandidate(
         #     model="qwen3-max",
@@ -91,19 +91,19 @@ _GLOBAL_TIER_MODEL_CANDIDATES: dict[ModelTier, list[TierModelCandidate]] = {
             description="Default choice (99%+). Best choice for most tasks.",
         ),
         TierModelCandidate(
-            model="Vendor2/Claude-4.5-Sonnet",
-            provider_type=ProviderType.GPUGEEK,
-            is_fallback=True,
-            priority=98,
-            # capabilities=["reasoning", "creative", "coding"],
-            description="Just use this for detail report generation tasks, such as business reports, market analysis or research papers, never use this for other tasks.",
-        ),
-        TierModelCandidate(
             model="us.anthropic.claude-sonnet-4-5-20250929-v1:0",
             provider_type=ProviderType.BEDROCK,
             is_fallback=True,
+            priority=98,
+            description="Just use this for detail report generation tasks, such as business reports, market analysis or research papers, never use this for other tasks.",
+        ),
+        TierModelCandidate(
+            model="Vendor2/Claude-4.5-Sonnet",
+            provider_type=ProviderType.GPUGEEK,
+            is_fallback=True,
             priority=99,
-            description="Bedrock fallback. Same model as above via AWS Bedrock.",
+            # capabilities=["reasoning", "creative", "coding"],
+            description="GPUGeek fallback. Same model as above via GPUGeek.",
         ),
         # TierModelCandidate(
         #     model="gpt-5.2",

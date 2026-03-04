@@ -536,6 +536,7 @@
     "provider.context_too_long": "对话内容过长，请开始新对话或减少附件文件。",
     "provider.unavailable": "AI 服务暂时不可用，请稍后重试。",
     "provider.invalid_response": "收到了来自 AI 服务商的无效响应。",
+    "provider.quota_exhausted": "AI 服务商内部错误，请稍后重试。",
     "content.filtered": "您的消息被内容过滤器标记，请修改后重试。",
     "content.unsafe": "内容因安全原因被阻止。",
     "agent.execution_failed": "智能体执行过程中遇到错误。",

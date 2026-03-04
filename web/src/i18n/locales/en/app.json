@@ -538,6 +538,7 @@
     "provider.context_too_long": "The conversation is too long. Please start a new chat or remove attached files.",
     "provider.unavailable": "The AI service is temporarily unavailable. Please try again later.",
     "provider.invalid_response": "Received an invalid response from the AI provider.",
+    "provider.quota_exhausted": "The AI service provider encountered an internal error. Please try again later.",
     "content.filtered": "Your message was flagged by the content filter. Please rephrase and try again.",
     "content.unsafe": "The content was blocked for safety reasons.",
     "agent.execution_failed": "The agent encountered an error during execution.",
