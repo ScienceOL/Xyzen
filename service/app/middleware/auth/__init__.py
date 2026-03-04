@@ -375,6 +375,32 @@ async def ws_authenticate_context(websocket: WebSocket, token: str | None) -> Au
     )
 
 
+async def get_auth_context(authorization: str | None = Header(None)) -> AuthContext:
+    """FastAPI dependency returning full AuthContext from the Authorization header.
+
+    Equivalent to ``ws_authenticate_context`` but for REST endpoints.
+    """
+    if not authorization:
+        raise HTTPException(status_code=status.HTTP_401_UNAUTHORIZED, detail="Missing authorization header")
+
+    if not authorization.startswith("Bearer "):
+        raise HTTPException(status_code=status.HTTP_401_UNAUTHORIZED, detail="Invalid authorization header format")
+
+    access_token = authorization[7:]
+    auth_result = AuthProvider.validate_token(access_token)
+    if not auth_result.success or not auth_result.user_info:
+        raise HTTPException(
+            status_code=status.HTTP_401_UNAUTHORIZED,
+            detail=auth_result.error_message or "Token validation failed",
+        )
+
+    return AuthContext(
+        user_id=auth_result.user_info.id,
+        auth_provider=AuthProvider.get_provider_name(),
+        access_token=access_token,
+    )
+
+
 def is_auth_configured() -> bool:
     """Check if the authentication service is configured"""
     return AuthProvider is not None

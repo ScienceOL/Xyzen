@@ -147,7 +147,7 @@ def calculate_tool_cost(tool_name: str) -> int:
 
 async def _resolve_cost_rates(
     model_name: str,
-    provider: str | None = None,
+    provider_id: str | None = None,
 ) -> dict[str, float] | None:
     """尝试从models.dev解析每token费率。
 
@@ -172,8 +172,8 @@ async def _resolve_cost_rates(
             modelsdev_provider, modelsdev_model_id = gpugeek_mapping
         elif bedrock_mapping:
             modelsdev_provider, modelsdev_model_id = bedrock_mapping
-        elif provider:
-            modelsdev_provider = INTERNAL_TO_MODELSDEV.get(provider)
+        elif provider_id:
+            modelsdev_provider = INTERNAL_TO_MODELSDEV.get(provider_id)
 
         info = await ModelsDevService.get_model_info_for_key(modelsdev_model_id, modelsdev_provider)
         if info and (info.input_cost_per_token > 0 or info.output_cost_per_token > 0):
@@ -205,14 +205,14 @@ async def get_model_cost(
     output_tokens: int,
     cache_read_input_tokens: int = 0,
     *,
-    provider: str | None = None,
+    provider_id: str | None = None,
 ) -> float:
     """计算模型调用的实际平台成本（USD）。
 
     运行时从models.dev解析每token费率（缓存）。
     当models.dev没有给定模型的数据时，返回0。
     """
-    rates = await _resolve_cost_rates(model_name, provider)
+    rates = await _resolve_cost_rates(model_name, provider_id)
     if not rates:
         rates = FALLBACK_MODEL_COST_RATES.get(model_name)
         if rates:
@@ -232,10 +232,12 @@ async def calculate_llm_cost_usd(
     output_tokens: int,
     cache_read_input_tokens: int = 0,
     *,
-    provider: str | None = None,
+    provider_id: str | None = None,
 ) -> float:
     """计算一次LLM调用的实际平台成本（USD）。get_model_cost的语义别名。"""
-    return await get_model_cost(model_name, input_tokens, output_tokens, cache_read_input_tokens, provider=provider)
+    return await get_model_cost(
+        model_name, input_tokens, output_tokens, cache_read_input_tokens, provider_id=provider_id
+    )
 
 
 # ================================================

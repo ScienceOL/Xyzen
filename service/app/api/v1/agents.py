@@ -7,8 +7,6 @@ This module provides the following endpoints for agent management:
 - GET /{agent_id}: Get details for a specific agent.
 - PATCH /{agent_id}: Update an existing agent.
 - DELETE /{agent_id}: Delete an agent.
-- GET /system/chat: Get the user's default chat agent.
-- GET /system/all: Get all user default agents.
 - GET /stats: Get aggregated stats for all agents (from sessions/messages).
 - GET /{agent_id}/stats: Get aggregated stats for a specific agent.
 """
@@ -272,94 +270,6 @@ async def get_agent_yesterday_summary(
     return await stats_repo.get_yesterday_summary_for_agent(agent_uuid, user)
 
 
-@router.get("/system/chat", response_model=AgentReadWithDetails)
-async def get_system_chat_agent(
-    user: str = Depends(get_current_user),
-    db: AsyncSession = Depends(get_session),
-) -> AgentReadWithDetails:
-    """
-    Get the user's default chat agent.
-
-    Returns the user's personal copy of the "小二" agent with MCP server details.
-    If it doesn't exist, it will be initialized.
-
-    Args:
-        user: Authenticated user ID (injected by dependency)
-        db: Database session (injected by dependency)
-
-    Returns:
-        AgentReadWithDetails: The user's chat agent with MCP server details
-
-    Raises:
-        HTTPException: 404 if chat agent not found
-    """
-    agent_repo = AgentRepository(db)
-    agents = await agent_repo.get_agents_by_user(user)
-
-    chat_agent = next((a for a in agents if a.tags and "default_chat" in a.tags), None)
-
-    if not chat_agent:
-        system_manager = SystemAgentManager(db)
-        new_agents = await system_manager.ensure_user_default_agents(user)
-        await db.commit()
-        chat_agent = next((a for a in new_agents if a.tags and "default_chat" in a.tags), None)
-
-    if not chat_agent:
-        raise HTTPException(status_code=404, detail="Chat agent not found")
-
-    # Get MCP servers for the agent
-    mcp_servers = await agent_repo.get_agent_mcp_servers(chat_agent.id)
-
-    # Create agent dict with MCP servers
-    agent_dict = chat_agent.model_dump()
-    agent_dict["mcp_servers"] = mcp_servers
-    return AgentReadWithDetails(**agent_dict)
-
-
-@router.get("/system/all", response_model=list[AgentReadWithDetails])
-async def get_all_system_agents(
-    user: str = Depends(get_current_user),
-    db: AsyncSession = Depends(get_session),
-) -> list[AgentReadWithDetails]:
-    """
-    Get all default agents for the user.
-
-    Returns the user's personal copies of system agents with MCP server details.
-    These are the agents tagged with 'default_'.
-
-    Args:
-        user: Authenticated user ID (injected by dependency)
-        db: Database session (injected by dependency)
-
-    Returns:
-        list[AgentReadWithDetails]: list of all user default agents with MCP server details
-    """
-    agent_repo = AgentRepository(db)
-    agents = await agent_repo.get_agents_by_user(user)
-
-    # Filter for default agents
-    default_agents = [a for a in agents if a.tags and any(t.startswith("default_") for t in a.tags)]
-
-    if not default_agents:
-        system_manager = SystemAgentManager(db)
-        default_agents = await system_manager.ensure_user_default_agents(user)
-        await db.commit()
-
-    # Load MCP servers for each system agent
-    agents_with_details = []
-
-    for agent in default_agents:
-        # Get MCP servers for this agent
-        mcp_servers = await agent_repo.get_agent_mcp_servers(agent.id)
-
-        # Create agent dict with MCP servers
-        agent_dict = agent.model_dump()
-        agent_dict["mcp_servers"] = mcp_servers
-        agents_with_details.append(AgentReadWithDetails(**agent_dict))
-
-    return agents_with_details
-
-
 @router.get("/{agent_id}", response_model=AgentReadWithDetails)
 async def get_agent(
     agent_id: UUID,
@@ -454,7 +364,7 @@ async def update_agent(
                     detail=f"Root agent only allows editing: {', '.join(sorted(_allowed))}",
                 )
 
-        # Non-editable agents: only allow tool_filter changes in graph_config
+        # Non-editable agents: only allow tool_filter and skills_auto changes in graph_config
         if not agent.config_editable and agent_data.graph_config is not None:
             incoming_config = agent_data.graph_config
             existing_config = agent.graph_config or {}
@@ -474,16 +384,22 @@ async def update_agent(
                 # tool_filter explicitly set to null (enable all)
                 incoming_filter = "CLEAR"
 
-            if incoming_filter is not None:
-                # Apply only tool_filter to existing config, keep everything else
+            # Check for skills_auto change
+            has_skills_auto = "skills_auto" in incoming_config
+
+            if incoming_filter is not None or has_skills_auto:
+                # Apply only allowed fields to existing config, keep everything else
                 import copy
 
                 merged = copy.deepcopy(existing_config)
-                for node in merged.get("graph", {}).get("nodes", []):
-                    if node.get("kind") == "llm":
-                        if "config" not in node:
-                            node["config"] = {}
-                        node["config"]["tool_filter"] = None if incoming_filter == "CLEAR" else incoming_filter
+                if incoming_filter is not None:
+                    for node in merged.get("graph", {}).get("nodes", []):
+                        if node.get("kind") == "llm":
+                            if "config" not in node:
+                                node["config"] = {}
+                            node["config"]["tool_filter"] = None if incoming_filter == "CLEAR" else incoming_filter
+                if has_skills_auto:
+                    merged["skills_auto"] = incoming_config["skills_auto"]
                 agent_data.graph_config = merged
             else:
                 raise HTTPException(

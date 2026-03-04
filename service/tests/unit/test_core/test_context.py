@@ -22,7 +22,6 @@ class TestTrackingContext:
             session_id=uuid4(),
             topic_id=uuid4(),
             message_id=uuid4(),
-            model_tier="pro",
             db_session_factory=lambda: None,
         )
         set_tracking_context(ctx)
@@ -30,7 +29,6 @@ class TestTrackingContext:
             result = get_tracking_context()
             assert result is ctx
             assert result.user_id == "user-1"
-            assert result.model_tier == "pro"
         finally:
             clear_tracking_context()
 
@@ -41,7 +39,6 @@ class TestTrackingContext:
             session_id=None,
             topic_id=None,
             message_id=None,
-            model_tier=None,
             db_session_factory=lambda: None,
         )
         set_tracking_context(ctx)
@@ -56,7 +53,6 @@ class TestTrackingContext:
             session_id=None,
             topic_id=None,
             message_id=None,
-            model_tier=None,
             db_session_factory=lambda: None,
         )
         ctx2 = TrackingContext(
@@ -65,7 +61,6 @@ class TestTrackingContext:
             session_id=None,
             topic_id=None,
             message_id=None,
-            model_tier="ultra",
             db_session_factory=lambda: None,
         )
         set_tracking_context(ctx1)

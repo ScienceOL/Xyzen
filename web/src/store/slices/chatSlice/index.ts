@@ -1,8 +1,8 @@
 import { groupToolMessagesWithAssistant } from "@/core/chat";
 import { syncChannelResponding } from "@/core/chat/channelHelpers";
 import { deriveTopicStatus } from "@/core/chat/channelStatus";
+import sseClient from "@/service/sseClient";
 import { topicService } from "@/service/topicService";
-import xyzenService from "@/service/xyzenService";
 import type { StateCreator } from "zustand";
 import type { XyzenState } from "../../types";
 import { createChannelActions } from "./channelActions";
@@ -10,7 +10,6 @@ import { createConnectionActions } from "./connectionActions";
 import {
   CHANNEL_CONNECT_POLL_INTERVAL_MS,
   CHANNEL_CONNECT_TIMEOUT_MS,
-  staleWatchdogIds,
 } from "./helpers";
 import { createMessageActions } from "./messageActions";
 import type { ChatSlice, Helpers } from "./types";
@@ -108,19 +107,14 @@ export const createChatSlice: StateCreator<
    */
   const closeIdleNonPrimaryConnection = (topicId: string) => {
     setTimeout(() => {
-      // Don't close the primary connection
-      if (xyzenService.getPrimaryTopicId() === topicId) return;
       // Don't close connections for channels that are still responding
       const ch = get().channels[topicId];
       if (ch?.responding) return;
+      // Only close non-active connections
+      const active = get().activeChatChannel;
+      if (active === topicId) return;
       // Safe to close
-      xyzenService.closeConnection(topicId);
-      // Clean up stale watchdog
-      const timer = staleWatchdogIds.get(topicId);
-      if (timer) {
-        clearInterval(timer);
-        staleWatchdogIds.delete(topicId);
-      }
+      sseClient.disconnect(topicId);
     }, 0);
   };
 
@@ -181,22 +175,6 @@ export const createChatSlice: StateCreator<
               m.agentExecution,
             );
           });
-
-          // Preserve streamId from existing messages onto reconciled DB messages.
-          if (channel.responding) {
-            const existingStreamIds = new Map<string, string>();
-            for (const msg of channel.messages) {
-              if (msg.streamId && msg.id) {
-                existingStreamIds.set(msg.id, msg.streamId);
-              }
-            }
-            for (const msg of processedMessages) {
-              const streamId = existingStreamIds.get(msg.id);
-              if (streamId) {
-                msg.streamId = streamId;
-              }
-            }
-          }
 
           // Try to merge in-memory runtime state into matching DB messages
           const usedDbIndices = new Set<number>();

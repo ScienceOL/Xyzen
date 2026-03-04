@@ -1,0 +1,47 @@
+export const metadata = {
+  title: 'Sharing',
+  description:
+    'Share conversations publicly with a link. Let others view your agent interactions.',
+}
+
+export const sections = [
+  { title: 'Sharing a Conversation', id: 'sharing-a-conversation' },
+  { title: 'What Gets Shared', id: 'what-gets-shared' },
+  { title: 'Managing Shares', id: 'managing-shares' },
+]
+
+# Sharing
+
+Share interesting agent conversations with a public link. Anyone with the link can view the conversation without needing a Xyzen account. {{ className: 'lead' }}
+
+## Sharing a Conversation
+
+1. Open the conversation you want to share
+2. Click the **Share** button in the toolbar
+3. A public link is generated
+4. Copy and send the link to anyone
+
+The shared link provides a read-only view of the conversation, including all messages, agent responses, and any generated content.
+
+## What Gets Shared
+
+A shared conversation includes:
+- All user messages and agent responses
+- Formatted content (code blocks, markdown, etc.)
+- Agent execution phases (for multi-phase agents like Deep Research)
+
+A shared conversation does **not** include:
+- The agent's configuration or system prompt
+- Knowledge base contents
+- Memory state
+- File attachments (references are shown, but files are not downloadable)
+
+## Managing Shares
+
+You can manage your shared conversations:
+
+- **View active shares** — See all conversations you've shared
+- **Revoke sharing** — Remove the public link to make a conversation private again
+- **Update** — Re-share to include new messages added after the initial share
+
+Shared links remain active until you explicitly revoke them.

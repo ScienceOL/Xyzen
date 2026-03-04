@@ -156,8 +156,11 @@ class NoopChatLifecycle:
 async def get_chat_lifecycle(user_id: str, db: AsyncSession) -> ChatLifecycle:
     """Return the appropriate ChatLifecycle for the current deployment.
 
-    Currently always returns ``DefaultChatLifecycle`` (local billing/limits).
-    When the remote EE billing API is ready, this factory will select the
-    implementation based on ``is_ee()``.
+    Returns ``NoopChatLifecycle`` in CE mode (no billing/limits).
+    Returns ``DefaultChatLifecycle`` in EE mode (local billing/limits).
     """
+    from app.ee import is_ee
+
+    if not is_ee():
+        return NoopChatLifecycle()
     return await DefaultChatLifecycle.create(user_id, db)

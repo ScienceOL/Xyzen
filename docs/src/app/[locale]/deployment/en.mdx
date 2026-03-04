@@ -1,0 +1,123 @@
+export const metadata = {
+  title: 'Deployment',
+  description:
+    'Deploy Xyzen to production with Docker Compose or Kubernetes.',
+}
+
+export const sections = [
+  { title: 'Docker Compose', id: 'docker-compose' },
+  { title: 'Kubernetes', id: 'kubernetes' },
+  { title: 'Required Services', id: 'required-services' },
+  { title: 'Optional Services', id: 'optional-services' },
+  { title: 'Scaling', id: 'scaling' },
+]
+
+# Deployment
+
+Xyzen can be deployed with Docker Compose for simple setups or Kubernetes for production-grade environments. {{ className: 'lead' }}
+
+## Docker Compose
+
+The quickest way to deploy Xyzen. The project includes base and dev compose files:
+
+```bash
+# Production-like deployment
+docker compose -f docker/docker-compose.base.yaml \
+  --env-file docker/.env.prod up -d
+
+# Development with hot-reload
+docker compose -f docker/docker-compose.base.yaml \
+  -f docker/docker-compose.dev.yaml \
+  --env-file docker/.env.dev up -d
+```
+
+Or using `just`:
+
+```bash
+just dev    # Development mode
+just stop   # Stop containers
+just down   # Stop and remove containers
+```
+
+### Services Started
+
+| Service | Port | Description |
+|---|---|---|
+| **nginx** | 80 | Reverse proxy |
+| **service** | 48196 | FastAPI backend |
+| **celery** | — | Background worker |
+| **web** | 32233 | React frontend |
+| **docs** | 32235 | Documentation site |
+| **postgresql** | 5432 | Database |
+| **redis** | 6379 | Cache & pub/sub |
+
+## Kubernetes
+
+For production deployments, Xyzen provides Kubernetes manifests. Each component runs as a separate Deployment with its own Service:
+
+```yaml
+# Backend API (stateless, horizontally scalable)
+apiVersion: apps/v1
+kind: Deployment
+metadata:
+  name: xyzen
+spec:
+  replicas: 3    # Scale based on connection load
+  template:
+    spec:
+      containers:
+        - name: xyzen-container
+          image: ghcr.io/scienceol/xyzen-service:latest
+          ports:
+            - containerPort: 48196
+          envFrom:
+            - configMapRef:
+                name: xyzen-config
+```
+
+Key considerations for Kubernetes:
+
+- Use **ConfigMap** for environment variables
+- Use **Secrets** for API keys and credentials
+- Set **readinessProbe** on `/xyzen/api/health` for zero-downtime deployments
+- Configure **Ingress** to route `/xyzen/` to the backend, `/docs` to docs, and `/` to the web frontend
+
+## Required Services
+
+These services must be running for Xyzen to function:
+
+| Service | Purpose | Notes |
+|---|---|---|
+| **PostgreSQL** | Persistent data storage | Migrations run automatically on startup |
+| **Redis** | Pub/sub, caching, event streams | Used for real-time features |
+
+Both can be managed or external services. Configure via environment variables:
+
+```bash
+XYZEN_DATABASE_URL=postgresql+asyncpg://user:pass@host:5432/xyzen
+XYZEN_REDIS_URL=redis://host:6379/0
+```
+
+## Optional Services
+
+| Service | Purpose | When Needed |
+|---|---|---|
+| **SearXNG** | Web search | If agents need web search capability |
+| **Daytona** | Advanced sandbox | For full IDE-like code execution |
+| **Novu** | Push notifications | For Web Push support |
+| **Jaeger** | Distributed tracing | For observability |
+| **Casdoor** | Authentication | For OAuth/OIDC login |
+
+## Scaling
+
+Xyzen is designed for horizontal scaling:
+
+- **API pods** — Stateless, scale based on concurrent connections. Recommended: 2+ replicas with pod anti-affinity.
+- **Celery workers** — Scale based on LLM workload. Each worker handles tasks independently. Recommended: 2+ replicas.
+- **Web / Docs** — Static Next.js builds, minimal resources. 1 replica is usually sufficient.
+- **Redis** — Single instance for most deployments. For high availability, use Redis Sentinel or Cluster.
+- **PostgreSQL** — Single instance with connection pooling. For high availability, use managed services (RDS, Cloud SQL).
+
+<Note>
+  The API layer is fully stateless — you can add or remove replicas at any time without disrupting active connections (SSE reconnection handles this transparently).
+</Note>

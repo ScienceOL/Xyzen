@@ -105,10 +105,10 @@ class TestGetModelCost:
 
     @pytest.mark.asyncio
     async def test_provider_passed_through(self) -> None:
-        """Verify provider kwarg is forwarded to _resolve_cost_rates."""
+        """Verify provider_id kwarg is forwarded to _resolve_cost_rates."""
         mock_resolve = AsyncMock(return_value={"input": 1e-6, "output": 2e-6})
         with patch(_RESOLVE_PATCH, mock_resolve):
-            await get_model_cost("model-x", 100, 50, provider="google_vertex")
+            await get_model_cost("model-x", 100, 50, provider_id="google_vertex")
         mock_resolve.assert_awaited_once_with("model-x", "google_vertex")
 
     @pytest.mark.asyncio
@@ -281,8 +281,8 @@ class TestValidateModelPricingCoverage:
         helpers: dict[str, dict[str, tuple[str, str]]] = {}
         resolved_calls: list[tuple[str, str | None]] = []
 
-        async def _track_resolve(model: str, provider: str | None = None) -> dict[str, float]:
-            resolved_calls.append((model, provider))
+        async def _track_resolve(model: str, provider_id: str | None = None) -> dict[str, float]:
+            resolved_calls.append((model, provider_id))
             return {"input": 1e-6, "output": 2e-6}
 
         with (
@@ -308,8 +308,8 @@ class TestValidateModelPricingCoverage:
         }
         resolved_calls: list[tuple[str, str | None]] = []
 
-        async def _track_resolve(model: str, provider: str | None = None) -> dict[str, float]:
-            resolved_calls.append((model, provider))
+        async def _track_resolve(model: str, provider_id: str | None = None) -> dict[str, float]:
+            resolved_calls.append((model, provider_id))
             return {"input": 1e-6, "output": 2e-6}
 
         with (

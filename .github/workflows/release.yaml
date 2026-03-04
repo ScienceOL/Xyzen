@@ -247,6 +247,68 @@ jobs:
           if-no-files-found: error
           retention-days: 1
 
+  # Build docs image per-platform (amd64 + arm64 in parallel)
+  build-docs:
+    name: Build Docs (${{ matrix.platform }})
+    needs: release
+    if: needs.release.outputs.new_release_published == 'true'
+    strategy:
+      matrix:
+        include:
+          - platform: linux/amd64
+            runner: ubuntu-latest
+          - platform: linux/arm64
+            runner: ubuntu-24.04-arm
+    runs-on: ${{ matrix.runner }}
+    env:
+      VERSION: ${{ needs.release.outputs.new_release_version }}
+      GIT_TAG: ${{ needs.release.outputs.new_release_git_tag }}
+    steps:
+      - name: Checkout
+        uses: actions/checkout@v4
+        with:
+          ref: ${{ needs.release.outputs.new_release_git_tag }}
+
+      - name: Set up Docker Buildx
+        uses: docker/setup-buildx-action@v3
+
+      - name: Log in to GitHub Container Registry
+        uses: docker/login-action@v3
+        with:
+          registry: ghcr.io
+          username: ${{ github.actor }}
+          password: ${{ secrets.SCIENCEOL_GITHUB_TOKEN }}
+
+      - name: Prepare platform pair
+        id: platform
+        run: echo "pair=${platform//\//-}" >> $GITHUB_OUTPUT
+        env:
+          platform: ${{ matrix.platform }}
+
+      - name: Build and push by digest
+        id: build
+        uses: docker/build-push-action@v6
+        with:
+          context: ./docs
+          platforms: ${{ matrix.platform }}
+          outputs: type=image,"name=${{ env.REGISTRY }}/${{ env.IMAGE_NAMESPACE }}/xyzen-docs",push-by-digest=true,name-canonical=true,push=true
+          cache-from: type=registry,ref=${{ env.REGISTRY }}/${{ env.IMAGE_NAMESPACE }}/xyzen-docs:buildcache-${{ steps.platform.outputs.pair }}
+          cache-to: type=registry,ref=${{ env.REGISTRY }}/${{ env.IMAGE_NAMESPACE }}/xyzen-docs:buildcache-${{ steps.platform.outputs.pair }},mode=max
+
+      - name: Export digest
+        run: |
+          mkdir -p /tmp/digests
+          digest="${{ steps.build.outputs.digest }}"
+          touch "/tmp/digests/${digest#sha256:}"
+
+      - name: Upload digest
+        uses: actions/upload-artifact@v4
+        with:
+          name: docs-digest-${{ steps.platform.outputs.pair }}
+          path: /tmp/digests/*
+          if-no-files-found: error
+          retention-days: 1
+
   # Merge service multi-arch manifest
   merge-service:
     name: Merge Service Manifest
@@ -319,10 +381,46 @@ jobs:
             -t ${{ env.REGISTRY }}/${{ env.IMAGE_NAMESPACE }}/xyzen-web:${{ env.GIT_TAG }} \
             $(printf '${{ env.REGISTRY }}/${{ env.IMAGE_NAMESPACE }}/xyzen-web@sha256:%s ' *)
 
+  # Merge docs multi-arch manifest
+  merge-docs:
+    name: Merge Docs Manifest
+    runs-on: ubuntu-latest
+    needs: [release, build-docs]
+    env:
+      VERSION: ${{ needs.release.outputs.new_release_version }}
+      GIT_TAG: ${{ needs.release.outputs.new_release_git_tag }}
+    steps:
+      - name: Set up Docker Buildx
+        uses: docker/setup-buildx-action@v3
+
+      - name: Log in to GitHub Container Registry
+        uses: docker/login-action@v3
+        with:
+          registry: ghcr.io
+          username: ${{ github.actor }}
+          password: ${{ secrets.SCIENCEOL_GITHUB_TOKEN }}
+
+      - name: Download digests
+        uses: actions/download-artifact@v4
+        with:
+          path: /tmp/digests
+          pattern: docs-digest-*
+          merge-multiple: true
+
+      - name: Create manifest list and push
+        working-directory: /tmp/digests
+        run: |
+          docker buildx imagetools create \
+            --annotation "index:org.opencontainers.image.description=Xyzen Documentation" \
+            -t ${{ env.REGISTRY }}/${{ env.IMAGE_NAMESPACE }}/xyzen-docs:latest \
+            -t ${{ env.REGISTRY }}/${{ env.IMAGE_NAMESPACE }}/xyzen-docs:${{ env.VERSION }} \
+            -t ${{ env.REGISTRY }}/${{ env.IMAGE_NAMESPACE }}/xyzen-docs:${{ env.GIT_TAG }} \
+            $(printf '${{ env.REGISTRY }}/${{ env.IMAGE_NAMESPACE }}/xyzen-docs@sha256:%s ' *)
+
   # Deploy: Wait for all manifests to be ready
   deploy:
     name: Deploy
-    needs: [release, merge-service, merge-web]
+    needs: [release, merge-service, merge-web, merge-docs]
     runs-on: ubuntu-latest
     env:
       VERSION: ${{ needs.release.outputs.new_release_version }}
@@ -341,6 +439,7 @@ jobs:
           kubectl -n bohrium set image deployment/xyzen-celery *=${{ env.REGISTRY }}/${{ env.IMAGE_NAMESPACE }}/xyzen-service:${{ env.VERSION }}
           kubectl -n sciol set image deployment/xyzen *=${{ env.REGISTRY }}/${{ env.IMAGE_NAMESPACE }}/xyzen-service:${{ env.VERSION }}
           kubectl -n sciol set image deployment/xyzen-web *=${{ env.REGISTRY }}/${{ env.IMAGE_NAMESPACE }}/xyzen-web:${{ env.VERSION }}
+          kubectl -n sciol set image deployment/xyzen-docs *=${{ env.REGISTRY }}/${{ env.IMAGE_NAMESPACE }}/xyzen-docs:${{ env.VERSION }}
 
       - name: Deployment Summary
         run: |
@@ -350,12 +449,13 @@ jobs:
           echo "|-----------|-------|" >> $GITHUB_STEP_SUMMARY
           echo "| Service | \`${{ env.REGISTRY }}/${{ env.IMAGE_NAMESPACE }}/xyzen-service:${{ env.VERSION }}\` |" >> $GITHUB_STEP_SUMMARY
           echo "| Web | \`${{ env.REGISTRY }}/${{ env.IMAGE_NAMESPACE }}/xyzen-web:${{ env.VERSION }}\` |" >> $GITHUB_STEP_SUMMARY
+          echo "| Docs | \`${{ env.REGISTRY }}/${{ env.IMAGE_NAMESPACE }}/xyzen-docs:${{ env.VERSION }}\` |" >> $GITHUB_STEP_SUMMARY
 
   # Notify: Send build result notification
   notify:
     name: Notify
     runs-on: ubuntu-latest
-    needs: [release, merge-service, merge-web, deploy]
+    needs: [release, merge-service, merge-web, merge-docs, deploy]
     if: always() && needs.release.outputs.new_release_published == 'true'
     steps:
       - name: Checkout

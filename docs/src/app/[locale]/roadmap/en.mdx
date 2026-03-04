@@ -1,0 +1,66 @@
+export const metadata = {
+  title: 'Roadmap',
+  description:
+    'Planned features and development roadmap for Xyzen.',
+}
+
+export const sections = [
+  { title: 'Recent Releases', id: 'recent-releases' },
+  { title: 'In Progress', id: 'in-progress' },
+  { title: 'Planned', id: 'planned' },
+]
+
+# Roadmap
+
+A high-level overview of where Xyzen has been and where it's heading. {{ className: 'lead' }}
+
+## Recent Releases
+
+### Multi-Agent Orchestration
+- ReAct and Deep Research agent types
+- Sub-agent delegation with context passing
+- Agent marketplace for publishing and forking
+- Reusable component system for graph building
+
+### Real-Time Streaming
+- SSE-based streaming (replaced WebSocket)
+- Redis Streams for event persistence and reconnection
+- Chunk buffering at 60fps for smooth UI updates
+
+### Knowledge & Memory
+- Knowledge base management with file uploads
+- Core memory system (user summary, preferences, active context, working rules)
+- Persistent learning from user corrections
+
+### Sandbox & Code Execution
+- Isolated code execution environments
+- File operations and IDE preview
+- Daytona backend integration
+
+### Platform Features
+- OAuth authentication via Casdoor
+- MCP server integration with Smithery registry
+- Skill system with SKILL.md format
+- Scheduled task automation
+- Subscription and payment system
+- Web Push notifications
+
+## In Progress
+
+- **Docs site** — Comprehensive documentation for users and developers (you're reading it!)
+- **SSE migration** — Completing the transition from WebSocket to SSE for all real-time features
+- **Agent performance** — Optimizing graph compilation and execution latency
+
+## Planned
+
+- **Agent-to-agent communication** — Direct messaging between agents in multi-agent workflows
+- **Workflow templates** — Pre-built multi-step workflows for common use cases
+- **Plugin SDK** — Simplified API for building custom tools and integrations
+- **Enhanced RAG** — Improved retrieval-augmented generation with hybrid search
+- **Collaboration** — Multi-user shared sessions and workspaces
+- **Observability** — Enhanced tracing and debugging for agent executions
+- **Mobile app** — Native mobile experience for iOS and Android
+
+<Note>
+  This roadmap reflects current plans and priorities. It is subject to change based on community feedback and project needs. For the latest updates, check the [GitHub repository](https://github.com/ScienceOL/Xyzen).
+</Note>

@@ -412,6 +412,15 @@
     "stopped": "已停止",
     "deleteConfirmTitle": "删除沙盒",
     "deleteConfirmMessage": "确定要删除沙盒「{{name}}」吗？此操作不可恢复。",
+    "ide": {
+      "starting": "正在启动 IDE...",
+      "installing": "正在安装 code-server...",
+      "ready": "IDE 已就绪",
+      "error": "启动 IDE 失败",
+      "unavailable": "此沙盒中 code-server 不可用",
+      "retry": "重试",
+      "sandboxNotActive": "没有活跃的沙盒，请先启动一个沙盒。"
+    },
     "config": {
       "title": "沙盒配置",
       "subtitle": "自定义沙盒默认资源和生命周期设置",
@@ -536,6 +545,7 @@
     "provider.context_too_long": "对话内容过长，请开始新对话或减少附件文件。",
     "provider.unavailable": "AI 服务暂时不可用，请稍后重试。",
     "provider.invalid_response": "收到了来自 AI 服务商的无效响应。",
+    "provider.quota_exhausted": "AI 服务商内部错误，请稍后重试。",
     "content.filtered": "您的消息被内容过滤器标记，请修改后重试。",
     "content.unsafe": "内容因安全原因被阻止。",
     "agent.execution_failed": "智能体执行过程中遇到错误。",

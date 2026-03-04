@@ -2,10 +2,11 @@
 
 from __future__ import annotations
 
+import asyncio
 import logging
 import mimetypes
 from pathlib import PurePosixPath
-from typing import TYPE_CHECKING
+from typing import TYPE_CHECKING, Literal
 from uuid import UUID
 
 from fastapi import APIRouter, Depends, HTTPException, Query
@@ -29,6 +30,8 @@ _MAX_SERVE_BYTES = 50 * 1024 * 1024  # 50 MB
 
 _WORKDIR_ROOT = get_sandbox_workdir()
 
+_CODE_SERVER_PORT = 63315
+
 
 class SandboxFileInfo(BaseModel):
     name: str
@@ -45,6 +48,16 @@ class SandboxFilesResponse(BaseModel):
 class SandboxPreviewResponse(BaseModel):
     url: str
     port: int
+
+
+class SandboxIdeRequest(BaseModel):
+    theme: Literal["light", "dark"] = "dark"
+
+
+class SandboxIdeResponse(BaseModel):
+    url: str
+    port: int
+    status: Literal["ready", "starting", "unavailable"]
 
 
 async def _validate_session_ownership(
@@ -198,3 +211,81 @@ async def get_sandbox_preview(
         raise HTTPException(status_code=500, detail="Failed to get preview URL")
 
     return SandboxPreviewResponse(url=preview.url, port=preview.port)
+
+
+@router.post("/{session_id}/sandbox/ide", response_model=SandboxIdeResponse)
+async def start_sandbox_ide(
+    session_id: UUID,
+    body: SandboxIdeRequest | None = None,
+    user: str = Depends(get_current_user),
+    db: AsyncSession = Depends(get_session),
+) -> SandboxIdeResponse:
+    """Start code-server in the sandbox and return a browser-accessible URL."""
+    await _validate_session_ownership(session_id, user, db)
+    req = body or SandboxIdeRequest()
+
+    manager = await _get_manager(session_id)
+    sandbox_id = await manager.get_sandbox_id()
+    if not sandbox_id:
+        raise HTTPException(status_code=404, detail="No sandbox active for this session")
+
+    port = _CODE_SERVER_PORT
+
+    # Write VS Code user settings — always apply so theme switches take effect
+    vs_theme = "Default Dark Modern" if req.theme == "dark" else "Default Light Modern"
+    settings_json = f'{{"workbench.colorTheme":"{vs_theme}","workbench.startupEditor":"none"}}'
+    settings_cmd = (
+        "mkdir -p ~/.local/share/code-server/User && "
+        f"echo '{settings_json}' > ~/.local/share/code-server/User/settings.json"
+    )
+    try:
+        await manager.exec_readonly(sandbox_id, settings_cmd, timeout=10)
+    except Exception:
+        logger.debug("Failed to write code-server settings for session %s", session_id)
+
+    # Check if code-server is already running
+    try:
+        check = await manager.exec_readonly(sandbox_id, f"pgrep -f 'code-server.*{port}'", timeout=10)
+        already_running = check.exit_code == 0
+    except Exception:
+        already_running = False
+
+    if not already_running:
+        # Install code-server if not present, then start it
+        install_and_start = (
+            f"(which code-server > /dev/null 2>&1 || "
+            f"(curl -fsSL https://code-server.dev/install.sh | sh)) && "
+            f"nohup code-server --bind-addr 0.0.0.0:{port} --auth none "
+            f"--disable-workspace-trust "
+            f"--disable-update-check "
+            f"--disable-getting-started-override "
+            f"{_WORKDIR_ROOT} > /tmp/code-server.log 2>&1 &"
+        )
+        try:
+            await manager.exec_readonly(sandbox_id, install_and_start, timeout=120)
+        except Exception:
+            logger.exception("Failed to start code-server for session %s", session_id)
+            return SandboxIdeResponse(url="", port=port, status="unavailable")
+
+    # Poll for readiness (up to 15 seconds)
+    ready = False
+    for _ in range(15):
+        try:
+            health = await manager.exec_readonly(sandbox_id, f"curl -sf http://localhost:{port}/healthz", timeout=5)
+            if health.exit_code == 0:
+                ready = True
+                break
+        except Exception:
+            pass
+        await asyncio.sleep(1)
+
+    if not ready:
+        return SandboxIdeResponse(url="", port=port, status="starting")
+
+    try:
+        preview = await manager.get_preview_url_readonly(sandbox_id, port)
+    except Exception:
+        logger.exception("Failed to get preview URL for code-server on session %s", session_id)
+        raise HTTPException(status_code=500, detail="Failed to get code-server preview URL")
+
+    return SandboxIdeResponse(url=preview.url, port=port, status="ready")

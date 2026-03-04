@@ -1,9 +1,10 @@
 import { Button } from "@/components/ui/button";
 import MessageContent from "@/components/layouts/components/MessageContent";
+import { groupToolMessagesWithAssistant } from "@/core/chat";
 import { useAuth } from "@/hooks/useAuth";
 import { shareService } from "@/service/shareService";
 import type { ChatSharePublicRead } from "@/service/shareService";
-import type { AgentExecutionState } from "@/types/agentEvents";
+import type { Message } from "@/store/types";
 import { initiateOAuthLogin } from "@/utils/authFlow";
 import {
   ArrowLeftIcon,
@@ -13,7 +14,7 @@ import {
   MessageSquarePlusIcon,
   UserIcon,
 } from "lucide-react";
-import { useCallback, useEffect, useRef, useState } from "react";
+import { useCallback, useEffect, useMemo, useRef, useState } from "react";
 import { useTranslation } from "react-i18next";
 
 const PENDING_SHARE_KEY = "pending_share_continue";
@@ -134,6 +135,20 @@ export default function SharedChatPage({ token }: SharedChatPageProps) {
     window.location.hash = "";
   }, []);
 
+  // Process snapshot messages through groupToolMessagesWithAssistant.
+  // This reconstructs agentExecution from agent_metadata and groups tool
+  // messages with their preceding assistant message — matching live chat rendering.
+  // Must be called before early returns to satisfy React hooks ordering rules.
+  const processedMessages = useMemo(
+    () =>
+      state.kind === "loaded"
+        ? groupToolMessagesWithAssistant(
+            state.data.messages_snapshot as unknown as Message[],
+          )
+        : [],
+    [state],
+  );
+
   if (state.kind === "loading") {
     return (
       <div className="flex h-[100dvh] items-center justify-center bg-background">
@@ -212,21 +227,15 @@ export default function SharedChatPage({ token }: SharedChatPageProps) {
       {/* Messages */}
       <main className="flex-1 overflow-y-auto custom-scrollbar">
         <div className="mx-auto max-w-3xl px-4 py-6 space-y-6 sm:px-6">
-          {data.messages_snapshot.map((msg, idx) => {
-            const role = msg.role as string;
-            const content = (msg.content as string) ?? "";
-            const agentExecution = msg.agentExecution as
-              | AgentExecutionState
-              | undefined;
-            const thinkingContent = (msg.thinkingContent ??
-              msg.thinking_content) as string | undefined;
-            const isUser = role === "user";
+          {processedMessages.map((msg) => {
+            const isUser = msg.role === "user";
 
-            // Skip empty messages (no content and no agentExecution)
-            if (!content && !agentExecution) return null;
+            // Skip tool role messages (grouped into assistant) and empty messages
+            if (msg.role === "tool") return null;
+            if (!msg.content && !msg.agentExecution) return null;
 
             return (
-              <div key={idx} className="flex gap-3">
+              <div key={msg.id} className="flex gap-3">
                 <div className="shrink-0 pt-1">
                   {isUser ? (
                     <div className="flex h-8 w-8 items-center justify-center rounded-full bg-gradient-to-tr from-blue-400 to-indigo-500 text-white">
@@ -250,9 +259,9 @@ export default function SharedChatPage({ token }: SharedChatPageProps) {
                   </div>
                   <MessageContent
                     isUser={isUser}
-                    content={content}
-                    thinkingContent={thinkingContent}
-                    agentExecution={agentExecution}
+                    content={msg.content}
+                    thinkingContent={msg.thinkingContent}
+                    agentExecution={msg.agentExecution}
                   />
                 </div>
               </div>

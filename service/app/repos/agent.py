@@ -8,7 +8,7 @@ from sqlmodel.ext.asyncio.session import AsyncSession
 from app.agents.graph.canonicalizer import parse_and_canonicalize_graph_config
 from app.agents.graph.upgrader import GraphConfigMigrationError, upgrade_or_create_default_graph_config
 from app.agents.graph.validator import ensure_valid_graph_config
-from app.models.agent import Agent, AgentCreate, AgentScope, AgentUpdate
+from app.models.agent import Agent, AgentCreate, AgentUpdate
 from app.models.knowledge_set import KnowledgeSet
 from app.models.links import AgentMcpServerLink
 from app.models.mcp import McpServer
@@ -156,40 +156,6 @@ class AgentRepository:
         for agent in agents:
             self._validate_agent_graph_config(agent)
         return agents
-
-    async def get_system_agents(self) -> Sequence[Agent]:
-        """
-        Fetches all system agents.
-
-        Returns:
-            List of Agent instances with scope=SYSTEM.
-        """
-        logger.debug("Fetching all system agents")
-        statement = select(Agent).where(Agent.scope == AgentScope.SYSTEM)
-        result = await self.db.exec(statement)
-        agents = result.all()
-        for agent in agents:
-            self._validate_agent_graph_config(agent)
-        return agents
-
-    async def get_agent_by_name_and_scope(self, name: str, scope: AgentScope) -> Agent | None:
-        """
-        Fetches an agent by its name and scope.
-
-        Args:
-            name: The name of the agent.
-            scope: The scope of the agent.
-
-        Returns:
-            The Agent, or None if not found.
-        """
-        logger.debug(f"Fetching agent with name: {name} and scope: {scope}")
-        statement = select(Agent).where(Agent.name == name, Agent.scope == scope)
-        result = await self.db.exec(statement)
-        agent = result.first()
-        if agent:
-            self._validate_agent_graph_config(agent)
-        return agent
 
     async def get_agent_by_user_and_name(self, user_id: str, name: str) -> Agent | None:
         """

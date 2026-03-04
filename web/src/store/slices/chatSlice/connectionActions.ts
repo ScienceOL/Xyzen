@@ -28,62 +28,59 @@ import {
   handleTopicUpdated,
   handleContextUsage,
 } from "@/core/chat/handlers";
-import xyzenService from "@/service/xyzenService";
-import type { MessageEventCallback } from "@/service/xyzenService";
-import type { Message } from "../../types";
-import { abortTimeoutIds, staleWatchdogIds } from "./helpers";
+import sseClient from "@/service/sseClient";
+import { topicService } from "@/service/topicService";
+import type { ChatEvent } from "@/types/chatEvents";
+import { abortTimeoutIds } from "./helpers";
 import type { ChatSlice, GetState, Helpers, SetState } from "./types";
+
+// Track ChunkBuffers per topic so we can destroy() the old one before creating a new one.
+const chunkBuffers = new Map<string, ChunkBuffer>();
 
 export function createConnectionActions(
   set: SetState,
   get: GetState,
   helpers: Helpers,
 ) {
-  const {
-    reconcileChannelFromBackend,
-    updateDerivedStatus,
-    closeIdleNonPrimaryConnection,
-  } = helpers;
+  const { updateDerivedStatus, closeIdleNonPrimaryConnection } = helpers;
 
   return {
-    connectToChannel: (sessionId: string, topicId: string) => {
+    connectToChannel: (_sessionId: string, topicId: string) => {
       console.debug(
-        `[connectToChannel] topic=${topicId.slice(0, 8)} hasExistingWs=${xyzenService.hasConnection(topicId)} msgs=${get().channels[topicId]?.messages.length}`,
+        `[connectToChannel] topic=${topicId.slice(0, 8)} hasExistingSSE=${sseClient.hasConnection(topicId)} msgs=${get().channels[topicId]?.messages.length}`,
       );
-      // --- 0. Build shared callbacks (defined early so they can be passed to setPrimary or connect) ---
-
-      // Clean up stale watchdog for the *previous* primary topic (not the target)
-      const prevPrimary = xyzenService.getPrimaryTopicId();
-      if (prevPrimary && prevPrimary !== topicId) {
-        const prevTimer = staleWatchdogIds.get(prevPrimary);
-        if (prevTimer) {
-          clearInterval(prevTimer);
-          staleWatchdogIds.delete(prevPrimary);
-        }
-      }
 
       // --- Chunk buffering: batch streaming_chunk and thinking_chunk at rAF cadence ---
+      // Destroy previous buffer to avoid orphaned rAF callbacks mutating stale state.
+      chunkBuffers.get(topicId)?.destroy();
       const chunkBuffer = new ChunkBuffer((fn) => {
         set((state: ChatSlice) => {
           const channel = state.channels[topicId];
           if (channel) fn(channel);
         });
       });
+      chunkBuffers.set(topicId, chunkBuffer);
 
-      // --- Define event callback ---
-      const messageEventCallback: MessageEventCallback = (event) => {
+      // --- Define event callback (identical to WS version) ---
+      // eslint-disable-next-line @typescript-eslint/no-explicit-any
+      const messageEventCallback = (event: { type: string; data: any }) => {
+        const typedEvent = event as ChatEvent;
+
         // --- Hot-path: buffer chunk events and flush at rAF cadence ---
-        if (event.type === "streaming_chunk") {
+        if (typedEvent.type === "streaming_chunk") {
           chunkBuffer.pushStreaming(
-            event.data.stream_id,
-            event.data.content,
-            event.data.execution_id,
+            typedEvent.data.stream_id,
+            typedEvent.data.content,
+            typedEvent.data.execution_id,
           );
           return;
         }
 
-        if (event.type === "thinking_chunk") {
-          chunkBuffer.pushThinking(event.data.stream_id, event.data.content);
+        if (typedEvent.type === "thinking_chunk") {
+          chunkBuffer.pushThinking(
+            typedEvent.data.stream_id,
+            typedEvent.data.content,
+          );
           return;
         }
 
@@ -94,7 +91,7 @@ export function createConnectionActions(
         const preEventResponding = get().channels[topicId]?.responding;
 
         console.groupCollapsed(
-          `[ChatEvent] ${event.type} | topic=${topicId.slice(0, 8)} | responding=${preEventResponding}`,
+          `[ChatEvent] ${typedEvent.type} | topic=${topicId.slice(0, 8)} | responding=${preEventResponding}`,
         );
 
         set((state: ChatSlice) => {
@@ -113,46 +110,68 @@ export function createConnectionActions(
             })()}`,
           );
 
-          switch (event.type) {
+          switch (typedEvent.type) {
             case "processing":
             case "loading": {
-              handleProcessingOrLoading(channel, event.data.stream_id);
+              handleProcessingOrLoading(channel, typedEvent.data.stream_id);
               break;
             }
 
             case "streaming_start": {
-              handleStreamingStart(channel, event.data);
+              handleStreamingStart(channel, typedEvent.data);
               break;
             }
 
             case "streaming_end": {
-              handleStreamingEnd(channel, event.data);
+              handleStreamingEnd(channel, typedEvent.data);
               break;
             }
 
             case "message": {
-              handleMessage(channel, event.data);
+              // Reconcile with optimistic message if client_id matches (user echo)
+              const msgData = typedEvent.data;
+              // Server sends snake_case client_id; frontend Message type uses camelCase clientId
+              const serverClientId = (
+                msgData as unknown as { client_id?: string }
+              ).client_id;
+              if (serverClientId) {
+                const optimisticIdx = channel.messages.findIndex(
+                  (m) => m.clientId === serverClientId,
+                );
+                if (optimisticIdx !== -1) {
+                  const existing = channel.messages[optimisticIdx];
+                  channel.messages[optimisticIdx] = {
+                    ...existing,
+                    ...msgData,
+                    id: msgData.id,
+                    status: msgData.status || "completed",
+                    isNewMessage: false,
+                  };
+                  break;
+                }
+              }
+              handleMessage(channel, msgData);
               break;
             }
 
             case "search_citations": {
-              handleSearchCitations(channel, event.data);
+              handleSearchCitations(channel, typedEvent.data);
               break;
             }
 
             case "generated_files": {
-              handleGeneratedFiles(channel, event.data);
+              handleGeneratedFiles(channel, typedEvent.data);
               break;
             }
 
             case "message_saved": {
-              handleMessageSaved(channel, event.data);
+              handleMessageSaved(channel, typedEvent.data);
               break;
             }
 
             case "message_ack": {
               // Reconcile optimistic user message with server-assigned ID.
-              const { message_id, client_id } = event.data;
+              const { message_id, client_id } = typedEvent.data;
               if (client_id) {
                 const optimisticIdx = channel.messages.findIndex(
                   (m) => m.clientId === client_id,
@@ -169,24 +188,24 @@ export function createConnectionActions(
             }
 
             case "tool_call_request": {
-              handleToolCallRequest(channel, event.data);
+              handleToolCallRequest(channel, typedEvent.data);
               break;
             }
 
             case "tool_call_response": {
-              handleToolCallResponse(channel, event.data);
+              handleToolCallResponse(channel, typedEvent.data);
               break;
             }
 
             case "error": {
-              handleError(channel, event.data);
+              handleError(channel, typedEvent.data);
               break;
             }
 
             case "insufficient_balance": {
               const notification = handleInsufficientBalance(
                 channel,
-                event.data,
+                typedEvent.data,
               );
               if (notification) {
                 state.notification = {
@@ -200,86 +219,89 @@ export function createConnectionActions(
             }
 
             case "parallel_chat_limit": {
-              const notification = handleParallelChatLimit(channel, event.data);
+              const notification = handleParallelChatLimit(
+                channel,
+                typedEvent.data,
+              );
               state.notification = notification;
               break;
             }
 
             case "stream_aborted": {
-              handleStreamAborted(channel, event.data, abortTimeoutIds);
+              handleStreamAborted(channel, typedEvent.data, abortTimeoutIds);
               break;
             }
 
             case "thinking_start": {
-              handleThinkingStart(channel, event.data);
+              handleThinkingStart(channel, typedEvent.data);
               break;
             }
 
             case "thinking_end": {
-              handleThinkingEnd(channel, event.data);
+              handleThinkingEnd(channel, typedEvent.data);
               break;
             }
 
             case "topic_updated": {
-              handleTopicUpdated(channel, event.data, state.chatHistory);
+              handleTopicUpdated(channel, typedEvent.data, state.chatHistory);
               break;
             }
 
             // === Agent Execution Events ===
 
             case "agent_start": {
-              handleAgentStart(channel, event.data);
+              handleAgentStart(channel, typedEvent.data);
               break;
             }
 
             case "agent_end": {
-              handleAgentEnd(channel, event.data);
+              handleAgentEnd(channel, typedEvent.data);
               break;
             }
 
             case "agent_error": {
-              handleAgentError(channel, event.data);
+              handleAgentError(channel, typedEvent.data);
               break;
             }
 
             case "node_start": {
-              handleNodeStart(channel, event.data);
+              handleNodeStart(channel, typedEvent.data);
               break;
             }
 
             case "node_end": {
-              handleNodeEnd(channel, event.data);
+              handleNodeEnd(channel, typedEvent.data);
               break;
             }
 
             case "subagent_start": {
-              handleSubagentStart(channel, event.data);
+              handleSubagentStart(channel, typedEvent.data);
               break;
             }
 
             case "subagent_end": {
-              handleSubagentEnd(channel, event.data);
+              handleSubagentEnd(channel, typedEvent.data);
               break;
             }
 
             case "progress_update": {
-              handleProgressUpdate(channel, event.data);
+              handleProgressUpdate(channel, typedEvent.data);
               break;
             }
 
             case "ask_user_question": {
-              handleAskUserQuestion(channel, event.data);
+              handleAskUserQuestion(channel, typedEvent.data);
               break;
             }
 
             case "token_usage": {
-              const { total_tokens } = event.data;
+              const { total_tokens } = typedEvent.data;
               channel.tokenUsage = total_tokens;
               break;
             }
 
             case "context_usage": {
-              handleContextUsage(channel, event.data);
+              handleContextUsage(channel, typedEvent.data);
               break;
             }
           }
@@ -300,8 +322,8 @@ export function createConnectionActions(
         console.groupEnd();
 
         // Sync tab name when topic is renamed by the backend
-        if (event.type === "topic_updated") {
-          get().renameTab(event.data.id, event.data.name);
+        if (typedEvent.type === "topic_updated") {
+          get().renameTab(typedEvent.data.id, typedEvent.data.name);
         }
 
         // Chunk events return early above, so all events reaching here are state transitions
@@ -309,87 +331,21 @@ export function createConnectionActions(
         closeIdleNonPrimaryConnection(topicId);
       };
 
-      // --- Shared callbacks for onMessage, onStatusChange, onReconnect ---
-      const onMessage = (message: Message & { client_id?: string }) => {
-        set((state: ChatSlice) => {
-          const channel = state.channels[topicId];
-          if (!channel) return;
-
-          // Reconcile with optimistic message if client_id matches
-          if (message.client_id) {
-            const optimisticIdx = channel.messages.findIndex(
-              (m) => m.clientId === message.client_id,
-            );
-            if (optimisticIdx !== -1) {
-              channel.messages[optimisticIdx] = {
-                ...channel.messages[optimisticIdx],
-                ...message,
-                id: message.id,
-                status: message.status || "completed",
-                isNewMessage: false,
-              };
-              return;
-            }
-          }
-
-          // Normal path: push if not duplicate
-          if (!channel.messages.some((m) => m.id === message.id)) {
-            channel.messages.push({
-              ...message,
-              status: message.status || "completed",
-              isNewMessage: true,
+      // --- If the target topic already has a live SSE connection, just update callbacks ---
+      if (sseClient.hasConnection(topicId)) {
+        sseClient.updateCallbacks(topicId, {
+          onMessageEvent: messageEventCallback,
+          onStatusChange: (status) => {
+            set((state: ChatSlice) => {
+              const channel = state.channels[topicId];
+              if (channel) {
+                channel.connected = status.connected;
+                channel.error = status.error ?? null;
+              }
             });
-          }
+          },
         });
-      };
-
-      const onStatusChange = (status: {
-        connected: boolean;
-        error: string | null;
-      }) => {
-        set((state: ChatSlice) => {
-          const channel = state.channels[topicId];
-          if (channel) {
-            channel.connected = status.connected;
-            channel.error = status.error;
-          }
-        });
-      };
-
-      const onReconnect = () => {
-        const channel = get().channels[topicId];
-        if (!channel) return;
-
-        const hasStaleState = channel.messages.some((m) =>
-          Boolean(
-            m.status === "pending" ||
-            m.status === "streaming" ||
-            m.status === "thinking" ||
-            m.isLoading ||
-            m.isStreaming ||
-            m.isThinking ||
-            m.agentExecution?.status === "running",
-          ),
-        );
-
-        if (hasStaleState) {
-          console.debug(
-            `[onReconnect] stale state detected, reconciling topic=${topicId.slice(0, 8)} msgs=${channel.messages.length} responding=${channel.responding}`,
-          );
-          reconcileChannelFromBackend(topicId);
-        }
-      };
-
-      // --- If the target topic already has a live WS, just promote to primary ---
-      if (xyzenService.hasConnection(topicId)) {
-        xyzenService.setPrimary(
-          topicId,
-          onMessage,
-          onStatusChange,
-          messageEventCallback,
-          onReconnect,
-        );
-        // Mark channel as connected (it already is, but ensure store is consistent)
+        // Mark channel as connected
         set((state: ChatSlice) => {
           if (state.channels[topicId]) {
             state.channels[topicId].connected = true;
@@ -399,26 +355,20 @@ export function createConnectionActions(
         return;
       }
 
-      // --- Close non-responding, non-primary idle connections to avoid leaking ---
-      const openTopics = xyzenService.getOpenTopicIds();
+      // --- Close non-responding idle connections to avoid leaking ---
+      const openTopics = sseClient.getOpenTopicIds();
       for (const openTopic of openTopics) {
         if (openTopic === topicId) continue;
         const ch = get().channels[openTopic];
         if (!ch?.responding) {
-          xyzenService.closeConnection(openTopic);
-          const timer = staleWatchdogIds.get(openTopic);
-          if (timer) {
-            clearInterval(timer);
-            staleWatchdogIds.delete(openTopic);
-          }
+          sseClient.disconnect(openTopic);
         }
       }
 
-      // --- Mark old channels as disconnected (only those we don't have WS for) ---
+      // --- Mark old channels as disconnected (only those without SSE) ---
       set((state: ChatSlice) => {
         Object.entries(state.channels).forEach(([chId, ch]) => {
-          // Keep channels with live WS marked as connected
-          if (xyzenService.hasConnection(chId)) return;
+          if (sseClient.hasConnection(chId)) return;
           ch.connected = false;
         });
         if (state.channels[topicId]) {
@@ -426,71 +376,41 @@ export function createConnectionActions(
         }
       });
 
-      // --- Open new WS for this topic ---
-      xyzenService.connect(
-        sessionId,
-        topicId,
-        onMessage,
-        onStatusChange,
-        messageEventCallback,
-        onReconnect,
-      );
-
-      // --- Stale state watchdog ---
-      const STALE_STATE_TIMEOUT_MS = 60_000;
-      const STALE_CHECK_INTERVAL_MS = 15_000;
-      let lastActivityTimestamp = Date.now();
-
-      // Wrap the event callback to track activity for the stale watchdog
-      const originalOnMessageEvent = messageEventCallback;
-      const wrappedCallback: MessageEventCallback = (event) => {
-        lastActivityTimestamp = Date.now();
-        originalOnMessageEvent(event);
-      };
-      // Update the connection's event callback to the wrapped version
-      xyzenService.setPrimary(
-        topicId,
-        onMessage,
-        onStatusChange,
-        wrappedCallback,
-        onReconnect,
-      );
-
-      const staleCheckIntervalId = setInterval(() => {
-        const channel = get().channels[topicId];
-        if (!channel?.responding) return;
-
-        const timeSinceActivity = Date.now() - lastActivityTimestamp;
-        if (timeSinceActivity > STALE_STATE_TIMEOUT_MS) {
-          console.warn(
-            `ChatSlice: Stale state detected for topic ${topicId}: ${timeSinceActivity}ms since last activity, reconciling...`,
-          );
-          reconcileChannelFromBackend(topicId);
-          lastActivityTimestamp = Date.now();
-        }
-      }, STALE_CHECK_INTERVAL_MS);
-
-      const prevStaleCheck = staleWatchdogIds.get(topicId);
-      if (prevStaleCheck) clearInterval(prevStaleCheck);
-      staleWatchdogIds.set(topicId, staleCheckIntervalId);
+      // --- Open new SSE connection for this topic ---
+      sseClient.connect(topicId, {
+        onMessageEvent: messageEventCallback,
+        onStatusChange: (status) => {
+          set((state: ChatSlice) => {
+            const channel = state.channels[topicId];
+            if (channel) {
+              channel.connected = status.connected;
+              channel.error = status.error ?? null;
+            }
+          });
+        },
+      });
     },
 
     disconnectFromChannel: () => {
-      // Clear all module-level timers before closing connections
-      for (const [topicId, timer] of staleWatchdogIds) {
-        clearInterval(timer);
-        staleWatchdogIds.delete(topicId);
+      // Destroy all chunk buffers to cancel pending rAF callbacks
+      for (const [, buffer] of chunkBuffers) {
+        buffer.destroy();
       }
+      chunkBuffers.clear();
+
+      // Clear all module-level timers before closing connections
       for (const [topicId, timer] of abortTimeoutIds) {
         clearTimeout(timer);
         abortTimeoutIds.delete(topicId);
       }
-      xyzenService.disconnect();
+      sseClient.disconnectAll();
     },
 
     abortGeneration: (channelId: string) => {
-      // Send abort signal to backend via WebSocket
-      xyzenService.sendAbort();
+      // Send abort signal to backend via REST
+      topicService.abort(channelId).catch((err: unknown) => {
+        console.error("Failed to send abort signal:", err);
+      });
 
       // Clear any existing abort timeout for this channel to prevent stale timers
       const existingTimeout = abortTimeoutIds.get(channelId);
@@ -646,15 +566,16 @@ export function createConnectionActions(
         timedOut?: boolean;
       },
     ) => {
-      // Send response to backend via WebSocket
-      xyzenService.sendStructuredMessage({
-        type: "user_question_response",
-        data: {
+      // Send response to backend via REST
+      topicService
+        .answerQuestion(channelId, {
           question_id: questionId,
           selected_options: response.selectedOptions,
           text: response.text || "",
-        },
-      });
+        })
+        .catch((err: unknown) => {
+          console.error("Failed to send question response:", err);
+        });
 
       // Update local state
       set((state: ChatSlice) => {
@@ -675,11 +596,9 @@ export function createConnectionActions(
     },
 
     confirmToolCall: (channelId: string, toolCallId: string) => {
-      // Send confirmation to backend via WebSocket
-      xyzenService.sendStructuredMessage({
-        type: "tool_call_confirm",
-        data: { toolCallId },
-      });
+      // Tool confirmations are not yet migrated to REST — currently unused
+      // (implicit execution is assumed/enforced)
+      console.warn("confirmToolCall: not implemented in SSE mode");
 
       // Update tool call status in messages
       set((state: ChatSlice) => {
@@ -701,11 +620,9 @@ export function createConnectionActions(
     },
 
     cancelToolCall: (channelId: string, toolCallId: string) => {
-      // Send cancellation to backend via WebSocket
-      xyzenService.sendStructuredMessage({
-        type: "tool_call_cancel",
-        data: { toolCallId },
-      });
+      // Tool cancellations are not yet migrated to REST — currently unused
+      // (implicit execution is assumed/enforced)
+      console.warn("cancelToolCall: not implemented in SSE mode");
 
       // Update tool call status to failed in messages
       set((state: ChatSlice) => {

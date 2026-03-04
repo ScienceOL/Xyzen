@@ -1,0 +1,90 @@
+export const metadata = {
+  title: 'Agents',
+  description:
+    'Create, configure, and manage AI agents in Xyzen. Learn about ReAct, Deep Research, and custom agent types.',
+}
+
+export const sections = [
+  { title: 'Agent Types', id: 'agent-types' },
+  { title: 'Creating an Agent', id: 'creating-an-agent' },
+  { title: 'Agent Configuration', id: 'agent-configuration' },
+  { title: 'Builtin Agents', id: 'builtin-agents' },
+  { title: 'Agent Scopes', id: 'agent-scopes' },
+]
+
+# Agents
+
+Agents are the core building blocks of Xyzen. Each agent is an LLM-powered workflow that can use tools, access knowledge bases, and collaborate with other agents. {{ className: 'lead' }}
+
+## Agent Types
+
+Xyzen supports several agent types, each optimized for different tasks:
+
+### ReAct Agent
+
+The default agent type. Uses a **tool-calling loop** where the LLM reasons about the task, selects a tool, observes the result, and repeats until the task is complete.
+
+Best for: general-purpose tasks, question answering, tool-assisted workflows.
+
+```
+User Message → LLM → Tool Call → Tool Result → LLM → ... → Final Response
+```
+
+### Deep Research Agent
+
+A multi-phase research workflow with four specialized stages:
+
+1. **Clarify** — Analyze the research question, identify sub-questions
+2. **Brief** — Conduct web search and literature search in parallel
+3. **Supervisor** — Evaluate gathered content for relevance and quality
+4. **Report** — Synthesize findings into a structured report
+
+Best for: in-depth research, literature reviews, comprehensive analysis.
+
+### Custom Agents
+
+Build your own agent workflows by composing reusable components into a graph. Define nodes, edges, and conditional routing to create specialized multi-step workflows. See [Custom Agents](/custom-agents) for details.
+
+## Creating an Agent
+
+1. Open the Xyzen web interface
+2. Click the **+** button in the sidebar
+3. Fill in the agent details:
+   - **Name** — A descriptive name for the agent
+   - **Description** — What the agent does (used for delegation)
+   - **Model** — Which LLM to use (e.g., `gpt-4o`, `claude-sonnet-4-20250514`)
+   - **System Prompt** — Instructions that guide the agent's behavior
+4. Select the tools the agent should have access to
+5. Optionally attach a knowledge base or skills
+
+## Agent Configuration
+
+Key configuration options:
+
+| Field | Description |
+|---|---|
+| **Model** | LLM model ID from your configured providers |
+| **System Prompt** | Custom instructions appended to the agent's system message |
+| **Temperature** | Controls randomness (0 = deterministic, 1 = creative) |
+| **Tools** | Which builtin tools the agent can use |
+| **Knowledge Base** | Linked knowledge set for RAG retrieval |
+| **Skills** | Attached skill packages |
+| **MCP Servers** | External MCP tool providers |
+
+## Builtin Agents
+
+Xyzen ships with several pre-configured agents:
+
+- **Default ReAct** — General-purpose agent with web search, code execution, and file reading
+- **Deep Research** — Multi-phase research workflow
+- **CEO / Root Agent** — Autonomous exploration agent that can discover content, create findings, and schedule follow-up tasks
+- **Slides** — Presentation generation agent
+
+## Agent Scopes
+
+Agents have two visibility scopes:
+
+- **System agents** — Created by administrators, available to all users. Cannot be edited by regular users.
+- **User agents** — Created by individual users, only visible to the creator. Fully editable.
+
+When a user forks an agent from the [Marketplace](/marketplace), a user-scoped copy is created.

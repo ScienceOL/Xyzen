@@ -20,6 +20,7 @@ from app.core.chat.token_usage import normalize_token_usage
 from app.core.consume.pricing import calculate_tool_cost
 from app.core.consume.consume_service import ConsumptionTrackingService, get_tracking_context
 from app.core.consume.settlement_service import settle_chat_records
+from app.ee import is_ee
 from app.models.agent_run import AgentRunCreate
 from app.models.citation import CitationCreate
 from app.models.message import Message, MessageCreate
@@ -136,9 +137,13 @@ def extract_content_text(content: Any) -> str:
 
 
 async def send_message_saved(ctx: ChatTaskContext) -> None:
-    """Publish MESSAGE_SAVED event with stream_id, db_id, created_at."""
+    """Publish MESSAGE_SAVED event with stream_id, db_id, created_at.
+
+    Also sets a generation cursor so that future first-connect SSE clients
+    skip past completed events (the DB already has these messages).
+    """
     if ctx.ai_message_obj and ctx.active_stream_id:
-        await ctx.publisher.publish(
+        entry_id = await ctx.publisher.publish(
             json.dumps(
                 {
                     "type": ChatEventType.MESSAGE_SAVED,
@@ -152,6 +157,8 @@ async def send_message_saved(ctx: ChatTaskContext) -> None:
                 }
             )
         )
+        if entry_id:
+            await ctx.publisher.set_generation_cursor(entry_id)
 
 
 # ---------------------------------------------------------------------------
@@ -166,7 +173,13 @@ async def finalize_and_settle(
 ) -> None:
     """Consolidate settlement: query pending ConsumeRecords, sum amounts,
     deduct from wallet via settle_chat_records, and bulk-mark as success.
+    Skipped entirely in CE mode.
     """
+    from app.ee import is_ee
+
+    if not is_ee():
+        return
+
     if not ctx.ai_message_obj:
         return
 
@@ -296,7 +309,10 @@ async def handle_streaming_end(ctx: ChatTaskContext, stream_event: dict[str, Any
         except Exception as e:
             logger.error(f"Failed to save AgentRun: {e}")
     elif agent_state_data and ctx.ai_message_obj and ctx.agent_run_id:
-        # AgentRun was already created via AGENT_START, update with final node_outputs
+        # AgentRun was already created via AGENT_START, update with final node_outputs.
+        # NOTE: Do NOT pass timeline here — timeline entries are already appended
+        # incrementally by handle_node_start/end via append_timeline_entry.
+        # Passing the tracer's full timeline would create duplicate entries.
         try:
             agent_run_repo = AgentRunRepository(ctx.get_db())
             now = time.time()
@@ -306,7 +322,6 @@ async def handle_streaming_end(ctx: ChatTaskContext, stream_event: dict[str, Any
                 ended_at=now,
                 duration_ms=int((now - (ctx.agent_run_start_time or now)) * 1000),
                 final_node_data={
-                    "timeline": agent_state_data.get("timeline", []),
                     "node_outputs": agent_state_data.get("node_outputs", {}),
                     "node_order": agent_state_data.get("node_order", []),
                     "node_names": agent_state_data.get("node_names", {}),
@@ -331,56 +346,53 @@ async def handle_token_usage(ctx: ChatTaskContext, stream_event: dict[str, Any])
     token_data["output_tokens"] = ctx.output_tokens
     token_data["total_tokens"] = ctx.total_tokens
 
-    # Persist LLM usage as ConsumeRecord(record_type="llm")
-    try:
-        model_tier_value = token_data.get("model_tier")
-        model_name = token_data.get("model_name") or "unknown"
-        provider_id = token_data.get("provider_id")
+    # Persist LLM usage as ConsumeRecord(record_type="llm") — EE only
+    if is_ee():
+        try:
+            model_tier_value = token_data.get("model_tier")
+            model_name = token_data.get("model_name") or "unknown"
+            provider_id = token_data.get("provider_id")
 
-        # First time we receive model metadata: backfill ctx cache + TrackingContext
-        if not ctx.session_info_loaded and model_tier_value:
-            try:
-                ctx.cached_model_tier = ModelTier(model_tier_value)
-            except ValueError:
-                ctx.cached_model_tier = None
-            ctx.cached_model_name = model_name
-            ctx.cached_provider_id = provider_id
-            ctx.session_info_loaded = True
+            # First time we receive model metadata: backfill ctx cache
+            if not ctx.session_info_loaded and model_tier_value:
+                try:
+                    ctx.cached_model_tier = ModelTier(model_tier_value)
+                except ValueError:
+                    ctx.cached_model_tier = None
+                ctx.cached_model_name = model_name
+                ctx.cached_provider_id = provider_id
+                ctx.session_info_loaded = True
 
-            tracking_ctx = get_tracking_context()
-            if tracking_ctx is not None:
-                tracking_ctx.model_tier = model_tier_value
+            # Use cached values when available
+            provider_id = ctx.cached_provider_id or provider_id
+            model_name = ctx.cached_model_name or model_name
 
-        # Use cached values when available
-        provider_id = ctx.cached_provider_id or provider_id
-        model_name = ctx.cached_model_name or model_name
+            cache_creation = token_data.get("cache_creation_input_tokens", 0)
+            cache_read = token_data.get("cache_read_input_tokens", 0)
 
-        cache_creation = token_data.get("cache_creation_input_tokens", 0)
-        cache_read = token_data.get("cache_read_input_tokens", 0)
-
-        # Calculate amount and cost_usd via pricing functions, then persist
-        tracking = ConsumptionTrackingService(ctx.get_db())
-        await tracking.record_llm_usage_with_pricing(
-            user_id=ctx.user_id,
-            auth_provider=ctx.auth_provider,
-            model_name=model_name or "unknown",
-            model_tier=model_tier_value,
-            provider=provider_id,
-            input_tokens=ctx.input_tokens,
-            output_tokens=ctx.output_tokens,
-            total_tokens=ctx.total_tokens,
-            source="chat",
-            session_id=ctx.session_id,
-            topic_id=ctx.topic_id,
-            message_id=ctx.ai_message_obj.id if ctx.ai_message_obj else None,
-            cache_creation_input_tokens=cache_creation,
-            cache_read_input_tokens=cache_read,
-            agent_id=ctx.agent_id_for_attribution,
-            marketplace_id=ctx.marketplace_id,
-            developer_user_id=ctx.developer_user_id,
-        )
-    except Exception as e:
-        logger.warning(f"Failed to record LLM usage to DB (non-fatal): {e}")
+            # Calculate amount and cost_usd via pricing functions, then persist
+            tracking = ConsumptionTrackingService(ctx.get_db())
+            await tracking.record_llm_usage_with_pricing(
+                user_id=ctx.user_id,
+                auth_provider=ctx.auth_provider,
+                model_name=model_name or "unknown",
+                model_tier=model_tier_value,
+                provider_id=provider_id,
+                input_tokens=ctx.input_tokens,
+                output_tokens=ctx.output_tokens,
+                total_tokens=ctx.total_tokens,
+                source="chat",
+                session_id=ctx.session_id,
+                topic_id=ctx.topic_id,
+                message_id=ctx.ai_message_obj.id if ctx.ai_message_obj else None,
+                cache_creation_input_tokens=cache_creation,
+                cache_read_input_tokens=cache_read,
+                agent_id=ctx.agent_id_for_attribution,
+                marketplace_id=ctx.marketplace_id,
+                developer_user_id=ctx.developer_user_id,
+            )
+        except Exception as e:
+            logger.warning(f"Failed to record LLM usage to DB (non-fatal): {e}")
 
     await ctx.publisher.publish(json.dumps(stream_event))
 
@@ -458,43 +470,40 @@ async def handle_tool_call_response(ctx: ChatTaskContext, stream_event: dict[str
         # Calculate amount for successful tool calls
         amount = calculate_tool_cost(tool_name) if status == "success" else 0
 
-        # Write ConsumeRecord to DB immediately (flush, no commit)
-        try:
-            event_model_tier = resp.get("model_tier")
-            if not ctx.session_info_loaded and event_model_tier:
-                try:
-                    ctx.cached_model_tier = ModelTier(event_model_tier)
-                except ValueError:
-                    ctx.cached_model_tier = None
-                ctx.cached_model_name = resp.get("model_name")
-                ctx.cached_provider_id = resp.get("provider_id")
-                ctx.session_info_loaded = True
+        # Write ConsumeRecord to DB immediately (flush, no commit) — EE only
+        if is_ee():
+            try:
+                event_model_tier = resp.get("model_tier")
+                if not ctx.session_info_loaded and event_model_tier:
+                    try:
+                        ctx.cached_model_tier = ModelTier(event_model_tier)
+                    except ValueError:
+                        ctx.cached_model_tier = None
+                    ctx.cached_model_name = resp.get("model_name")
+                    ctx.cached_provider_id = resp.get("provider_id")
+                    ctx.session_info_loaded = True
 
-                tracking_ctx = get_tracking_context()
-                if tracking_ctx is not None:
-                    tracking_ctx.model_tier = event_model_tier
+                model_tier_value = ctx.cached_model_tier.value if ctx.cached_model_tier else None
 
-            model_tier_value = ctx.cached_model_tier.value if ctx.cached_model_tier else None
-
-            tracking = ConsumptionTrackingService(ctx.get_db())
-            await tracking.record_tool_call(
-                user_id=ctx.user_id,
-                auth_provider=ctx.auth_provider,
-                tool_name=tool_name,
-                amount=amount,
-                tool_call_id=tool_call_id,
-                status=status,
-                model_tier=model_tier_value,
-                session_id=ctx.session_id,
-                topic_id=ctx.topic_id,
-                message_id=ctx.ai_message_obj.id if ctx.ai_message_obj else None,
-                agent_id=ctx.agent_id_for_attribution,
-                marketplace_id=ctx.marketplace_id,
-                developer_user_id=ctx.developer_user_id,
-                source="chat",
-            )
-        except Exception as e:
-            logger.warning(f"Failed to record tool call to DB (non-fatal): {e}")
+                tracking = ConsumptionTrackingService(ctx.get_db())
+                await tracking.record_tool_call(
+                    user_id=ctx.user_id,
+                    auth_provider=ctx.auth_provider,
+                    tool_name=tool_name,
+                    amount=amount,
+                    tool_call_id=tool_call_id,
+                    status=status,
+                    model_tier=model_tier_value,
+                    session_id=ctx.session_id,
+                    topic_id=ctx.topic_id,
+                    message_id=ctx.ai_message_obj.id if ctx.ai_message_obj else None,
+                    agent_id=ctx.agent_id_for_attribution,
+                    marketplace_id=ctx.marketplace_id,
+                    developer_user_id=ctx.developer_user_id,
+                    source="chat",
+                )
+            except Exception as e:
+                logger.warning(f"Failed to record tool call to DB (non-fatal): {e}")
 
     # Update tool call record in tool_calls_by_node with result/status
     if tool_call_id and tool_call_id in ctx.tool_call_data:
@@ -738,11 +747,21 @@ async def handle_node_end(ctx: ChatTaskContext, stream_event: dict[str, Any]) ->
             component_key = node_data.get("component_key")
             if component_key:
                 timeline_entry["metadata"] = {"component_key": component_key}
+            # Include node output for DB persistence (enables agentExecution
+            # reconstruction after page refresh). append_timeline_entry stores
+            # this in node_data.node_outputs automatically.
+            if "output" in node_data:
+                timeline_entry["output"] = node_data["output"]
             await agent_run_repo.append_timeline_entry(ctx.agent_run_id, timeline_entry)
         except Exception as e:
             logger.warning(f"Failed to append timeline entry: {e}")
 
-    await ctx.publisher.publish(json.dumps(stream_event))
+    # Strip output before publishing to SSE (avoid sending large payloads)
+    publish_event = stream_event
+    if "output" in stream_event.get("data", {}):
+        publish_data = {k: v for k, v in stream_event["data"].items() if k != "output"}
+        publish_event = {**stream_event, "data": publish_data}
+    await ctx.publisher.publish(json.dumps(publish_event))
 
 
 async def handle_ask_user_question(ctx: ChatTaskContext, stream_event: dict[str, Any]) -> None:

@@ -18,8 +18,6 @@
   "deleteBlockedMessage": "This agent is published to Agent Market. Please unpublish it first, then delete it.",
   "createDescription": "Create a new AI agent with custom prompts and tools.",
   "updateDescription": "Update the details for your agent.",
-  "systemDescription": "Select a pre-configured system agent with special execution capabilities.",
-  "noSystemAgents": "No system agents available",
   "tabs": {
     "custom": "Custom Agent",
     "system": "System Agent"
@@ -45,7 +43,6 @@
       "emptyDescription": "No MCP servers available yet",
       "createButton": "Create MCP Server"
     },
-    "selectSystemAgent": "Select System Agent *",
     "customName": "Custom Name (optional)"
   },
   "actions": {
@@ -216,5 +213,9 @@
       "orphanNoOutgoing": "'{{name}}' has no outgoing edges",
       "noPathToEnd": "No edge reaches END — the graph may not terminate"
     }
+  },
+  "spatialNode": {
+    "yesterdaySummary": "Yesterday: {{topicCount}} topics, {{messageCount}} messages",
+    "yesterdayNoActivity": "No activity yesterday"
   }
 }

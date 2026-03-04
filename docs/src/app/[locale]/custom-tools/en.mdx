@@ -1,0 +1,111 @@
+export const metadata = {
+  title: 'Custom Tools',
+  description:
+    'Build custom tools for Xyzen agents: builtin tools, dynamic MCP tools, and the tool registry.',
+}
+
+export const sections = [
+  { title: 'Tool Architecture', id: 'tool-architecture' },
+  { title: 'Building a Builtin Tool', id: 'building-a-builtin-tool' },
+  { title: 'Tool Registration', id: 'tool-registration' },
+  { title: 'Dynamic Tools via MCP', id: 'dynamic-tools-via-mcp' },
+]
+
+# Custom Tools
+
+Extend Xyzen's capabilities by building custom tools. Tools can be added as builtin Python functions or provided externally via MCP servers. {{ className: 'lead' }}
+
+## Tool Architecture
+
+Tools in Xyzen follow the LangChain tool interface. Each tool has:
+
+- **Name** — Unique identifier used by the LLM to call the tool
+- **Description** — Explains what the tool does (used by the LLM to decide when to use it)
+- **Schema** — Input parameters with types and descriptions
+- **Implementation** — The function that executes when the tool is called
+
+## Building a Builtin Tool
+
+Builtin tools are Python functions in `service/app/tools/`. Here's the structure:
+
+```python
+# service/app/tools/my_tool/tools.py
+from langchain_core.tools import tool
+
+@tool
+def my_custom_tool(query: str) -> str:
+    """Search for information about a topic.
+
+    Args:
+        query: The search query to look up.
+    """
+    # Implementation here
+    result = do_search(query)
+    return result
+```
+
+### Tool with Schemas
+
+For complex input parameters, define a Pydantic schema:
+
+```python
+# service/app/tools/my_tool/schemas.py
+from pydantic import BaseModel, Field
+
+class MyToolInput(BaseModel):
+    query: str = Field(description="The search query")
+    max_results: int = Field(default=10, description="Maximum results to return")
+```
+
+```python
+# service/app/tools/my_tool/tools.py
+from langchain_core.tools import tool
+from .schemas import MyToolInput
+
+@tool(args_schema=MyToolInput)
+def my_custom_tool(query: str, max_results: int = 10) -> str:
+    """Search for information with configurable result count."""
+    results = do_search(query, limit=max_results)
+    return format_results(results)
+```
+
+## Tool Registration
+
+Tools are registered in the tool preparation step (`service/app/tools/prepare.py`). Add your tool to the tool list so agents can discover and use it:
+
+```python
+from app.tools.my_tool.tools import my_custom_tool
+
+# Add to the tool registry
+BUILTIN_TOOLS = {
+    "my_custom_tool": {
+        "tool": my_custom_tool,
+        "category": "search",
+        "display_name": "My Custom Tool",
+        "description": "Search for information about a topic",
+    },
+}
+```
+
+After registration, the tool appears in the agent configuration UI and can be enabled per-agent.
+
+## Dynamic Tools via MCP
+
+For tools that don't need to be part of the Xyzen codebase, use MCP servers. This is the recommended approach for:
+
+- Third-party API integrations
+- User-specific tools
+- Tools that change frequently
+- Tools developed by external teams
+
+See [MCP Servers](/mcp) for details on connecting external tool providers.
+
+### When to Use Builtin vs. MCP
+
+| Criteria | Builtin | MCP |
+|---|---|---|
+| Access to Xyzen internals | Yes | No |
+| Deployment | Part of service image | Separate service |
+| Development cycle | Requires service rebuild | Independent |
+| Performance | No network overhead | HTTP/SSE overhead |
+| Best for | Core capabilities | Integrations, user tools |

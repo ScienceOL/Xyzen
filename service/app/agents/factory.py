@@ -64,6 +64,7 @@ async def create_chat_agent(
     store: BaseStore | None = None,
     checkpointer: "BaseCheckpointSaver | None" = None,
     prompt_layers: "SystemPromptLayers | None" = None,
+    model_tier: str | None = None,
 ) -> tuple[CompiledStateGraph[Any, None, Any, Any], AgentEventContext]:
     """
     Create the appropriate agent for a chat session.
@@ -151,6 +152,7 @@ async def create_chat_agent(
             model_name=model_name,
             current_depth=0,
             store=store,
+            model_tier=model_tier,
         )
         tools.extend(subagent_tools)
 
@@ -166,6 +168,7 @@ async def create_chat_agent(
             provider_id=provider_id,
             model_name=model_name,
             store=store,
+            model_tier=model_tier,
         )
         tools.extend(delegation_tools)
 

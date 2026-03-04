@@ -1,0 +1,83 @@
+export const metadata = {
+  title: 'MCP Servers',
+  description:
+    'Connect external tool providers to Xyzen using the Model Context Protocol (MCP).',
+}
+
+export const sections = [
+  { title: 'What is MCP?', id: 'what-is-mcp' },
+  { title: 'Adding an MCP Server', id: 'adding-an-mcp-server' },
+  { title: 'Smithery Registry', id: 'smithery-registry' },
+  { title: 'Testing Tools', id: 'testing-tools' },
+  { title: 'Using MCP Tools in Agents', id: 'using-mcp-tools-in-agents' },
+]
+
+# MCP Servers
+
+The Model Context Protocol (MCP) allows Xyzen to connect to external tool providers. Add MCP servers to give your agents access to third-party APIs, databases, and services. {{ className: 'lead' }}
+
+## What is MCP?
+
+MCP is an open protocol for connecting LLM applications to external data sources and tools. An MCP server exposes a set of tools that agents can call, similar to builtin tools but hosted externally.
+
+Examples of MCP servers:
+- Database query tools (PostgreSQL, MongoDB)
+- API integrations (GitHub, Slack, Jira)
+- File system access
+- Custom business logic
+
+## Adding an MCP Server
+
+1. Navigate to the **MCP** section in the sidebar
+2. Click **Add MCP Server**
+3. Configure the server connection:
+   - **Name** — Display name for the server
+   - **URL** — The MCP server endpoint
+   - **Transport** — SSE or stdio
+4. Save and test the connection
+
+Via API:
+
+```bash
+curl -X POST /xyzen/api/v1/mcps \
+  -H "Authorization: Bearer {token}" \
+  -H "Content-Type: application/json" \
+  -d '{
+    "name": "GitHub Tools",
+    "url": "https://mcp.example.com/github",
+    "transport": "sse"
+  }'
+```
+
+## Smithery Registry
+
+Xyzen integrates with the [Smithery](https://smithery.ai) MCP registry, which provides a catalog of community-built MCP servers. You can browse and install MCP servers directly from Smithery:
+
+1. In the MCP section, click **Browse Smithery**
+2. Search for the tool or integration you need
+3. Click **Install** to add it to your Xyzen instance
+
+## Testing Tools
+
+After adding an MCP server, you can test individual tools before using them in agents:
+
+1. Open the MCP server details
+2. Select a tool from the list
+3. Provide test input parameters
+4. Click **Test** to see the result
+
+This helps verify that the server is properly connected and the tools work as expected.
+
+## Using MCP Tools in Agents
+
+Once an MCP server is added, its tools become available in agent configuration:
+
+1. Open the agent settings
+2. In the **MCP Servers** section, select the servers to enable
+3. The agent can now call any tool from the selected MCP servers
+
+MCP tools appear alongside builtin tools in the agent's tool list. The agent selects which tools to use based on the task at hand.
+
+<Note>
+  MCP tools are loaded dynamically at runtime. If an MCP server is unreachable, the agent will fall back to its other available tools.
+</Note>

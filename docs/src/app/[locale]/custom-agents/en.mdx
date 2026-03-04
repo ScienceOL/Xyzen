@@ -1,0 +1,126 @@
+export const metadata = {
+  title: 'Custom Agents',
+  description:
+    'Build custom agent workflows using the graph builder, components, and compilation pipeline.',
+}
+
+export const sections = [
+  { title: 'Graph Model', id: 'graph-model' },
+  { title: 'Components', id: 'components' },
+  { title: 'Agent Configuration', id: 'agent-configuration' },
+  { title: 'Compilation Pipeline', id: 'compilation-pipeline' },
+  { title: 'Example: Research Agent', id: 'example-research-agent' },
+]
+
+# Custom Agents
+
+Beyond the builtin agent types, you can create custom agents by composing reusable components into a graph workflow. {{ className: 'lead' }}
+
+## Graph Model
+
+Agents in Xyzen are directed graphs where:
+
+- **Nodes** represent processing steps (LLM calls, tool executions, decision points)
+- **Edges** define the flow between nodes
+- **Conditional edges** enable branching based on node outputs
+
+The graph is compiled into a [LangGraph](https://langchain-ai.github.io/langgraph/) `StateGraph` that manages state transitions and execution.
+
+## Components
+
+Components are reusable subgraphs that handle specific capabilities:
+
+| Component | Description |
+|---|---|
+| **ReAct** | Tool-calling loop: LLM → tool → observe → repeat |
+| **Clarify** | Analyze a question, identify sub-questions |
+| **Brief** | Conduct parallel search (web + literature) |
+| **Supervisor** | Evaluate content quality and relevance |
+| **Report** | Synthesize findings into structured output |
+
+Components are registered globally and resolved by name at compilation time. You can create new components and use them in any agent graph.
+
+## Agent Configuration
+
+An agent's graph is defined in a JSON configuration:
+
+```json
+{
+  "agent_type": "custom",
+  "graph": {
+    "nodes": [
+      {
+        "id": "research",
+        "component": "react",
+        "config": {
+          "tools": ["web_search", "literature_search"],
+          "system_prompt": "You are a research assistant."
+        }
+      },
+      {
+        "id": "summarize",
+        "component": "react",
+        "config": {
+          "tools": [],
+          "system_prompt": "Summarize the research findings."
+        }
+      }
+    ],
+    "edges": [
+      { "from": "START", "to": "research" },
+      { "from": "research", "to": "summarize" },
+      { "from": "summarize", "to": "END" }
+    ]
+  }
+}
+```
+
+### Node Configuration
+
+Each node specifies:
+- **id** — Unique identifier within the graph
+- **component** — Which reusable component to use
+- **config** — Component-specific configuration (tools, prompts, etc.)
+
+### Edge Types
+
+- **Direct edge** — Always transitions from one node to another
+- **Conditional edge** — Evaluates a condition to choose the next node
+
+## Compilation Pipeline
+
+Agent configs go through a four-stage pipeline before execution:
+
+```
+Agent Config (JSON)
+    ↓ canonicalize
+Canonical Config (normalized, deterministic)
+    ↓ validate
+Validated Config (structural integrity verified)
+    ↓ compile
+LangGraph StateGraph (executable workflow)
+    ↓ .compile()
+Runnable (ready to stream)
+```
+
+1. **Canonicalize** — Normalize the config format, resolve component references, apply defaults
+2. **Validate** — Check that all nodes are reachable, edges are valid, and tool references exist
+3. **Compile** — Build LangGraph nodes and edges from the canonical config
+4. **Execute** — Run the compiled graph with streaming callbacks
+
+## Example: Research Agent
+
+Here's how the builtin Deep Research agent is composed from components:
+
+```
+START → clarify → brief → supervisor → report → END
+                    ↑         │
+                    └─────────┘  (if quality insufficient)
+```
+
+- **clarify** — Breaks the research question into sub-questions
+- **brief** — Runs web search and literature search in parallel
+- **supervisor** — Evaluates gathered content, may loop back to brief
+- **report** — Synthesizes everything into a structured report
+
+Each node uses a different component with specialized prompts and tools. The supervisor node uses a conditional edge that either proceeds to report or loops back to brief for more research.

@@ -221,7 +221,6 @@ async def _execute_scheduled_chat_inner(scheduled_task_id: str) -> None:
                 session_id=session_id,
                 topic_id=topic_id,
                 message_id=None,
-                model_tier=None,
                 db_session_factory=TaskSessionLocal,
                 scheduled_task_metadata=sched_task.metadata_,
             )
@@ -246,7 +245,7 @@ async def _execute_scheduled_chat_inner(scheduled_task_id: str) -> None:
             )
 
             async for stream_event in get_ai_response_stream(
-                db, sched_task.prompt, topic, user_id, None, publisher, connection_id, None, stream_id=""
+                db, sched_task.prompt, topic, user_id, None, None, stream_id=""
             ):
                 event_type = stream_event["type"]
                 handler = EVENT_HANDLERS.get(event_type)

@@ -1,0 +1,139 @@
+# 自定义智能体
+
+除了内置的智能体类型，你可以通过将可复用组件组合成图工作流来创建自定义智能体。 {{ className: 'lead' }}
+
+## 图模型
+
+自定义智能体被定义为有向图：
+
+- **节点** — 执行特定操作的处理单元（LLM 调用、工具执行、条件判断）
+- **边** — 节点之间的连接，定义执行流程
+- **状态** — 在节点之间传递的共享数据
+
+```
+[开始] → [规划] → [执行] → [审查] → [结束]
+                      ↑          │
+                      └──────────┘ (需要修改时)
+```
+
+## 组件
+
+组件是可复用的子图，封装了特定的功能：
+
+### 内置组件
+
+- **tool_calling** — 工具调用循环（ReAct 模式的核心）
+- **research** — 搜索和信息收集
+- **planning** — 任务分解和规划
+- **summarize** — 内容总结
+- **code_review** — 代码审查和反馈
+
+### 使用组件
+
+在智能体配置中引用组件：
+
+```json
+{
+  "nodes": [
+    {
+      "id": "researcher",
+      "component": "research",
+      "config": {
+        "max_searches": 5,
+        "tools": ["web_search", "arxiv_search"]
+      }
+    },
+    {
+      "id": "writer",
+      "component": "tool_calling",
+      "config": {
+        "system_prompt": "基于研究结果撰写报告。"
+      }
+    }
+  ],
+  "edges": [
+    { "from": "START", "to": "researcher" },
+    { "from": "researcher", "to": "writer" },
+    { "from": "writer", "to": "END" }
+  ]
+}
+```
+
+## 智能体配置
+
+自定义智能体的完整配置结构：
+
+```json
+{
+  "name": "研究写作智能体",
+  "agent_type": "custom",
+  "model": "gpt-4o",
+  "graph": {
+    "nodes": [...],
+    "edges": [...],
+    "state_schema": {
+      "research_results": "list",
+      "draft": "string"
+    }
+  },
+  "tools": ["web_search", "file_write"],
+  "system_prompt": "你是一个研究写作助手。"
+}
+```
+
+## 编译管道
+
+自定义智能体配置经过以下管道转换为可执行的工作流：
+
+1. **规范化** — 解析组件引用，展开子图，归一化格式
+2. **验证** — 检查图结构完整性：所有节点可达、无死循环、工具引用有效
+3. **编译** — 构建 LangGraph StateGraph，注册节点处理函数和边条件
+4. **执行** — 运行编译后的图，使用流式回调报告进度
+
+## 示例：研究智能体
+
+一个完整的自定义研究智能体示例：
+
+```json
+{
+  "name": "论文研究员",
+  "agent_type": "custom",
+  "model": "gpt-4o",
+  "graph": {
+    "nodes": [
+      {
+        "id": "clarify",
+        "component": "tool_calling",
+        "config": {
+          "system_prompt": "分析用户的研究问题，如有必要请提出澄清性问题。",
+          "tools": ["ask_question"]
+        }
+      },
+      {
+        "id": "research",
+        "component": "research",
+        "config": {
+          "max_searches": 10,
+          "tools": ["web_search", "arxiv_search"]
+        }
+      },
+      {
+        "id": "report",
+        "component": "tool_calling",
+        "config": {
+          "system_prompt": "基于研究结果撰写结构化研究报告。",
+          "tools": ["file_write"]
+        }
+      }
+    ],
+    "edges": [
+      { "from": "START", "to": "clarify" },
+      { "from": "clarify", "to": "research" },
+      { "from": "research", "to": "report" },
+      { "from": "report", "to": "END" }
+    ]
+  }
+}
+```
+
+该智能体会先澄清研究问题，然后进行多轮搜索收集信息，最后撰写结构化报告。

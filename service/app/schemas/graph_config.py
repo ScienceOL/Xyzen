@@ -309,6 +309,10 @@ class GraphConfig(BaseModel):
         default=None,
         description="UI-only metadata ignored by compiler",
     )
+    skills_auto: bool = Field(
+        default=True,
+        description="When true, all user-visible skills are loaded automatically instead of only attached ones",
+    )
 
 
 def is_graph_config(config: dict[str, Any]) -> bool:

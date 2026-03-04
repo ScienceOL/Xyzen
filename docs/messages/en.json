@@ -1,0 +1,43 @@
+{
+  "nav": {
+    "docs": "Xyzen Docs"
+  },
+  "navigation": {
+    "overview": "Overview",
+    "introduction": "Introduction",
+    "quickstart": "Quickstart",
+    "philosophy": "Philosophy",
+    "architecture": "Architecture",
+    "roadmap": "Roadmap",
+    "product_guide": "Product Guide",
+    "agents": "Agents",
+    "tools": "Tools",
+    "skills": "Skills",
+    "knowledge": "Knowledge Bases",
+    "memory": "Memory",
+    "mcp": "MCP Servers",
+    "sandbox": "Sandbox",
+    "marketplace": "Marketplace",
+    "scheduled_tasks": "Scheduled Tasks",
+    "sharing": "Sharing",
+    "developer_guide": "Developer Guide",
+    "deployment": "Deployment",
+    "configuration": "Configuration",
+    "api_reference": "API Reference",
+    "frontend_integration": "Frontend Integration",
+    "custom_agents": "Custom Agents",
+    "custom_tools": "Custom Tools",
+    "contributing": "Contributing"
+  },
+  "footer": {
+    "previous": "Previous",
+    "next": "Next"
+  },
+  "search": {
+    "placeholder": "Search docs..."
+  },
+  "common": {
+    "signIn": "Sign in",
+    "backToDocs": "Back to docs"
+  }
+}

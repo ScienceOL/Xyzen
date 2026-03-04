@@ -1,8 +1,10 @@
 import logging
 from datetime import datetime, timedelta, timezone
-from typing import Any
+from typing import Any, cast
 from uuid import UUID
 
+from sqlalchemy import func
+from sqlalchemy import select as sa_select
 from sqlmodel import col, select
 from sqlmodel.ext.asyncio.session import AsyncSession
 
@@ -164,3 +166,35 @@ class SubscriptionRepository:
         await self.db.flush()
         await self.db.refresh(sub)
         return sub
+
+    async def get_new_users_heatmap(
+        self,
+        year: int,
+        tz: str = "UTC",
+    ) -> list[dict[str, Any]]:
+        """Daily new subscription registrations, grouped by date."""
+        from datetime import datetime
+        from datetime import timezone as tz_module
+        from zoneinfo import ZoneInfo
+
+        zone = ZoneInfo(tz)
+        start_utc = datetime(year, 1, 1, tzinfo=zone).astimezone(tz_module.utc)
+        end_utc = datetime(year, 12, 31, 23, 59, 59, 999999, tzinfo=zone).astimezone(tz_module.utc)
+
+        date_expr = func.to_char(func.timezone(tz, UserSubscription.created_at), "YYYY-MM-DD")
+
+        stmt = (
+            sa_select(
+                date_expr.label("date"),
+                func.count().label("new_users"),
+            )
+            .where(
+                col(UserSubscription.created_at) >= start_utc,
+                col(UserSubscription.created_at) <= end_utc,
+            )
+            .group_by(date_expr)
+            .order_by(date_expr)
+        )
+        rows = (await self.db.exec(cast(Any, stmt))).all()
+
+        return [{"date": str(r.date), "new_users": int(r.new_users)} for r in rows]

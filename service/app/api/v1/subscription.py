@@ -14,6 +14,7 @@ from app.core.subscription import SubscriptionService
 from app.infra.database import get_session as get_db_session
 from app.middleware.auth import get_current_user
 from app.models.subscription import SubscriptionRoleRead, UserSubscriptionRead
+from app.repos.subscription import SubscriptionRepository
 from app.schemas.plan_catalog import PlanCatalogResponse
 
 logger = logging.getLogger(__name__)
@@ -62,6 +63,11 @@ class AdminAssignRoleRequest(BaseModel):
     user_id: str = Field(description="Target user ID")
     role_id: UUID = Field(description="Role ID to assign")
     expires_at: datetime | None = Field(default=None, description="Expiration time (null = 30 days from now)")
+
+
+class NewUsersHeatmapEntry(BaseModel):
+    date: str
+    new_users: int
 
 
 class UsageBucket(BaseModel):
@@ -266,3 +272,25 @@ async def admin_assign_role(
         role=SubscriptionRoleRead.model_validate(role),
         can_claim_credits=service.can_claim_credits(sub, role),
     )
+
+
+@router.get(
+    "/admin/stats/new-users-heatmap",
+    response_model=list[NewUsersHeatmapEntry],
+    summary="Daily new user registrations heatmap (admin)",
+)
+async def get_new_users_heatmap(
+    admin_secret: str = Header(..., alias="X-Admin-Secret"),
+    year: int = 2026,
+    tz: str | None = None,
+    db: AsyncSession = Depends(get_db_session),
+):
+    """Get daily new user registrations heatmap for an entire year (admin only)."""
+    if admin_secret != configs.Admin.secret:
+        raise HTTPException(
+            status_code=status.HTTP_401_UNAUTHORIZED,
+            detail="Invalid admin secret key",
+        )
+    repo = SubscriptionRepository(db)
+    data = await repo.get_new_users_heatmap(year, tz or "UTC")
+    return [NewUsersHeatmapEntry(**row) for row in data]

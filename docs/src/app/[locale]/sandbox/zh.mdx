@@ -1,0 +1,73 @@
+# 沙箱
+
+沙箱提供隔离的环境，让智能体可以安全地执行代码、管理文件和运行应用程序。 {{ className: 'lead' }}
+
+## 概述
+
+沙箱是按话题隔离的开发环境。当智能体需要执行代码时，代码在沙箱中运行，而非宿主服务器上。这保证了安全性和隔离性。
+
+每个沙箱包含：
+
+- 完整的 Linux 环境
+- 预装的 Python、Node.js 和常用工具
+- 独立的文件系统
+- 网络访问能力
+
+## 代码执行
+
+智能体使用 `code_execute` 工具在沙箱中运行 Python 代码：
+
+```python
+# 智能体可以执行任意 Python 代码
+import pandas as pd
+import matplotlib.pyplot as plt
+
+df = pd.read_csv('data.csv')
+df.plot(kind='bar')
+plt.savefig('chart.png')
+```
+
+执行结果（包括输出、图表和文件）会自动返回给智能体和用户。
+
+## 文件操作
+
+沙箱支持完整的文件操作：
+
+- **读取** — 读取沙箱中的文件内容
+- **写入** — 创建和修改文件
+- **上传** — 将用户上传的文件传输到沙箱
+- **下载** — 从沙箱下载文件
+
+## IDE 预览
+
+沙箱提供一个 Web IDE 界面，让你可以：
+
+- 浏览沙箱的文件系统
+- 实时查看和编辑文件
+- 预览生成的网页和应用
+- 查看终端输出
+
+IDE 预览会在智能体使用沙箱时自动显示在聊天界面的侧边面板中。
+
+## 沙箱后端
+
+Xyzen 支持以下沙箱后端：
+
+### Daytona
+
+[Daytona](https://www.daytona.io/) 是推荐的沙箱后端，提供生产级的容器化开发环境。
+
+要启用 Daytona 沙箱：
+
+```bash {{ title: 'docker/.env.dev' }}
+XYZEN_SANDBOX_Enable=true
+XYZEN_SANDBOX_Backend=daytona
+XYZEN_SANDBOX_DaytonaApiUrl=http://host.docker.internal:13000/api
+XYZEN_SANDBOX_DaytonaApiKey=xyzen-dev-admin-key
+```
+
+Daytona 服务包含在 `docker-compose.daytona.yaml` 中，启动脚本会自动检测和启动。
+
+<Note>
+  沙箱功能默认禁用。启用前需要先配置并启动沙箱后端。详见[配置](/configuration)中的沙箱相关环境变量。
+</Note>

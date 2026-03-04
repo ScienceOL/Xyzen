@@ -1,7 +1,8 @@
 import { isValidUuid } from "@/core/chat";
 import { generateClientId } from "@/core/chat/messageProcessor";
 import { messageService } from "@/service/messageService";
-import xyzenService from "@/service/xyzenService";
+import sseClient from "@/service/sseClient";
+import { topicService } from "@/service/topicService";
 import i18n from "i18next";
 import type { ChatSlice, GetState, Helpers, SetState } from "./types";
 
@@ -41,8 +42,8 @@ export function createMessageActions(
         return;
       }
 
-      // Ensure websocket is connected to the active topic before sending.
-      if (!activeChannel.connected) {
+      // Ensure SSE connection is established for receiving events.
+      if (!sseClient.hasConnection(activeChatChannel)) {
         connectToChannel(activeChannel.sessionId, activeChannel.id);
         await waitForChannelConnection(activeChatChannel);
       }
@@ -102,7 +103,12 @@ export function createMessageActions(
       });
       updateDerivedStatus();
 
-      const payload: Record<string, unknown> = {
+      const payload: {
+        message: string;
+        client_id: string;
+        file_ids?: string[];
+        context?: Record<string, unknown>;
+      } = {
         message,
         client_id: clientId,
       };
@@ -112,13 +118,17 @@ export function createMessageActions(
 
       const channel = recheckedChannel;
       if (channel?.knowledgeContext) {
-        payload.context = channel.knowledgeContext;
+        payload.context = channel.knowledgeContext as unknown as Record<
+          string,
+          unknown
+        >;
       }
 
-      const sendSuccess = xyzenService.sendStructuredMessage(payload);
-
-      if (!sendSuccess) {
-        // Mark optimistic message as failed instead of removing it
+      try {
+        await topicService.sendMessage(activeChatChannel, payload);
+      } catch (err) {
+        console.error("Failed to send message via REST:", err);
+        // Mark optimistic message as failed
         set((state: ChatSlice) => {
           const ch = state.channels[activeChatChannel];
           if (ch) {
@@ -236,10 +246,11 @@ export function createMessageActions(
       const { activeChatChannel } = get();
       if (!activeChatChannel) return;
 
-      // Send regeneration request via WebSocket
-      xyzenService.sendStructuredMessage({
-        type: "regenerate",
-      });
+      // Guard: ensure SSE connection is live so streaming events can be received
+      if (!sseClient.hasConnection(activeChatChannel)) {
+        console.warn("[triggerRegeneration] No SSE connection, skipping");
+        return;
+      }
 
       // Mark channel as responding
       set((state: ChatSlice) => {
@@ -247,6 +258,18 @@ export function createMessageActions(
         if (channel) {
           channel.responding = true;
         }
+      });
+
+      // Send regeneration request via REST
+      topicService.regenerate(activeChatChannel).catch((err: unknown) => {
+        console.error("Failed to trigger regeneration:", err);
+        set((state: ChatSlice) => {
+          const channel = state.channels[activeChatChannel];
+          if (channel) {
+            channel.responding = false;
+          }
+        });
+        updateDerivedStatus();
       });
     },
 

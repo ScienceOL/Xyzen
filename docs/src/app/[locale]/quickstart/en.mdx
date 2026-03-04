@@ -1,0 +1,88 @@
+export const metadata = {
+  title: 'Quickstart',
+  description:
+    'Get Xyzen up and running in minutes with Docker Compose and start chatting.',
+}
+
+# Quickstart
+
+Get Xyzen running locally and start chatting in under 5 minutes. {{ className: 'lead' }}
+
+## Prerequisites
+
+Before you begin, make sure you have the following installed:
+
+- [Docker](https://docs.docker.com/get-docker/) and Docker Compose v2+
+- An API key from at least one LLM provider (OpenAI, AWS Bedrock, Google, etc.)
+
+## 1. Clone the repository
+
+```bash
+git clone https://github.com/ScienceOL/Xyzen.git
+cd Xyzen
+```
+
+## 2. Configure environment
+
+The launch script will automatically create `docker/.env.dev` from the example template on first run. To configure an LLM provider, edit the file and uncomment the relevant section.
+
+For example, to use OpenAI:
+
+```bash {{ title: 'docker/.env.dev' }}
+XYZEN_LLM_providers=openai
+XYZEN_LLM_OpenAI_key=sk-your-key-here
+XYZEN_LLM_OpenAI_deployment=gpt-4o
+```
+
+Or to use AWS Bedrock for Claude:
+
+```bash {{ title: 'docker/.env.dev' }}
+XYZEN_LLM_providers=bedrock
+XYZEN_LLM_Bedrock_key=YOUR_ACCESS_KEY:YOUR_SECRET_KEY
+XYZEN_LLM_Bedrock_project=us-east-1
+XYZEN_LLM_Bedrock_deployment=us.anthropic.claude-sonnet-4-20250514
+```
+
+<Note>
+  You need to configure at least one LLM provider. See [Configuration](/configuration) for the full list of supported providers including Google, Azure OpenAI, Qwen, and more.
+</Note>
+
+## 3. Start all services
+
+Use the launch script included in the repository:
+
+```bash
+# macOS / Linux
+./launch/dev.sh
+
+# Windows (PowerShell)
+./launch/dev.ps1
+```
+
+The script handles everything automatically: checking Docker, creating config files, setting up pre-commit hooks, starting infrastructure services (PostgreSQL, Redis, Casdoor), and launching the development stack (FastAPI backend, Celery worker, React frontend, Nginx).
+
+Pass `-d` to run in the background (daemon mode), or `-s` to stop running services.
+
+<Note>
+  You can also use [just](https://github.com/casey/just) if you have it installed: `just dev`. Or run docker compose directly: `docker compose -f docker/docker-compose.base.yaml -f docker/docker-compose.dev.yaml --env-file docker/.env.dev up -d`
+</Note>
+
+## 4. Open Xyzen
+
+Navigate to [http://localhost](http://localhost) in your browser. You should see the Xyzen chat interface.
+
+## 5. Start chatting
+
+Xyzen comes with a built-in **CEO** agent that's ready to use out of the box. Click on it in the sidebar and start a conversation — the CEO agent is a general-purpose ReAct agent equipped with web search, code execution, and other tools.
+
+You can also create your own agents by clicking the **+** button in the sidebar, choosing an LLM model, and configuring the tools and system prompt to fit your needs.
+
+## What's next?
+
+Now that you have Xyzen running, explore the key concepts:
+
+- [Agents](/agents) — Learn about agent types and how to configure them
+- [Tools](/tools) — Browse the 40+ builtin tools available
+- [Architecture](/architecture) — Understand how the system works
+- [Configuration](/configuration) — Full environment variable reference
+- [Deployment](/deployment) — Deploy to production with Kubernetes

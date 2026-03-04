@@ -663,6 +663,23 @@ class RedemptionRepository:
             for r in rows
         ]
 
+    async def get_distinct_credit_sources(self) -> list[str]:
+        """Return distinct source values from CreditLedger where direction='credit' and amount is non-null/non-zero."""
+        stmt = (
+            sa_select(
+                func.coalesce(CreditLedger.source, "unknown").label("src"),
+            )
+            .where(
+                col(CreditLedger.direction) == "credit",
+                col(CreditLedger.amount).isnot(None),
+                col(CreditLedger.amount) != 0,
+            )
+            .distinct()
+            .order_by("src")
+        )
+        rows = (await self.db.exec(cast(Any, stmt))).all()
+        return [str(r.src) if hasattr(r, "src") else str(r[0]) for r in rows]
+
     async def get_admin_credit_heatmap(
         self,
         year: int,
@@ -685,9 +702,14 @@ class RedemptionRepository:
             col(CreditLedger.created_at) >= start_utc,
             col(CreditLedger.created_at) <= end_utc,
             col(CreditLedger.direction) == "credit",
+            col(CreditLedger.amount).isnot(None),
+            col(CreditLedger.amount) != 0,
         ]
         if source:
-            filters.append(col(CreditLedger.source) == source)
+            if source == "unknown":
+                filters.append(col(CreditLedger.source).is_(None))
+            else:
+                filters.append(col(CreditLedger.source) == source)
 
         if tier:
             from app.models.subscription import SubscriptionRole, UserSubscription
@@ -724,6 +746,20 @@ class RedemptionRepository:
                         ),
                         0,
                     ).label("daily_checkin_credits"),
+                    func.coalesce(
+                        func.sum(
+                            case(
+                                (
+                                    col(CreditLedger.source).in_(
+                                        ["welcome_bonus", "redemption_code", "subscription_monthly", "daily_checkin"]
+                                    ),
+                                    0,
+                                ),
+                                else_=col(CreditLedger.amount),
+                            )
+                        ),
+                        0,
+                    ).label("other_credits"),
                 )
                 .select_from(CreditLedger)
                 .join(UserSubscription, col(CreditLedger.user_id) == col(UserSubscription.user_id), isouter=True)
@@ -766,6 +802,20 @@ class RedemptionRepository:
                         ),
                         0,
                     ).label("daily_checkin_credits"),
+                    func.coalesce(
+                        func.sum(
+                            case(
+                                (
+                                    col(CreditLedger.source).in_(
+                                        ["welcome_bonus", "redemption_code", "subscription_monthly", "daily_checkin"]
+                                    ),
+                                    0,
+                                ),
+                                else_=col(CreditLedger.amount),
+                            )
+                        ),
+                        0,
+                    ).label("other_credits"),
                 )
                 .where(*filters)
                 .group_by(date_expr)
@@ -784,6 +834,7 @@ class RedemptionRepository:
                 "redemption_code_credits": int(r.redemption_code_credits),
                 "subscription_monthly_credits": int(r.subscription_monthly_credits),
                 "daily_checkin_credits": int(r.daily_checkin_credits),
+                "other_credits": int(r.other_credits),
             }
             for r in rows
         ]
@@ -817,9 +868,14 @@ class RedemptionRepository:
             col(CreditLedger.created_at) >= start_utc,
             col(CreditLedger.created_at) <= end_utc,
             col(CreditLedger.direction) == "credit",
+            col(CreditLedger.amount).isnot(None),
+            col(CreditLedger.amount) != 0,
         ]
         if source:
-            filters.append(col(CreditLedger.source) == source)
+            if source == "unknown":
+                filters.append(col(CreditLedger.source).is_(None))
+            else:
+                filters.append(col(CreditLedger.source) == source)
         if search:
             filters.append(col(CreditLedger.user_id).ilike(f"%{search}%"))
 
@@ -857,6 +913,20 @@ class RedemptionRepository:
                         ),
                         0,
                     ).label("daily_checkin_credits"),
+                    func.coalesce(
+                        func.sum(
+                            case(
+                                (
+                                    col(CreditLedger.source).in_(
+                                        ["welcome_bonus", "redemption_code", "subscription_monthly", "daily_checkin"]
+                                    ),
+                                    0,
+                                ),
+                                else_=col(CreditLedger.amount),
+                            )
+                        ),
+                        0,
+                    ).label("other_credits"),
                 )
                 .select_from(CreditLedger)
                 .join(UserSubscription, col(CreditLedger.user_id) == col(UserSubscription.user_id), isouter=True)
@@ -899,6 +969,20 @@ class RedemptionRepository:
                         ),
                         0,
                     ).label("daily_checkin_credits"),
+                    func.coalesce(
+                        func.sum(
+                            case(
+                                (
+                                    col(CreditLedger.source).in_(
+                                        ["welcome_bonus", "redemption_code", "subscription_monthly", "daily_checkin"]
+                                    ),
+                                    0,
+                                ),
+                                else_=col(CreditLedger.amount),
+                            )
+                        ),
+                        0,
+                    ).label("other_credits"),
                 )
                 .where(*filters)
                 .group_by(col(CreditLedger.user_id))
@@ -917,6 +1001,7 @@ class RedemptionRepository:
                 "redemption_code_credits": int(r.redemption_code_credits),
                 "subscription_monthly_credits": int(r.subscription_monthly_credits),
                 "daily_checkin_credits": int(r.daily_checkin_credits),
+                "other_credits": int(r.other_credits),
             }
             for r in rows
         ]

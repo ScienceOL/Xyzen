@@ -40,6 +40,7 @@ async def create_delegation_tools_for_session(
     provider_id: str | None,
     model_name: str | None,
     store: "BaseStore | None" = None,
+    model_tier: str | None = None,
 ) -> list[BaseTool]:
     """
     Create delegation tools (list, details, delegate) bound to the session context.
@@ -52,6 +53,7 @@ async def create_delegation_tools_for_session(
         provider_id: Provider ID for the LLM.
         model_name: Model name for the LLM.
         store: Optional LangGraph store for cross-thread memory.
+        model_tier: Model tier for consumption tracking.
     """
     from app.tools.builtin.subagent.context import get_session_factory
 
@@ -104,6 +106,7 @@ async def create_delegation_tools_for_session(
             provider_id=provider_id,
             model_name=model_name,
             store=store,
+            model_tier=model_tier,
         )
 
     delegate_tool = StructuredTool(
@@ -199,6 +202,7 @@ async def _delegate_to_agent_impl(
     provider_id: str | None,
     model_name: str | None,
     store: "BaseStore | None",
+    model_tier: str | None = None,
 ) -> str:
     """Delegate a task to a target agent using its real configuration."""
     from app.agents.components import ensure_components_registered
@@ -283,7 +287,13 @@ async def _delegate_to_agent_impl(
 
         # 5. Execute with timeout (outside db session)
         result = await asyncio.wait_for(
-            _run_delegated_agent(compiled_graph, task, provider_id=use_provider),
+            _run_delegated_agent(
+                compiled_graph,
+                task,
+                provider_id=use_provider,
+                model_name=use_model,
+                model_tier=model_tier,
+            ),
             timeout=DELEGATION_TIMEOUT_SECONDS,
         )
 
@@ -304,6 +314,8 @@ async def _run_delegated_agent(
     graph: Any,
     task: str,
     provider_id: str | None = None,
+    model_name: str | None = None,
+    model_tier: str | None = None,
 ) -> str:
     """Run a delegated agent graph and collect the final text output.
     Also records LLM token usage from the delegated agent's messages."""
@@ -323,7 +335,13 @@ async def _run_delegated_agent(
     # Extract and record token usage
     from app.core.consume.consume_service import record_messages_usage_from_context
 
-    await record_messages_usage_from_context(messages, source="delegation", provider=provider_id)
+    await record_messages_usage_from_context(
+        messages,
+        source="delegation",
+        model_name=model_name or "unknown",
+        model_tier=model_tier,
+        provider_id=provider_id,
+    )
 
     for msg in reversed(messages):
         if isinstance(msg, AIMessage) and not getattr(msg, "tool_calls", None):

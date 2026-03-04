@@ -315,7 +315,7 @@ function AddServerForm() {
   };
 
   return (
-    <div className="space-y-5 p-4">
+    <div className="space-y-5 p-3">
       <AnimatePresence mode="wait">
         {isSuccess ? (
           <motion.div
@@ -453,15 +453,54 @@ function AddServerForm() {
                     animate={{ opacity: 1, height: "auto", y: 0 }}
                     exit={{ opacity: 0, height: 0, y: -10 }}
                     transition={{ duration: 0.25 }}
-                    className="mt-3 space-y-3 overflow-hidden"
+                    className="mt-2 -mx-1 overflow-hidden px-1 pb-1 pt-1"
                   >
-                    <RadioGroup
-                      value={authMode}
-                      onChange={setAuthMode}
-                      className="space-y-2"
-                    >
-                      {user && token && (
-                        <Radio value="current">
+                    <div className="space-y-3">
+                      <RadioGroup
+                        value={authMode}
+                        onChange={setAuthMode}
+                        className="space-y-2"
+                      >
+                        {user && token && (
+                          <Radio value="current">
+                            {({ checked }) => (
+                              <div
+                                className={`cursor-pointer rounded-sm p-3 transition-all ${
+                                  checked
+                                    ? "bg-indigo-50/80 ring-1 ring-indigo-500/30 dark:bg-indigo-900/20"
+                                    : "bg-neutral-100/60 hover:bg-neutral-100 dark:bg-white/[0.04] dark:hover:bg-white/[0.06]"
+                                }`}
+                              >
+                                <div className="flex items-center space-x-3">
+                                  <div
+                                    className={`flex h-4 w-4 items-center justify-center rounded-full border-2 ${
+                                      checked
+                                        ? "border-indigo-500 bg-indigo-500"
+                                        : "border-neutral-300 dark:border-neutral-600"
+                                    }`}
+                                  >
+                                    {checked && (
+                                      <div className="h-1.5 w-1.5 rounded-full bg-white" />
+                                    )}
+                                  </div>
+                                  <div className="flex items-center space-x-2">
+                                    <UserIcon className="h-4 w-4 text-indigo-600 dark:text-indigo-400" />
+                                    <span className="text-[13px] font-medium text-neutral-900 dark:text-white">
+                                      {t(
+                                        "mcp.addModal.fields.auth.current.label",
+                                      )}
+                                    </span>
+                                  </div>
+                                </div>
+                                <p className="ml-7 mt-1 text-xs text-neutral-500 dark:text-neutral-400">
+                                  {t("mcp.addModal.fields.auth.current.desc")}
+                                </p>
+                              </div>
+                            )}
+                          </Radio>
+                        )}
+
+                        <Radio value="custom">
                           {({ checked }) => (
                             <div
                               className={`cursor-pointer rounded-sm p-3 transition-all ${
@@ -483,79 +522,42 @@ function AddServerForm() {
                                   )}
                                 </div>
                                 <div className="flex items-center space-x-2">
-                                  <UserIcon className="h-4 w-4 text-indigo-600 dark:text-indigo-400" />
+                                  <KeyIcon className="h-4 w-4 text-indigo-600 dark:text-indigo-400" />
                                   <span className="text-[13px] font-medium text-neutral-900 dark:text-white">
-                                    {t(
-                                      "mcp.addModal.fields.auth.current.label",
-                                    )}
+                                    {t("mcp.addModal.fields.auth.custom.label")}
                                   </span>
                                 </div>
                               </div>
                               <p className="ml-7 mt-1 text-xs text-neutral-500 dark:text-neutral-400">
-                                {t("mcp.addModal.fields.auth.current.desc")}
+                                {t("mcp.addModal.fields.auth.custom.desc")}
                               </p>
                             </div>
                           )}
                         </Radio>
+                      </RadioGroup>
+
+                      {authMode === "custom" && (
+                        <motion.div
+                          initial={{ opacity: 0, y: -10 }}
+                          animate={{ opacity: 1, y: 0 }}
+                          transition={{ delay: 0.1 }}
+                        >
+                          <Label className="text-[13px] font-medium text-neutral-700 dark:text-neutral-300">
+                            {t("mcp.addModal.fields.auth.token.label")}
+                          </Label>
+                          <Input
+                            name="token"
+                            type="password"
+                            value={newServer.token}
+                            onChange={handleInputChange}
+                            placeholder={t(
+                              "mcp.addModal.fields.auth.token.placeholder",
+                            )}
+                            className="mt-1"
+                          />
+                        </motion.div>
                       )}
-
-                      <Radio value="custom">
-                        {({ checked }) => (
-                          <div
-                            className={`cursor-pointer rounded-sm p-3 transition-all ${
-                              checked
-                                ? "bg-indigo-50/80 ring-1 ring-indigo-500/30 dark:bg-indigo-900/20"
-                                : "bg-neutral-100/60 hover:bg-neutral-100 dark:bg-white/[0.04] dark:hover:bg-white/[0.06]"
-                            }`}
-                          >
-                            <div className="flex items-center space-x-3">
-                              <div
-                                className={`flex h-4 w-4 items-center justify-center rounded-full border-2 ${
-                                  checked
-                                    ? "border-indigo-500 bg-indigo-500"
-                                    : "border-neutral-300 dark:border-neutral-600"
-                                }`}
-                              >
-                                {checked && (
-                                  <div className="h-1.5 w-1.5 rounded-full bg-white" />
-                                )}
-                              </div>
-                              <div className="flex items-center space-x-2">
-                                <KeyIcon className="h-4 w-4 text-indigo-600 dark:text-indigo-400" />
-                                <span className="text-[13px] font-medium text-neutral-900 dark:text-white">
-                                  {t("mcp.addModal.fields.auth.custom.label")}
-                                </span>
-                              </div>
-                            </div>
-                            <p className="ml-7 mt-1 text-xs text-neutral-500 dark:text-neutral-400">
-                              {t("mcp.addModal.fields.auth.custom.desc")}
-                            </p>
-                          </div>
-                        )}
-                      </Radio>
-                    </RadioGroup>
-
-                    {authMode === "custom" && (
-                      <motion.div
-                        initial={{ opacity: 0, y: -10 }}
-                        animate={{ opacity: 1, y: 0 }}
-                        transition={{ delay: 0.1 }}
-                      >
-                        <Label className="text-[13px] font-medium text-neutral-700 dark:text-neutral-300">
-                          {t("mcp.addModal.fields.auth.token.label")}
-                        </Label>
-                        <Input
-                          name="token"
-                          type="password"
-                          value={newServer.token}
-                          onChange={handleInputChange}
-                          placeholder={t(
-                            "mcp.addModal.fields.auth.token.placeholder",
-                          )}
-                          className="mt-1"
-                        />
-                      </motion.div>
-                    )}
+                    </div>
                   </motion.div>
                 )}
               </AnimatePresence>
@@ -729,7 +731,9 @@ export function McpSettings() {
           </div>
 
           <div className="flex-1 overflow-y-auto custom-scrollbar">
-            <AddServerForm />
+            <div className="p-1">
+              <AddServerForm />
+            </div>
           </div>
         </div>
 

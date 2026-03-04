@@ -37,7 +37,6 @@ from app.schemas.chat_event_types import ToolCallStatus
 from app.tools.builtin.subagent.schemas import parse_subagent_outcome
 
 if TYPE_CHECKING:
-    from app.core.chat.interfaces import ChatPublisher
     from app.core.prompts.builder import SystemPromptLayers
     from app.models.agent import Agent
 
@@ -50,8 +49,6 @@ async def get_ai_response_stream_langchain_legacy(
     topic: TopicModel,
     user_id: str,
     agent: "Agent | None" = None,
-    connection_manager: "ChatPublisher | None" = None,
-    connection_id: str | None = None,
     context: dict[str, Any] | None = None,
     stream_id: str = "",
 ) -> AsyncGenerator[StreamingEvent, None]:
@@ -67,8 +64,6 @@ async def get_ai_response_stream_langchain_legacy(
         topic: Topic/conversation context
         user_id: User ID for provider management
         agent: Optional agent configuration
-        connection_manager: WebSocket connection manager (unused, for compatibility)
-        connection_id: WebSocket connection ID (unused, for compatibility)
         context: Optional additional context
 
     Yields:
@@ -97,20 +92,6 @@ async def get_ai_response_stream_langchain_legacy(
         user_provider_manager=user_provider_manager,
     )
 
-    # Immediately backfill TrackingContext so all tools (subagent, delegation,
-    # image gen, read_image) executed during this chat turn have complete
-    # model metadata available before the first TOKEN_USAGE event arrives.
-    from app.core.consume.consume_service import get_tracking_context
-
-    tracking_ctx = get_tracking_context()
-    if tracking_ctx is not None:
-        tracking_ctx.model_tier = model_tier
-        tracking_ctx.model_name = model_name
-        tracking_ctx.model_provider = provider_id
-
-    if not all([model_tier, provider_id, model_name]):
-        logger.warning(f"Incomplete model metadata: tier={model_tier}, provider={provider_id}, model={model_name}")
-
     # Build system prompt layers (with memory context: Core Memory + auto-retrieved)
     memory_ctx = await fetch_memory_context(user_id, message_text)
     prompt_layers = await build_system_prompt_layers(db, agent, model_name, memory_ctx=memory_ctx)
@@ -132,6 +113,7 @@ async def get_ai_response_stream_langchain_legacy(
             model_name=model_name,
             system_prompt=system_prompt,
             prompt_layers=prompt_layers,
+            model_tier=model_tier,
         )
 
         # Initialize stream context
@@ -403,6 +385,7 @@ async def create_langchain_agent(
     model_name: str | None,
     system_prompt: str,
     prompt_layers: "SystemPromptLayers | None" = None,
+    model_tier: str | None = None,
 ) -> tuple[CompiledStateGraph[Any, None, Any, Any], AgentEventContext, Any]:
     """Create and configure the LangChain agent using the agent factory.
 
@@ -431,6 +414,7 @@ async def create_langchain_agent(
         store=store,
         checkpointer=checkpointer,
         prompt_layers=prompt_layers,
+        model_tier=model_tier,
     )
     return graph, event_ctx, checkpointer
 

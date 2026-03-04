@@ -1,0 +1,88 @@
+# 自定义工具
+
+通过构建自定义工具扩展 Xyzen 的能力：内置 Python 工具或外部 MCP 服务器。 {{ className: 'lead' }}
+
+## 工具架构
+
+Xyzen 的工具系统分为两种类型：
+
+- **内置工具** — Python 函数，在 Celery Worker 进程中直接执行
+- **MCP 工具** — 外部 MCP 服务器提供的工具，通过网络协议调用
+
+两种类型的工具对智能体来说是透明的——智能体不需要区分工具是内置的还是外部的。
+
+## 构建内置工具
+
+内置工具是继承自 `BaseTool` 的 Python 类：
+
+```python {{ title: 'service/app/tools/my_tool.py' }}
+from app.tools.base import BaseTool, ToolResult
+
+class MyCustomTool(BaseTool):
+    """自定义工具的描述（这会显示给 LLM）"""
+
+    name = "my_custom_tool"
+    description = "执行特定操作的自定义工具"
+
+    class InputSchema(BaseTool.InputSchema):
+        query: str = Field(description="搜索查询")
+        limit: int = Field(default=10, description="最大结果数")
+
+    async def execute(self, input: InputSchema) -> ToolResult:
+        # 你的工具逻辑
+        results = await do_something(input.query, input.limit)
+        return ToolResult(
+            content=str(results),
+            success=True
+        )
+```
+
+关键要素：
+
+- `name` — 工具的唯一标识符
+- `description` — LLM 用来判断何时使用此工具的描述
+- `InputSchema` — 使用 Pydantic 定义的输入参数
+- `execute` — 异步执行函数
+
+## 工具注册
+
+创建工具后，在工具注册表中注册：
+
+```python {{ title: 'service/app/tools/__init__.py' }}
+from app.tools.my_tool import MyCustomTool
+
+TOOL_REGISTRY = {
+    # ... 现有工具
+    "my_custom_tool": MyCustomTool,
+}
+```
+
+注册后，工具会出现在智能体配置的可用工具列表中。
+
+## 通过 MCP 提供动态工具
+
+如果你不想修改 Xyzen 的代码，可以通过 MCP 服务器提供自定义工具：
+
+1. 创建一个 MCP 服务器（使用 [MCP SDK](https://github.com/modelcontextprotocol/typescript-sdk)）
+2. 在 Xyzen 中添加你的 MCP 服务器
+3. MCP 工具自动出现在可用工具列表中
+
+```typescript {{ title: 'MCP 服务器示例' }}
+import { McpServer } from "@modelcontextprotocol/sdk/server/mcp.js"
+
+const server = new McpServer({ name: "my-tools", version: "1.0.0" })
+
+server.tool("weather", { city: z.string() }, async ({ city }) => {
+  const data = await fetchWeather(city)
+  return { content: [{ type: "text", text: JSON.stringify(data) }] }
+})
+```
+
+MCP 方式的优势：
+
+- 无需修改 Xyzen 代码
+- 可以使用任何编程语言实现
+- 独立部署和更新
+- 可在多个 AI 平台间共享
+
+详情请参阅 [MCP 服务器](/mcp) 文档。

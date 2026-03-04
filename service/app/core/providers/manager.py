@@ -118,7 +118,7 @@ class ProviderManager:
             if litellm_provider in {"google"}:
                 return [ProviderType.GOOGLE, ProviderType.GOOGLE_VERTEX]
             if litellm_provider in {"anthropic"}:
-                return [ProviderType.GPUGEEK, ProviderType.BEDROCK]
+                return [ProviderType.BEDROCK, ProviderType.GPUGEEK]
 
             # Heuristics fallback
             lower = model_name.lower()
@@ -127,7 +127,7 @@ class ProviderManager:
             if "gpt" in lower:
                 return [ProviderType.AZURE_OPENAI, ProviderType.OPENAI]
             if "claude" in lower:
-                return [ProviderType.GPUGEEK, ProviderType.BEDROCK]
+                return [ProviderType.BEDROCK, ProviderType.GPUGEEK]
             return []
 
         # If no provider specified, try to route by model to an appropriate system provider.

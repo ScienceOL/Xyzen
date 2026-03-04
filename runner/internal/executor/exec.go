@@ -12,7 +12,7 @@ import (
 )
 
 const (
-	defaultTimeout = 120 // seconds
+	defaultTimeout = 300 // seconds
 	maxOutputBytes = 1 << 20 // 1 MB
 )
 

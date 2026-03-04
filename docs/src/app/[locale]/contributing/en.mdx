@@ -1,0 +1,151 @@
+export const metadata = {
+  title: 'Contributing',
+  description:
+    'Development setup, code style, testing, and contribution workflow for Xyzen.',
+}
+
+export const sections = [
+  { title: 'Development Setup', id: 'development-setup' },
+  { title: 'Project Structure', id: 'project-structure' },
+  { title: 'Code Style', id: 'code-style' },
+  { title: 'Testing', id: 'testing' },
+  { title: 'Database Migrations', id: 'database-migrations' },
+  { title: 'Pull Request Workflow', id: 'pull-request-workflow' },
+]
+
+# Contributing
+
+How to set up a development environment, follow code conventions, run tests, and submit pull requests. {{ className: 'lead' }}
+
+## Development Setup
+
+1. Clone the repository:
+
+```bash
+git clone https://github.com/ScienceOL/Xyzen.git
+cd Xyzen
+```
+
+2. Install [just](https://github.com/casey/just) (command runner) and Docker.
+
+3. Start the development environment:
+
+```bash
+just dev
+```
+
+This starts all services with hot-reload. The FastAPI service and Next.js frontend reload automatically on code changes. The Celery worker does **not** hot-reload — run `just rebuild celery` when modifying task code.
+
+4. View logs:
+
+```bash
+just logs-f service    # FastAPI logs
+just logs-f celery     # Celery worker logs
+```
+
+## Project Structure
+
+```
+Xyzen/
+├── service/              # Backend (FastAPI + Celery)
+│   ├── app/
+│   │   ├── api/v1/       # REST API routes
+│   │   ├── core/         # Business logic
+│   │   ├── repos/        # Data access (repository pattern)
+│   │   ├── models/       # SQLAlchemy models
+│   │   ├── agents/       # Agent types and components
+│   │   ├── tools/        # Builtin tools
+│   │   ├── tasks/        # Celery tasks
+│   │   └── middleware/    # Auth, CORS, etc.
+│   └── tests/
+├── web/                  # Frontend (Next.js + React)
+│   └── src/
+│       ├── app/          # Pages and routing
+│       ├── components/   # UI components
+│       ├── core/         # Business logic
+│       ├── hooks/        # React hooks
+│       ├── service/      # HTTP/SSE clients
+│       ├── store/        # Zustand state management
+│       └── types/        # TypeScript types
+├── docs/                 # Documentation site (Next.js)
+├── runner/               # Code execution runner (Go)
+├── docker/               # Docker Compose configs
+└── infra/                # Nginx config
+```
+
+## Code Style
+
+### Python (Backend)
+
+- Use modern type hints: `list[T]`, `dict[K, V]`, `str | None` (not `List`, `Dict`, `Optional`)
+- Async by default for all I/O operations
+- Format with `ruff format`, lint with `ruff check`, type-check with `basedpyright`
+
+### TypeScript (Frontend)
+
+- Strict typing enabled
+- Business logic in `core/`, not in components
+- Use Zustand selectors (never bare `useXyzen()`)
+- Format with Prettier, lint with ESLint
+
+### Running Checks
+
+```bash
+# Backend
+just lint-backend       # ruff check
+just fmt-backend        # ruff format
+just type-backend       # basedpyright
+just test-backend       # pytest
+
+# Frontend
+just lint-web           # eslint
+just type-web           # tsc --noEmit
+just test-web           # vitest
+
+# Everything
+just check              # All checks
+```
+
+## Testing
+
+### Backend Tests
+
+```bash
+just test-backend                    # Run all tests
+just test-backend-cov                # With coverage
+uv run pytest tests/unit -k "test_name"  # Specific test
+```
+
+Tests use pytest with async support. Integration tests connect to the dev database.
+
+### Frontend Tests
+
+```bash
+just test-web            # Run all tests
+cd web && yarn test      # Direct
+```
+
+## Database Migrations
+
+Migrations run inside the service container:
+
+```bash
+just migrate "Add users table"   # Generate migration
+just migrate-up                  # Apply migrations
+just migrate-down                # Rollback one step
+just migrate-history             # View migration history
+```
+
+<Note>
+  Register new models in `models/__init__.py` before generating migrations.
+</Note>
+
+## Pull Request Workflow
+
+1. Create a feature branch from `main`
+2. Make your changes following the code style guidelines
+3. Run `just check` to verify all linters, type checks, and tests pass
+4. Commit with conventional commit messages: `feat:`, `fix:`, `refactor:`, `chore:`
+5. Open a pull request against `main`
+
+**Important**: Never use `--no-verify` on commits. Pre-commit hooks enforce code quality and must pass.

@@ -1,0 +1,44 @@
+import { Guides } from './Guides'
+import { Resources } from './Resources'
+import { HeroPattern } from '@/components/HeroPattern'
+
+export const metadata = {
+  title: 'Xyzen Documentation',
+  description:
+    'Xyzen is an AI Laboratory Server for multi-agent LLM orchestration, real-time chat, and document processing.',
+}
+
+export const sections = [
+  { title: 'Getting Started', id: 'getting-started' },
+  { title: 'Product Guide', id: 'product-guide' },
+  { title: 'Developer Guide', id: 'developer-guide' },
+]
+
+<HeroPattern />
+
+# Xyzen Documentation
+
+Xyzen is an open-source AI Laboratory Server for multi-agent LLM orchestration, real-time chat, and document processing. Build, deploy, and manage intelligent agents that can search the web, execute code, manage knowledge, and collaborate autonomously. {{ className: 'lead' }}
+
+<div className="not-prose mb-16 mt-6 flex gap-3">
+  <Button href="/quickstart" arrow="right">
+    <>Quickstart</>
+  </Button>
+  <Button href="/architecture" variant="outline">
+    <>Architecture</>
+  </Button>
+</div>
+
+## Getting Started {{ anchor: false }}
+
+Deploy Xyzen with Docker Compose in minutes, create your first agent, and start chatting. Xyzen supports multiple LLM providers (OpenAI, Anthropic via Bedrock, Google, and more), real-time streaming, and a rich set of builtin tools. {{ className: 'lead' }}
+
+<div className="not-prose">
+  <Button href="/quickstart" variant="text" arrow="right">
+    <>Get started with Xyzen</>
+  </Button>
+</div>
+
+<Guides />
+
+<Resources />

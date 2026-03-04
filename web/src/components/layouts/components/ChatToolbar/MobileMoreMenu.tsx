@@ -16,8 +16,10 @@ import { zIndexClasses } from "@/constants/zIndex";
 import {
   isKnowledgeEnabled,
   isSandboxEnabled,
+  isSkillsAutoEnabled,
   updateKnowledgeEnabled,
   updateSandboxEnabled,
+  updateSkillsAutoEnabled,
 } from "@/core/agent/toolConfig";
 import { cn } from "@/lib/utils";
 import {
@@ -119,6 +121,24 @@ export function MobileMoreMenu({
     () => partitionSkills(allSkills, attachedSkills),
     [allSkills, attachedSkills],
   );
+
+  const skillsAuto = isSkillsAutoEnabled(agent);
+
+  const handleSkillAutoToggle = async () => {
+    if (!agent) return;
+    setSkillsError(null);
+    try {
+      const newGraphConfig = updateSkillsAutoEnabled(agent, !skillsAuto);
+      await onUpdateAgent({ ...agent, graph_config: newGraphConfig });
+      await onAgentRefresh();
+    } catch (error) {
+      const message =
+        error instanceof Error && error.message.trim()
+          ? error.message
+          : "Failed to update skills auto mode";
+      setSkillsError(message);
+    }
+  };
 
   // Get connected server IDs from agent
   const connectedServerIds = new Set(
@@ -689,16 +709,20 @@ export function MobileMoreMenu({
                           <SparklesIcon className="h-3.5 w-3.5" />
                           <span>{t("app.toolbar.skills.title", "Skills")}</span>
                         </div>
-                        {connectedSkills.length > 0 && (
+                        {(skillsAuto
+                          ? allSkills.length
+                          : connectedSkills.length) > 0 && (
                           <span className="rounded-full bg-indigo-100 px-1.5 py-0.5 text-[10px] font-medium text-indigo-600 dark:bg-indigo-900/50 dark:text-indigo-400">
-                            {connectedSkills.length}
+                            {skillsAuto
+                              ? allSkills.length
+                              : connectedSkills.length}
                           </span>
                         )}
                       </div>
                     </AccordionTrigger>
                     <AccordionContent className="pb-1">
                       <div className="ml-2 space-y-2 pl-2">
-                        <div className="px-2 py-0.5">
+                        <div className="flex items-center justify-between px-2 py-0.5">
                           <button
                             type="button"
                             className="text-[10px] text-indigo-600 hover:text-indigo-700 dark:text-indigo-400 dark:hover:text-indigo-300"
@@ -710,6 +734,33 @@ export function MobileMoreMenu({
                             )}
                           </button>
                         </div>
+                        {/* Auto toggle */}
+                        <button
+                          type="button"
+                          onClick={handleSkillAutoToggle}
+                          className={cn(
+                            "w-full flex items-center justify-between px-2 py-1.5 rounded-md transition-colors text-[11px]",
+                            "hover:bg-neutral-100 dark:hover:bg-neutral-800",
+                            skillsAuto && "bg-indigo-50 dark:bg-indigo-900/20",
+                          )}
+                        >
+                          <div className="min-w-0 text-left">
+                            <div className="font-medium text-neutral-900 dark:text-neutral-100">
+                              {t("app.toolbar.skills.auto", "Auto")}
+                            </div>
+                            <div className="text-[10px] text-neutral-500 dark:text-neutral-400">
+                              {t(
+                                "app.toolbar.skills.autoDescription",
+                                "Include all skills automatically",
+                              )}
+                            </div>
+                          </div>
+                          <div className="flex-shrink-0 ml-2">
+                            {skillsAuto && (
+                              <CheckIcon className="h-3.5 w-3.5 text-indigo-500" />
+                            )}
+                          </div>
+                        </button>
                         {skillsError && (
                           <div className="mx-2 rounded-md border border-red-200 bg-red-50 px-2 py-1.5 text-[10px] text-red-700 dark:border-red-900/50 dark:bg-red-950/30 dark:text-red-300">
                             {skillsError}
@@ -719,7 +770,39 @@ export function MobileMoreMenu({
                           <div className="px-2 py-2 text-[10px] text-neutral-500 dark:text-neutral-400">
                             {t("common.loading", "Loading...")}
                           </div>
+                        ) : skillsAuto ? (
+                          /* Auto mode: show all skills as read-only */
+                          allSkills.length > 0 ? (
+                            <div className="space-y-0.5">
+                              {allSkills.map((skill) => (
+                                <div
+                                  key={skill.id}
+                                  className="w-full flex items-center justify-between px-2 py-1.5 rounded-md bg-indigo-50 dark:bg-indigo-900/20 text-[11px]"
+                                >
+                                  <div className="min-w-0 text-left">
+                                    <div className="font-medium text-neutral-900 dark:text-neutral-100 truncate">
+                                      {skill.name}
+                                    </div>
+                                    <div className="text-[10px] text-neutral-500 dark:text-neutral-400 truncate">
+                                      {skill.description}
+                                    </div>
+                                  </div>
+                                  <div className="flex-shrink-0 ml-2">
+                                    <CheckIcon className="h-3.5 w-3.5 text-indigo-500" />
+                                  </div>
+                                </div>
+                              ))}
+                            </div>
+                          ) : (
+                            <div className="px-2 py-2 text-[10px] text-neutral-500 dark:text-neutral-400">
+                              {t(
+                                "app.toolbar.skills.empty",
+                                "No skills available. Create one to get started.",
+                              )}
+                            </div>
+                          )
                         ) : (
+                          /* Manual mode */
                           <>
                             {connectedSkills.length > 0 && (
                               <div>

@@ -113,21 +113,6 @@ class ComponentMetadataDict(TypedDict):
     tags: NotRequired[list[str]]
 
 
-class SystemAgentInfo(TypedDict):
-    """
-    Info returned by list_available_system_agents().
-
-    Contains metadata about a system agent including its key,
-    metadata, whether it can be forked, and exported components.
-    """
-
-    key: str
-    metadata: AgentMetadata
-    forkable: bool
-    components: list[ComponentMetadataDict]
-    error: NotRequired[str]
-
-
 # =============================================================================
 # Exports
 # =============================================================================
@@ -150,5 +135,4 @@ __all__ = [
     # Metadata types
     "AgentMetadata",
     "ComponentMetadataDict",
-    "SystemAgentInfo",
 ]

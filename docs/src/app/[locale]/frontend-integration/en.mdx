@@ -1,0 +1,119 @@
+export const metadata = {
+  title: 'Frontend Integration',
+  description:
+    'How the Xyzen React frontend works: state management, streaming, and customization.',
+}
+
+export const sections = [
+  { title: 'Architecture', id: 'architecture' },
+  { title: 'State Management', id: 'state-management' },
+  { title: 'Streaming Handlers', id: 'streaming-handlers' },
+  { title: 'Internationalization', id: 'internationalization' },
+  { title: 'Theming', id: 'theming' },
+]
+
+# Frontend Integration
+
+The Xyzen web frontend is a React application built with Next.js, Zustand for state management, and TanStack Query for server state. {{ className: 'lead' }}
+
+## Architecture
+
+The frontend follows a layered architecture:
+
+```
+Components (UI only)
+    ↓
+Hooks (useXyzenChat, useChannelSelectors, ...)
+    ↓
+Core (business logic: chat handlers, auth, session)
+    ↓
+Service (HTTP/SSE clients) + Store (Zustand)
+```
+
+- **Components** render UI and dispatch actions via hooks
+- **Hooks** provide fine-grained selectors and actions
+- **Core** contains business logic (streaming handlers, auth flow, channel status)
+- **Service** handles HTTP requests and SSE connections
+- **Store** manages client-side state with Zustand + Immer
+
+## State Management
+
+State is managed with **Zustand** using the slices pattern:
+
+| Slice | Purpose |
+|---|---|
+| `chatSlice` | Chat state: channels, messages, streaming, connections |
+| `uiSlice` | UI state: panels, modals, layout preferences |
+| `agentSlice` | Agent management: list, selection, configuration |
+
+### Selector Pattern
+
+Always use selectors to avoid unnecessary re-renders:
+
+```typescript
+// Good — only re-renders when isLogged changes
+const isLogged = useXyzen((s) => s.isLogged)
+
+// Good — useShallow for object destructuring
+const { user, token } = useXyzen(
+  useShallow((s) => ({ user: s.user, token: s.token }))
+)
+
+// Bad — subscribes to ALL state changes
+const store = useXyzen()
+```
+
+## Streaming Handlers
+
+Streaming events from SSE are processed by specialized handlers:
+
+```
+SSE Event → sseClient → connectionActions → handler → Zustand store
+```
+
+### Chunk Buffering
+
+`streaming_chunk` and `thinking_chunk` events are **buffered** and flushed at `requestAnimationFrame` cadence (~60fps) rather than updating state on every event. This prevents UI jank during fast streaming.
+
+Non-chunk events (like `node_start`, `agent_end`) flush any pending chunks synchronously before processing.
+
+### Handler Types
+
+| Handler | Events |
+|---|---|
+| `streamingHandlers` | `streaming_start`, `streaming_chunk`, `streaming_end`, `thinking_chunk` |
+| `controlHandlers` | `agent_start`, `agent_end`, `node_start`, `node_end` |
+| `agentHandlers` | Agent execution state management |
+| `questionHandlers` | `ask_user_question` prompts and responses |
+
+## Internationalization
+
+The frontend supports English (`en`), Chinese (`zh`), and Japanese (`ja`). Translations are organized by module:
+
+| File | Scope |
+|---|---|
+| `app.json` | Navigation, toolbar, input |
+| `common.json` | Shared actions (OK, Cancel) |
+| `settings.json` | Settings modal |
+| `agents.json` | Agent forms |
+| `knowledge.json` | Knowledge management |
+| `mcp.json` | MCP server management |
+| `marketplace.json` | Marketplace |
+
+Usage in components:
+
+```typescript
+const { t } = useTranslation()
+<Button>{t('common.ok')}</Button>
+```
+
+## Theming
+
+Xyzen supports light and dark themes via `next-themes`. The design system uses Tailwind CSS with a consistent token palette:
+
+- **Surfaces** use semi-transparent backgrounds (`bg-neutral-100/60`, `dark:bg-white/[0.04]`)
+- **Borders** are subtle (`border-neutral-200/60`, `dark:border-neutral-800/60`)
+- **Text** uses `text-[13px]` for body, `text-xs` for hints
+- **Radius** is `rounded-lg` for cards, `rounded-sm` for inputs
+
+All scrollable containers use the `custom-scrollbar` class for consistent cross-browser styling.

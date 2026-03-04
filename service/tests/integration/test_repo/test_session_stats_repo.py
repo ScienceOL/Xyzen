@@ -261,6 +261,7 @@ class TestSessionStatsRepository:
         await self._create_session(db_session, user_id, agent_id=agent_id)
 
         result = await stats_repo.get_yesterday_summary_for_agent(agent_id, user_id)
+        assert result.topic_count == 0
         assert result.message_count == 0
         assert result.last_message_content is None
 
@@ -282,6 +283,7 @@ class TestSessionStatsRepository:
         )
 
         result = await stats_repo.get_yesterday_summary_for_agent(agent_id, user_id)
+        assert result.topic_count == 1
         assert result.message_count == 2
         assert result.last_message_content == "answer text"
 

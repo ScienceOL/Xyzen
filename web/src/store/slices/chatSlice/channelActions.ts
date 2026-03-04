@@ -6,7 +6,7 @@ import { sessionService, type SessionCreate } from "@/service/sessionService";
 import { topicService } from "@/service/topicService";
 import i18n from "i18next";
 import { providerCore } from "@/core/provider";
-import xyzenService from "@/service/xyzenService";
+import sseClient from "@/service/sseClient";
 import { cleanupTopicResources, pendingChannelOps } from "./helpers";
 import type {
   ChatChannel,
@@ -259,10 +259,10 @@ export function createChannelActions(
         // Channel is confirmed to exist — NOW set it as active.
         set({ activeChatChannel: topicId });
 
-        // If the topic already has a live WS connection, the in-memory state is
+        // If the topic already has a live SSE connection, the in-memory state is
         // authoritative (events are flowing in real-time). Skip reconciliation
         // to avoid replacing streaming content with stale DB data.
-        const hasLiveWs = xyzenService.hasConnection(topicId);
+        const hasLiveWs = sseClient.hasConnection(topicId);
 
         if (!hasLiveWs) {
           const hasUnresolvedRuntimeState = channel.messages.some((m) =>

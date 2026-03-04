@@ -18,8 +18,6 @@
   "deleteBlockedMessage": "このエージェントは Agent Market に公開されています。先にマーケットから非公開（下架）にしてから削除してください。",
   "createDescription": "カスタムプロンプトとツールを使用して新しいAIエージェントを作成します。",
   "updateDescription": "エージェントの詳細を更新します。",
-  "systemDescription": "特殊な実行機能を持つ事前設定されたシステムエージェントを選択します。",
-  "noSystemAgents": "利用可能なシステムエージェントがありません",
   "tabs": {
     "custom": "カスタムエージェント",
     "system": "システムエージェント"
@@ -45,7 +43,6 @@
       "emptyDescription": "利用可能なMCPサーバーがありません",
       "createButton": "MCPサーバーを作成"
     },
-    "selectSystemAgent": "システムエージェントを選択 *",
     "customName": "カスタム名（オプション）"
   },
   "actions": {
@@ -216,5 +213,9 @@
       "orphanNoOutgoing": "'{{name}}' に出力エッジがありません",
       "noPathToEnd": "ENDに到達するエッジがありません — グラフが終了しない可能性があります"
     }
+  },
+  "spatialNode": {
+    "yesterdaySummary": "昨日 {{topicCount}} 件のトピック、{{messageCount}} 件のメッセージ",
+    "yesterdayNoActivity": "昨日はチャットがありませんでした 😢"
   }
 }

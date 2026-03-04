@@ -98,6 +98,7 @@ type GraphConfigV3 = {
     }>;
     [key: string]: unknown;
   };
+  skills_auto?: boolean;
   [key: string]: unknown;
 };
 
@@ -486,6 +487,30 @@ export function updateSandboxEnabled(
   }
 
   return withLlmToolFilter(currentConfig, newFilter);
+}
+
+/**
+ * Check if skills auto mode is enabled.
+ * When enabled, all user-visible skills are included automatically.
+ * Default: true (new agents get auto mode).
+ */
+export function isSkillsAutoEnabled(agent: Agent | null): boolean {
+  if (!agent?.graph_config) return true;
+  const config = agent.graph_config as GraphConfigV3;
+  return config.skills_auto !== false;
+}
+
+/**
+ * Create updated graph_config with skills_auto toggled.
+ */
+export function updateSkillsAutoEnabled(
+  agent: Agent,
+  enabled: boolean,
+): Record<string, unknown> {
+  const currentConfig = (agent.graph_config ?? {}) as GraphConfigV3;
+  const cloned = structuredClone(currentConfig) as Record<string, unknown>;
+  cloned.skills_auto = enabled;
+  return cloned;
 }
 
 /**

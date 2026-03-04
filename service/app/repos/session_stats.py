@@ -294,9 +294,12 @@ class SessionStatsRepository:
         yesterday_start = datetime.combine(yesterday, datetime.min.time()).replace(tzinfo=timezone.utc)
         yesterday_end = datetime.combine(today, datetime.min.time()).replace(tzinfo=timezone.utc)
 
-        # Count messages from yesterday
+        # Count messages and distinct topics from yesterday
         count_stmt = (
-            select(func.count(Message.id))  # type: ignore[arg-type]
+            select(
+                func.count(Message.id),  # type: ignore[arg-type]
+                func.count(func.distinct(col(Message.topic_id))),
+            )
             .select_from(Message)
             .join(Topic, col(Message.topic_id) == col(Topic.id))
             .join(Session, col(Topic.session_id) == col(Session.id))
@@ -310,7 +313,9 @@ class SessionStatsRepository:
             )
         )
         count_result = await self.db.exec(count_stmt)
-        message_count = count_result.one_or_none() or 0
+        row = count_result.one_or_none()
+        message_count = row[0] if row else 0
+        topic_count = row[1] if row else 0
 
         # Get the last assistant message from yesterday (if any)
         last_message_stmt = (
@@ -341,6 +346,7 @@ class SessionStatsRepository:
 
         return YesterdaySummary(
             agent_id=agent_id,
+            topic_count=int(topic_count),
             message_count=int(message_count),
             last_message_content=last_content,
         )

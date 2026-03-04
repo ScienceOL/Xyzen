@@ -202,6 +202,7 @@ function InnerWorkspace() {
       );
       const agentYesterdaySummary = yesterdaySummary[agent.id]
         ? {
+            topicCount: yesterdaySummary[agent.id].topic_count ?? 0,
             messageCount: yesterdaySummary[agent.id].message_count,
             lastMessagePreview: yesterdaySummary[agent.id].last_message_content,
           }
@@ -352,6 +353,7 @@ function InnerWorkspace() {
         );
         const agentYesterdaySummary = yesterdaySummary[agent.id]
           ? {
+              topicCount: yesterdaySummary[agent.id].topic_count ?? 0,
               messageCount: yesterdaySummary[agent.id].message_count,
               lastMessagePreview:
                 yesterdaySummary[agent.id].last_message_content,

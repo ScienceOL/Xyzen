@@ -1,12 +1,8 @@
 import { DEFAULT_BACKEND_URL, DEFAULT_LAYOUT_STYLE } from "@/configs";
 import { DEFAULT_WIDTH } from "@/configs/common";
-import xyzenService from "@/service/xyzenService";
 import type { StateCreator } from "zustand";
 import type { Theme, UiSettingType, XyzenState } from "../../types";
 import { type InputPosition, type LayoutStyle } from "./types";
-
-// Ensure xyzen service is aware of the default backend on startup
-xyzenService.setBackendUrl(DEFAULT_BACKEND_URL);
 
 export type ActivityPanel =
   | "chat"
@@ -49,6 +45,8 @@ export interface UiSlice {
   pendingFocusAgentId: string | null;
   // Message highlight (scroll-to + flash)
   highlightMessageId: string | null;
+  // Dock minimized (e.g. immersive sandbox workspace)
+  dockMinimized: boolean;
 
   // Spatial open tabs per agent (agentId → ordered tab list)
   openTabsByAgent: Record<string, { id: string; name: string }[]>;
@@ -95,6 +93,7 @@ export interface UiSlice {
   closeTab: (agentId: string, topicId: string) => void;
   setOpenTabs: (agentId: string, tabs: { id: string; name: string }[]) => void;
   renameTab: (topicId: string, name: string) => void;
+  setDockMinimized: (minimized: boolean) => void;
 }
 
 export const createUiSlice: StateCreator<
@@ -130,6 +129,7 @@ export const createUiSlice: StateCreator<
   mobilePage: 0,
   pendingFocusAgentId: null,
   highlightMessageId: null,
+  dockMinimized: false,
   openTabsByAgent: {},
 
   toggleXyzen: () =>
@@ -161,7 +161,6 @@ export const createUiSlice: StateCreator<
   },
   setBackendUrl: (url) => {
     set({ backendUrl: url });
-    xyzenService.setBackendUrl(url);
   },
   openMcpListModal: () => set({ isMcpListModalOpen: true }),
   closeMcpListModal: () => set({ isMcpListModalOpen: false }),
@@ -218,6 +217,7 @@ export const createUiSlice: StateCreator<
     set((state) => {
       state.openTabsByAgent[agentId] = tabs;
     }),
+  setDockMinimized: (minimized) => set({ dockMinimized: minimized }),
   renameTab: (topicId, name) =>
     set((state) => {
       for (const tabs of Object.values(state.openTabsByAgent)) {

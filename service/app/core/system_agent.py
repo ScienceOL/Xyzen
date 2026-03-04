@@ -1,18 +1,15 @@
 """
 System Agent Manager
 
-Manages system-wide default agents that are available to all users.
-Creates and maintains the Chat Agent with distinct personalities.
+Manages per-user default agents (e.g. "小二") and the root CEO agent.
 """
 
 import logging
 from typing import TypedDict
-from uuid import UUID
 
 from sqlmodel.ext.asyncio.session import AsyncSession
 
-from app.models.agent import Agent, AgentCreate, AgentScope, AgentUpdate, ConfigVisibility
-from app.models.provider import Provider
+from app.models.agent import Agent, AgentCreate, AgentScope, ConfigVisibility
 from app.repos.agent import AgentRepository
 from app.repos.provider import ProviderRepository
 from app.repos.root_agent import RootAgentRepository
@@ -30,7 +27,7 @@ class AgentConfig(TypedDict):
     tags: list[str]
 
 
-# System agent configurations
+# Default agent configurations — each user gets a USER-scoped copy tagged "default_{key}"
 SYSTEM_AGENTS: dict[str, AgentConfig] = {
     "chat": {
         "name": "小二",
@@ -54,10 +51,7 @@ SYSTEM_AGENTS: dict[str, AgentConfig] = {
 
 class SystemAgentManager:
     """
-    Manager for system-wide default agents.
-
-    Handles creation, updates, and maintenance of system agents
-    that are available to all users.
+    Manager for per-user default agents and the root (CEO) agent.
     """
 
     def __init__(self, db: AsyncSession):
@@ -105,14 +99,6 @@ class SystemAgentManager:
                 logger.info(
                     f"Agent '{config['name']}' exists for user {user_id} but missing tag {tag}. Skipping creation."
                 )
-
-                # Optionally add tag here if we want to "repair" it
-                # current_tags = existing_by_name.tags or []
-                # if tag not in current_tags:
-                #     existing_by_name.tags = current_tags + [tag]
-                #     self.db.add(existing_by_name)
-                #     await self.db.flush()
-
                 continue
 
             # Add a tag to identify which default agent this is
@@ -177,167 +163,6 @@ class SystemAgentManager:
         await self.root_agent_repo.create(user_id=user_id, agent_id=agent.id)
         logger.info(f"Created root (CEO) agent for user {user_id}: {agent.id}")
         return agent
-
-    async def ensure_system_agents(self) -> dict[str, Agent]:
-        """
-        Create or update system agents (legacy support, kept for main.py).
-        """
-        logger.info("Ensuring system reference agents exist...")
-
-        system_provider = await self.provider_repo.get_system_provider()
-        created_agents: dict[str, Agent] = {}
-
-        for agent_key, agent_config in SYSTEM_AGENTS.items():
-            try:
-                # Check if agent already exists by name and scope
-                existing = await self.agent_repo.get_agent_by_name_and_scope(agent_config["name"], AgentScope.SYSTEM)
-
-                if existing:
-                    agent = await self._update_system_agent(existing, agent_config, system_provider)
-                else:
-                    logger.info(f"Creating new system reference agent: {agent_config['name']}")
-                    mcp_server_ids = await self._get_default_mcp_servers(agent_config["personality"])
-                    agent_data = AgentCreate(
-                        scope=AgentScope.SYSTEM,
-                        name=agent_config["name"],
-                        description=agent_config["description"],
-                        prompt=agent_config["prompt"],
-                        avatar=agent_config.get("avatar"),
-                        tags=agent_config.get("tags"),
-                        provider_id=system_provider.id if system_provider else None,
-                        mcp_server_ids=mcp_server_ids,
-                        require_tool_confirmation=False,
-                        model=None,
-                        temperature=0.7,
-                    )
-                    agent = await self.agent_repo.create_agent(agent_data, None)
-
-                created_agents[agent_key] = agent
-            except Exception as e:
-                logger.error(f"Failed to handle system agent '{agent_key}': {e}")
-                continue
-
-        return created_agents
-
-    async def _update_system_agent(
-        self, existing: Agent, agent_config: AgentConfig, system_provider: "Provider | None"
-    ) -> Agent:
-        """
-        Update existing system agent using repository.
-        """
-        # Prepare update data
-        update_data = AgentUpdate(
-            name=agent_config["name"],
-            description=agent_config["description"],
-            prompt=agent_config["prompt"],
-            avatar=agent_config.get("avatar"),
-            tags=agent_config.get("tags"),
-            provider_id=system_provider.id if system_provider else None,
-        )
-
-        # Check against existing to avoid unnecessary updates logic is handled inside repo roughly,
-        # but here we can just call update. The repo update does a lot of checks, but let's just use it.
-        # Actually, let's keep the manual check to minimize DB writes if nothing changed,
-        # or just rely on repo.
-
-        # Simple check before calling repo update
-        needs_update = (
-            existing.name != agent_config["name"]
-            or existing.description != agent_config["description"]
-            or existing.prompt != agent_config["prompt"]
-            or existing.avatar != agent_config.get("avatar")
-            or existing.tags != agent_config.get("tags")
-            or existing.provider_id != (system_provider.id if system_provider else None)
-        )
-
-        if not needs_update:
-            logger.debug(f"System agent '{agent_config['name']}' is up to date")
-            return existing
-
-        logger.info(f"Updating system agent: {agent_config['name']}")
-        updated_agent = await self.agent_repo.update_agent(existing.id, update_data)
-
-        if updated_agent:
-            return updated_agent
-        return existing
-
-    async def _get_default_mcp_servers(self, agent_personality: str) -> list[UUID]:
-        """
-        Get default MCP servers for each agent personality.
-
-        Args:
-            agent_personality: Personality type ('friendly_assistant')
-
-        Returns:
-            List of MCP server UUIDs
-        """
-        # TODO: Implement MCP server assignment based on personality
-        # For now, return empty list - can be enhanced later
-
-        if agent_personality == "friendly_assistant":
-            # Chat agent: basic utility tools
-            return await self._get_basic_mcp_servers()
-
-        return []
-
-    async def _get_basic_mcp_servers(self) -> list[UUID]:
-        """
-        Get basic MCP servers for general chat assistant.
-
-        Returns:
-            List of basic MCP server UUIDs
-        """
-        # TODO: Query for basic MCP servers (file operations, web search, etc.)
-        # For now, return empty list - can be enhanced with actual MCP servers
-        return []
-
-    async def get_system_agent(self, agent_type: str) -> Agent | None:
-        """
-        Get a specific system agent by type.
-
-        Args:
-            agent_type: 'chat'
-
-        Returns:
-            Agent instance or None if not found
-        """
-        if agent_type not in SYSTEM_AGENTS:
-            return None
-
-        agent_name = SYSTEM_AGENTS[agent_type]["name"]
-        return await self.agent_repo.get_agent_by_name_and_scope(agent_name, AgentScope.SYSTEM)
-
-    async def get_all_system_agents(self) -> list[Agent]:
-        """
-        Get all system agents.
-
-        Returns:
-            List of all system Agent instances
-        """
-        return list(await self.agent_repo.get_system_agents())
-
-    async def is_system_agent(self, agent_id: UUID) -> bool:
-        """
-        Check if an agent ID belongs to a system agent.
-
-        Args:
-            agent_id: Agent UUID to check
-
-        Returns:
-            True if it's a system agent, False otherwise
-        """
-        agent = await self.agent_repo.get_agent_by_id(agent_id)
-        return agent is not None and agent.scope == AgentScope.SYSTEM
-
-    async def get_system_agent_ids(self) -> list[UUID]:
-        """
-        Get all system agent IDs.
-
-        Returns:
-            List of system agent UUIDs
-        """
-        agents = await self.agent_repo.get_system_agents()
-        return [agent.id for agent in agents]
 
 
 # Export constants for use in other modules

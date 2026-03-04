@@ -7,9 +7,7 @@ import { useTranslation } from "react-i18next";
 import { KnowledgeTab } from "./KnowledgeTab";
 import { RunnerConnectionZone } from "./RunnerConnectionZone";
 import { SandboxTab } from "./SandboxTab";
-import { ToolsTab } from "./ToolsTab";
-
-const TABS = ["knowledge", "tools", "sandbox", "runner"] as const;
+const TABS = ["knowledge", "sandbox", "runner"] as const;
 const COLLAPSED_WIDTH = 10;
 const EXPANDED_WIDTH = 384;
 
@@ -65,7 +63,6 @@ function CapsuleBody({ activeTab }: { activeTab: string }) {
   return (
     <div className="flex-1 flex flex-col overflow-hidden">
       {activeTab === "knowledge" && <KnowledgeTab />}
-      {activeTab === "tools" && <ToolsTab />}
       {activeTab === "sandbox" && <SandboxTab />}
       {activeTab === "runner" && <RunnerConnectionZone />}
     </div>
