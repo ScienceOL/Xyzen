@@ -11,29 +11,23 @@ import {
 } from '@/components/MobileNavigation'
 import { MobileSearch, Search } from '@/components/Search'
 import { ThemeToggle } from '@/components/ThemeToggle'
-import { MEDIA_URL, PrimarySite } from '@/config'
+import { PrimarySite } from '@/config'
 // Import icons
 import { Menu } from '@headlessui/react'
 import clsx from 'clsx'
 import { motion, useScroll, useTransform } from 'framer-motion'
 import Link from 'next/link'
-import { forwardRef, useEffect } from 'react'
+import { forwardRef } from 'react'
 import LangSwitch from './LangSwitch'
-import Navbar from './Navbar'
 
 export const Header = forwardRef<
   React.ElementRef<'div'>,
   { className?: string; navigation: NavGroup[]; dropdownMenuPosition?: string }
 >(function Header({ className, navigation, dropdownMenuPosition }, ref) {
-  const { isLogged, userInfo, checkIsLogged } = useAuthServiceContext()
+  const { isLogged, userInfo, initiateLogin } = useAuthServiceContext()
 
   let { isOpen: mobileNavIsOpen } = useMobileNavigationStore()
   let isInsideMobileNavigation = useIsInsideMobileNavigation()
-
-  useEffect(() => {
-    checkIsLogged()
-    // eslint-disable-next-line react-hooks/exhaustive-deps
-  }, [])
 
   let { scrollY } = useScroll()
   let bgOpacityLight = useTransform(scrollY, [0, 72], [0.5, 0.9])
@@ -73,9 +67,7 @@ export const Header = forwardRef<
         </Link>
       </div>
       <div className="flex items-center gap-5">
-        <Navbar />
-        <div className="hidden md:block md:h-5 md:w-px md:bg-zinc-900/10 md:dark:bg-white/15" />
-        <div className="flex gap-4">
+        <div className="flex items-center gap-4">
           <MobileSearch navigation={navigation} />
           <LangSwitch />
           <ThemeToggle />
@@ -92,13 +84,13 @@ export const Header = forwardRef<
                 <span className="sr-only">Open user menu</span>
                 <img
                   className=" h-5 w-5 rounded-full"
-                  src={`${MEDIA_URL}${userInfo?.avatar}`}
+                  src={userInfo?.avatar}
                   alt="avatar"
                 />
               </Menu.Button>
             </DropdownMenu>
           ) : (
-            <Button href={`${PrimarySite}/login/`} target="_blank">
+            <Button onClick={() => initiateLogin()}>
               Sign in
             </Button>
           )}
