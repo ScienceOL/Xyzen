@@ -505,11 +505,34 @@ export function reconstructAgentExecutionFromMetadata(
 ): AgentExecutionState | undefined {
   if (!agent_metadata) return undefined;
 
-  // Check for node_outputs in the metadata (stored by graph agents)
-  const nodeOutputs = agent_metadata.node_outputs as
-    | Record<string, unknown>
-    | undefined;
-  if (!nodeOutputs || typeof nodeOutputs !== "object") return undefined;
+  // node_outputs maps node_id -> output content (may be empty for older records)
+  const nodeOutputs =
+    agent_metadata.node_outputs &&
+    typeof agent_metadata.node_outputs === "object"
+      ? (agent_metadata.node_outputs as Record<string, unknown>)
+      : {};
+
+  // node_order tracks execution sequence (primary source for phase list)
+  const nodeOrder = (agent_metadata.node_order as string[] | undefined) || [];
+
+  // Need at least node_order or node_outputs to reconstruct phases
+  if (nodeOrder.length === 0 && Object.keys(nodeOutputs).length === 0) {
+    // No phase data — check for cancelled status to preserve abort indicator
+    const status = (agent_metadata.status as string) || "completed";
+    if (status === "cancelled") {
+      return {
+        agentId: (agent_metadata.agent_id as string) || "unknown",
+        agentName: (agent_metadata.agent_name as string) || "Agent",
+        agentType: (agent_metadata.agent_type as string) || "react",
+        executionId: (agent_metadata.execution_id as string) || "unknown",
+        status: "cancelled",
+        startedAt: Date.now(),
+        phases: [],
+        subagents: [],
+      };
+    }
+    return undefined;
+  }
 
   const phases: PhaseExecution[] = [];
 
@@ -557,78 +580,69 @@ export function reconstructAgentExecutionFromMetadata(
     }
   }
 
-  // Use preserved execution order from metadata, or fallback to object keys order
-  const nodeOrder =
-    (agent_metadata.node_order as string[] | undefined) ||
-    Object.keys(nodeOutputs);
+  /** Convert backend tool calls to frontend format for a given node */
+  const convertToolCalls = (nodeId: string) =>
+    toolCallsMap?.[nodeId]?.map((tc) => ({
+      id: tc.id,
+      name: tc.name,
+      arguments: tc.arguments || {},
+      status: (tc.status || "completed") as ToolCall["status"],
+      result: tc.result ? normalizeToolResult(tc.result) : undefined,
+      error: tc.error,
+      timestamp: new Date(tc.timestamp).toISOString(),
+      duration_ms: tc.duration_ms,
+    }));
 
-  for (const nodeId of nodeOrder) {
-    if (nodeId in nodeOutputs) {
-      const output = nodeOutputs[nodeId];
-      const content = extractNodeContent(output);
+  // Build phases from node_order (primary) + any extra nodes in node_outputs
+  const processedNodes = new Set<string>();
 
-      // Convert tool calls from backend format to frontend format
-      const nodeToolCalls = toolCallsMap?.[nodeId]?.map((tc) => ({
-        id: tc.id,
-        name: tc.name,
-        arguments: tc.arguments || {},
-        status: (tc.status || "completed") as ToolCall["status"],
-        result: tc.result ? normalizeToolResult(tc.result) : undefined,
-        error: tc.error,
-        timestamp: new Date(tc.timestamp).toISOString(),
-        duration_ms: tc.duration_ms,
-      }));
+  // Use nodeOrder first (preserves execution sequence)
+  const effectiveOrder =
+    nodeOrder.length > 0 ? nodeOrder : Object.keys(nodeOutputs);
 
-      phases.push({
-        id: nodeId,
-        name: getNodeDisplayName(nodeId, nodeNames),
-        componentKey: componentKeyMap.get(nodeId), // Restore componentKey from timeline
-        status: "completed",
-        nodes: [],
-        outputSummary: content ? truncate(content, 200) : undefined,
-        // Store full content for expandable view (empty string if no content)
-        streamedContent: content || "",
-        // Restore tool calls for this phase
-        toolCalls: nodeToolCalls,
-      });
-    }
+  for (const nodeId of effectiveOrder) {
+    if (processedNodes.has(nodeId)) continue;
+    processedNodes.add(nodeId);
+
+    const output = nodeOutputs[nodeId];
+    // Content may be empty if node_outputs wasn't stored — the message content
+    // will fill in via deferredContent in MessageContent for simple agents.
+    const content = output ? extractNodeContent(output) : "";
+
+    phases.push({
+      id: nodeId,
+      name: getNodeDisplayName(nodeId, nodeNames),
+      componentKey: componentKeyMap.get(nodeId),
+      status: "completed",
+      nodes: [],
+      outputSummary: content ? truncate(content, 200) : undefined,
+      streamedContent: content,
+      toolCalls: convertToolCalls(nodeId),
+    });
   }
 
-  // Handle any nodes in nodeOutputs that weren't in nodeOrder (for backwards compatibility)
+  // Handle any nodes in nodeOutputs that weren't in nodeOrder (backwards compat)
   for (const nodeId of Object.keys(nodeOutputs)) {
-    if (!nodeOrder.includes(nodeId)) {
-      const output = nodeOutputs[nodeId];
-      const content = extractNodeContent(output);
+    if (processedNodes.has(nodeId)) continue;
+    processedNodes.add(nodeId);
 
-      // Convert tool calls from backend format to frontend format
-      const nodeToolCalls = toolCallsMap?.[nodeId]?.map((tc) => ({
-        id: tc.id,
-        name: tc.name,
-        arguments: tc.arguments || {},
-        status: (tc.status || "completed") as ToolCall["status"],
-        result: tc.result ? normalizeToolResult(tc.result) : undefined,
-        error: tc.error,
-        timestamp: new Date(tc.timestamp).toISOString(),
-        duration_ms: tc.duration_ms,
-      }));
+    const output = nodeOutputs[nodeId];
+    const content = output ? extractNodeContent(output) : "";
 
-      phases.push({
-        id: nodeId,
-        name: getNodeDisplayName(nodeId, nodeNames),
-        componentKey: componentKeyMap.get(nodeId), // Restore componentKey from timeline
-        status: "completed",
-        nodes: [],
-        outputSummary: content ? truncate(content, 200) : undefined,
-        streamedContent: content || "",
-        // Restore tool calls for this phase
-        toolCalls: nodeToolCalls,
-      });
-    }
+    phases.push({
+      id: nodeId,
+      name: getNodeDisplayName(nodeId, nodeNames),
+      componentKey: componentKeyMap.get(nodeId),
+      status: "completed",
+      nodes: [],
+      outputSummary: content ? truncate(content, 200) : undefined,
+      streamedContent: content,
+      toolCalls: convertToolCalls(nodeId),
+    });
   }
 
   if (phases.length === 0) {
     // Even with no phases, create an execution state for cancelled status
-    // This allows the abort indicator to show on refresh
     const status = (agent_metadata.status as string) || "completed";
     if (status === "cancelled") {
       return {

@@ -338,6 +338,11 @@ class LangGraphTracer:
         if resolved_component_key:
             event_data["component_key"] = resolved_component_key
 
+        # Include node output for DB persistence (stripped before SSE publish
+        # by the event handler to avoid sending large payloads to the frontend).
+        if output is not None:
+            event_data["output"] = output
+
         return cast(
             StreamingEvent,
             {

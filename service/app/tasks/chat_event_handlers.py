@@ -136,9 +136,13 @@ def extract_content_text(content: Any) -> str:
 
 
 async def send_message_saved(ctx: ChatTaskContext) -> None:
-    """Publish MESSAGE_SAVED event with stream_id, db_id, created_at."""
+    """Publish MESSAGE_SAVED event with stream_id, db_id, created_at.
+
+    Also sets a generation cursor so that future first-connect SSE clients
+    skip past completed events (the DB already has these messages).
+    """
     if ctx.ai_message_obj and ctx.active_stream_id:
-        await ctx.publisher.publish(
+        entry_id = await ctx.publisher.publish(
             json.dumps(
                 {
                     "type": ChatEventType.MESSAGE_SAVED,
@@ -152,6 +156,8 @@ async def send_message_saved(ctx: ChatTaskContext) -> None:
                 }
             )
         )
+        if entry_id:
+            await ctx.publisher.set_generation_cursor(entry_id)
 
 
 # ---------------------------------------------------------------------------
@@ -296,7 +302,10 @@ async def handle_streaming_end(ctx: ChatTaskContext, stream_event: dict[str, Any
         except Exception as e:
             logger.error(f"Failed to save AgentRun: {e}")
     elif agent_state_data and ctx.ai_message_obj and ctx.agent_run_id:
-        # AgentRun was already created via AGENT_START, update with final node_outputs
+        # AgentRun was already created via AGENT_START, update with final node_outputs.
+        # NOTE: Do NOT pass timeline here — timeline entries are already appended
+        # incrementally by handle_node_start/end via append_timeline_entry.
+        # Passing the tracer's full timeline would create duplicate entries.
         try:
             agent_run_repo = AgentRunRepository(ctx.get_db())
             now = time.time()
@@ -306,7 +315,6 @@ async def handle_streaming_end(ctx: ChatTaskContext, stream_event: dict[str, Any
                 ended_at=now,
                 duration_ms=int((now - (ctx.agent_run_start_time or now)) * 1000),
                 final_node_data={
-                    "timeline": agent_state_data.get("timeline", []),
                     "node_outputs": agent_state_data.get("node_outputs", {}),
                     "node_order": agent_state_data.get("node_order", []),
                     "node_names": agent_state_data.get("node_names", {}),
@@ -730,11 +738,21 @@ async def handle_node_end(ctx: ChatTaskContext, stream_event: dict[str, Any]) ->
             component_key = node_data.get("component_key")
             if component_key:
                 timeline_entry["metadata"] = {"component_key": component_key}
+            # Include node output for DB persistence (enables agentExecution
+            # reconstruction after page refresh). append_timeline_entry stores
+            # this in node_data.node_outputs automatically.
+            if "output" in node_data:
+                timeline_entry["output"] = node_data["output"]
             await agent_run_repo.append_timeline_entry(ctx.agent_run_id, timeline_entry)
         except Exception as e:
             logger.warning(f"Failed to append timeline entry: {e}")
 
-    await ctx.publisher.publish(json.dumps(stream_event))
+    # Strip output before publishing to SSE (avoid sending large payloads)
+    publish_event = stream_event
+    if "output" in stream_event.get("data", {}):
+        publish_data = {k: v for k, v in stream_event["data"].items() if k != "output"}
+        publish_event = {**stream_event, "data": publish_data}
+    await ctx.publisher.publish(json.dumps(publish_event))
 
 
 async def handle_ask_user_question(ctx: ChatTaskContext, stream_event: dict[str, Any]) -> None:
