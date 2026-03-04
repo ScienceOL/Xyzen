@@ -1,0 +1,285 @@
+
+# ❓ Xyzen 常见问题 - FAQ
+
+<Note>
+如果你在使用 Xyzen 过程中遇到问题，欢迎查阅以下常见问题解答。
+如果没有找到答案，可以通过 `GitHub Issues` 或 `Discussions` 寻求帮助。
+</Note>
+
+## 基础问题
+
+### Q: Xyzen 是什么？
+
+**A:** `Xyzen（玄藏）`是一个开源的、轻量级的 AI 聊天和智能体框架，
+支持通过 `NPM Package` 方式快速集成到现有的 React 应用中，而无需整站部署。
+Xyzen 专注于核心的 LLM 业务逻辑，提供可高度定制化的解决方案。
+
+### Q: Xyzen 与其他聊天应用有什么区别？
+
+**A:** Xyzen 的核心优势：
+
+1. **无需整站部署** - 以 NPM Package 形式集成，直接注入到你的现有 React 应用
+2. **风格高度定制** - 可基于你的网站风格进行定制，不强制使用预设 UI
+3. **专注业务逻辑** - 不像其他方案需要重新架构整个网站，Xyzen 只处理 AI 相关的核心功能
+4. **轻量级架构** - 最小化依赖，快速集成
+5. **开源免费** - 基于 GPLv3 许可，完全开源
+
+### Q: Xyzen 免费吗？
+
+**A:** 是的，Xyzen 完全免费且开源，基于 `GPLv3` 许可证。
+你可以自由地在遵循许可证条款的前提下使用、修改和分发。
+
+## 集成与使用
+
+### Q: 如何在我的 React 项目中使用 Xyzen？
+
+**A:** 非常简单，只需三步：
+
+1. **安装 NPM 包：**
+```bash
+yarn add @sciol/xyzen@latest
+```
+
+2. **在你的应用中导入并使用：**
+```tsx
+import { Xyzen, useXyzen } from '@sciol/xyzen'
+
+function App() {
+  const [isXyzenOpen, panelWidth] = useXyzen()
+  return (
+    <main>
+      <div style={{
+        marginRight: isXyzenOpen ? panelWidth : 0,
+      }}>
+        {children}
+      </div>
+      <Xyzen />
+    </main>
+  )
+}
+```
+
+3. **配置 AI 服务商** - 连接你选择的 LLM 服务（OpenAI、阿里云、百度等）
+
+### Q: Xyzen 支持哪些 AI 服务商？
+
+**A:** Xyzen 支持多个主流 AI 服务商，包括：
+
+- **OpenAI** - GPT-4, GPT-4o 等最新模型
+- **Anthropic Claude** - 高级推理能力
+- **阿里云通义** - 国内优质服务
+- **百度千帆** - 文心大模型系列
+- **智谱 GLM** - 国内高性能模型
+- **本地 LLM** - Ollama、LLaMA 等
+
+你可以灵活配置多个服务商，系统会自动进行智能路由。
+
+### Q: 可以自定义 Xyzen 的 UI 样式吗？
+
+**A:** 完全可以。Xyzen 支持高度定制化：
+
+- 修改配色主题
+- 自定义组件样式
+- 调整布局和尺寸
+- 集成你的设计系统
+- 支持深色/浅色模式
+
+你可以通过 `CSS 变量`或 `API 配置`来实现这些定制。
+
+## 功能特性
+
+### Q: 什么是 MCP（Model Context Protocol）？
+
+**A:** **MCP 是模型上下文协议（Model Context Protocol）**，
+Xyzen 支持通过一键部署创建 MCP 服务器，实现以下功能：
+
+- **统一模型管理** - 在一个地方管理多个 AI 模型
+- **智能路由** - 根据任务特性自动选择最优模型
+- **灵活集成** - 轻松连接各种 AI 服务商
+- **动态扩展** - 快速添加新的 AI 能力
+
+例如，你可以设置同一个问题在不同场景下使用不同的模型：代码生成用 GPT-4、文本总结用国内服务等。
+
+
+### Q: 能否离线使用 Xyzen？
+
+**A:** 可以的，Xyzen 支持本地 LLM：
+
+1. **部署本地模型** - 使用 `Ollama`、`LLaMA` 等开源模型
+2. **完全离线运行** - 数据不发送到任何云服务
+3. **隐私保护** - 所有对话和数据都在本地存储
+4. **性能权衡** - 速度可能比云服务慢，但完全隐私
+
+## 部署与架构
+
+### Q: Xyzen 的架构是怎样的？
+
+**A:** Xyzen 采用现代化架构：
+
+**前端：**
+- `React` + `TypeScript`
+- 响应式设计，支持移动端
+- 渐进式 Web 应用 (PWA)
+
+**后端：**
+- Python 3.13+
+- 异步处理，高性能
+- RESTful API 设计
+
+**基础设施：**
+- PostgreSQL - 数据存储
+- Mosquitto - 消息队列
+- Casdoor - 身份认证
+- Docker - 容器化部署
+
+### Q: 如何部署 Xyzen？
+
+**A:** Xyzen 提供两种部署方式：
+
+首先克隆 Xyzen 仓库到本地：
+
+```bash
+git clone https://github.com/sciol/xyzen.git
+cd xyzen
+yarn install
+```
+
+**1. 快速容器化部署（推荐）**
+```bash
+./launch/dev.sh
+```
+一条命令启动完整的开发环境，包括所有依赖服务。
+
+**2. 本地开发部署**
+```bash
+# 后端
+cd service
+uv sync --dev
+uv run python -m app.main
+
+# 前端
+cd web
+yarn install
+yarn dev
+```
+
+**3. 生产部署**
+- 使用 Docker Compose 编排
+- 配置 PostgreSQL、Mosquitto、Casdoor
+- 配置环境变量
+- 使用 Nginx/Traefik 反向代理
+
+### Q: 需要什么系统要求？
+
+**A:**
+
+**容器化开发（推荐）：**
+- Docker 和 Docker Compose
+- 4GB+ RAM
+- 10GB+ 磁盘空间
+
+**本地开发：**
+- Python 3.13+
+- Node.js 18+
+- Yarn 或 npm
+- PostgreSQL（可选，可用 Docker 版本）
+
+**生产环境：**
+- 服务器或 VPS
+- 2GB+ RAM（最小）
+- 20GB+ 磁盘空间
+
+## 开发与贡献
+
+### Q: 如何参与 Xyzen 的开发？
+
+**A:** 欢迎贡献！参与步骤：
+
+1. **Fork 仓库** - 从 GitHub fork Xyzen
+2. **创建分支** - 基于 `main` 创建特性分支
+3. **做出改动** - 编写代码和测试
+4. **提交测试** - 确保测试通过：`uv run pytest`
+5. **代码检查** - 运行质量检查：`uv run pre-commit run --all-files`
+6. **提交 PR** - 向主仓库提交 Pull Request
+更多详情请参考 [贡献指南](/dev)。
+
+### Q: 代码质量有什么标准吗？
+
+**A:** 是的，Xyzen 使用自动化工具确保代码质量：
+
+**Python 后端：**
+- Ruff - 代码格式化和 linting
+- Pyright - 类型检查
+
+**前端：**
+- Prettier - 代码格式化
+- ESLint - JavaScript/TypeScript linting
+- TypeScript - 类型检查
+
+**通用：**
+- 尾部空格检查
+- 文件末尾检查
+- YAML 验证
+
+所有 PR 必须通过这些检查。
+
+## 许可与法律
+
+### Q: Xyzen 的许可证是什么？
+
+**A:** Xyzen 采用 **GPLv3 许可证**。这意味着：
+
+- ✅ **自由使用** - 可以自由使用该软件
+- ✅ **自由研究** - 可以研究源代码
+- ✅ **自由修改** - 可以修改软件
+- ✅ **自由分发** - 可以分发修改后的版本
+- ⚠️ **开放条款** - 分发时必须公开源代码
+
+详细信息参考 [GPLv3 许可证](https://www.gnu.org/licenses/gpl-3.0)。
+
+### Q: 可以在商业项目中使用 Xyzen 吗？
+
+**A:** 可以，但需要遵循 GPLv3 要求：
+
+1. **开源使用** - 将 Xyzen 作为底层基础设施，公开相关代码
+2. **自有系统** - 如果你的商业系统与 Xyzen 分离，不需要开源整个项目
+3. **咨询社区** - 如有疑问，建议在项目讨论区咨询
+
+## 获取帮助
+
+### Q: 遇到问题怎么办？
+
+**A:** 有多种方式获取帮助：
+
+1. **查阅文档** - 完整的使用和开发文档
+2. **GitHub Issues** - 提交 Bug 报告或功能请求
+3. **Discussions** - 社区讨论区
+4. **示例代码** - 项目中包含丰富的示例
+
+### Q: 如何报告 Bug？
+
+**A:** 请在 GitHub 上创建 Issue，包含：
+
+1. **问题描述** - 清晰描述出现的问题
+2. **复现步骤** - 详细的复现步骤
+3. **预期行为** - 应该怎样工作
+4. **实际行为** - 实际发生了什么
+5. **环境信息** - Python 版本、Node 版本、操作系统等
+6. **错误日志** - 相关的错误栈追踪
+
+### Q: 有官方社区讨论区吗？
+
+**A:** 有的，建议参考：
+
+- **GitHub Discussions** - 项目讨论区
+- **GitHub Issues** - Bug 报告和功能请求
+- **文档** - 完整的使用指南和 API 文档
+
+---
+
+## 还有其他问题？
+
+如果你没有找到答案，欢迎：
+- 📧 提交 GitHub Issue
+- 💬 在 Discussions 中提问
+- 📖 查阅完整的开发文档

@@ -1,0 +1,477 @@
+# 贡献与开发
+
+欢迎为 Xyzen 项目做出贡献！本文档将指导你如何设置开发环境并开始贡献代码。
+
+## 开发环境设置
+
+### 1. 克隆项目
+
+```bash
+git clone https://github.com/sciol/xyzen.git
+cd xyzen
+```
+
+### 2. 安装依赖
+
+```bash
+# 安装前端依赖
+yarn install
+
+# 安装后端依赖
+cd service
+uv sync -dev
+cd ..
+```
+
+### 3. 环境配置
+
+```bash
+# 复制环境变量模板
+cp .env.example .env
+cp service/.env.example service/.env
+
+# 编辑配置文件
+# 根据你的开发环境修改相应的配置
+```
+
+## 本地启动开发模式
+
+### 前端开发服务器
+
+```bash
+# 启动前端开发服务器
+yarn dev
+```
+
+前端将在 `http://localhost:3000` 启动，支持热重载。
+
+### 后端开发服务器
+
+```bash
+# 进入后端目录
+cd service
+
+# 激活虚拟环境
+source ./.venv/bin/activate
+
+# 启动开发服务器
+python -m cmd.main --dev
+```
+
+后端将在 `http://localhost:8000` 启动，支持热重载。
+
+### 同时启动前后端
+
+为了方便开发，你可以使用以下命令同时启动前后端：
+
+```bash
+# 使用 concurrently 同时启动
+yarn dev:all
+
+# 或者使用 tmux（Linux/macOS）
+tmux new-session -d 'yarn dev' \; split-window -h 'cd service && source ./.venv/bin/activate && python -m cmd.main --dev'
+```
+
+## 开发工具配置
+
+### 代码质量工具
+
+确保你已经配置了以下工具：
+
+- **Pre-commit 钩子**（必需）：确保代码在提交前通过所有质量检查
+- **ESLint 和 Prettier**：前端代码风格一致性
+- **TypeScript 类型检查**：确保类型安全
+- **Python 代码格式化工具**：如 Black、isort 和 flake8
+
+#### 安装 pre-commit
+
+```bash
+# 全局安装
+pip install pre-commit
+
+# 或在项目中使用 uv
+uv add pre-commit
+```
+
+#### 配置 pre-commit
+
+在项目根目录创建 `.pre-commit-config.yaml`：
+
+```yaml
+repos:
+  - repo: https://github.com/pre-commit/pre-commit-hooks
+    rev: v4.4.0
+    hooks:
+      - id: trailing-whitespace
+      - id: end-of-file-fixer
+      - id: check-yaml
+      - id: check-added-large-files
+      - id: check-merge-conflict
+
+  - repo: https://github.com/psf/black
+    rev: 23.3.0
+    hooks:
+      - id: black
+        language_version: python3
+
+  - repo: https://github.com/pycqa/isort
+    rev: 5.12.0
+    hooks:
+      - id: isort
+
+  - repo: https://github.com/pycqa/flake8
+    rev: 6.0.0
+    hooks:
+      - id: flake8
+
+  - repo: https://github.com/pre-commit/mirrors-eslint
+    rev: v8.38.0
+    hooks:
+      - id: eslint
+        files: \.(js|ts|tsx)$
+        types: [file]
+        additional_dependencies:
+          - eslint@8.38.0
+          - '@typescript-eslint/eslint-plugin@5.59.0'
+          - '@typescript-eslint/parser@5.59.0'
+
+  - repo: https://github.com/pre-commit/mirrors-prettier
+    rev: v2.8.7
+    hooks:
+      - id: prettier
+        types_or: [javascript, jsx, ts, tsx, json, css, scss, html, yaml]
+```
+
+#### 安装钩子
+
+```bash
+pre-commit install
+```
+
+#### 手动运行检查
+
+```bash
+# 检查所有文件
+pre-commit run --all-files
+
+# 检查特定文件
+pre-commit run --files src/components/Button.tsx
+```
+
+### IDE 配置
+
+#### VS Code 设置
+
+##### 推荐扩展
+
+安装以下 VS Code 扩展：
+
+- **ESLint** - JavaScript/TypeScript 代码检查
+- **Prettier** - 代码格式化
+- **Python** - Python 语言支持
+- **Pylance** - Python 类型检查
+- **GitLens** - Git 增强功能
+- **Auto Rename Tag** - HTML/JSX 标签自动重命名
+- **Bracket Pair Colorizer** - 括号配对高亮
+
+##### 工作区设置
+
+在项目根目录创建 `.vscode/settings.json`：
+
+```json
+{
+  "editor.formatOnSave": true,
+  "editor.defaultFormatter": "esbenp.prettier-vscode",
+  "editor.codeActionsOnSave": {
+    "source.fixAll.eslint": true,
+    "source.organizeImports": true
+  },
+  "typescript.preferences.importModuleSpecifier": "relative",
+  "python.defaultInterpreterPath": "./service/.venv/bin/python",
+  "python.linting.enabled": true,
+  "python.linting.pylintEnabled": false,
+  "python.linting.flake8Enabled": true,
+  "python.formatting.provider": "black",
+  "files.exclude": {
+    "**/node_modules": true,
+    "**/.venv": true,
+    "**/__pycache__": true,
+    "**/*.pyc": true
+  }
+}
+```
+
+##### 调试配置
+
+创建 `.vscode/launch.json`：
+
+```json
+{
+  "version": "0.2.0",
+  "configurations": [
+    {
+      "name": "Launch Frontend",
+      "type": "node",
+      "request": "launch",
+      "program": "${workspaceFolder}/node_modules/.bin/next",
+      "args": ["dev"],
+      "cwd": "${workspaceFolder}",
+      "console": "integratedTerminal"
+    },
+    {
+      "name": "Launch Backend",
+      "type": "python",
+      "request": "launch",
+      "program": "${workspaceFolder}/service/cmd/main.py",
+      "args": ["--dev"],
+      "console": "integratedTerminal",
+      "python": "${workspaceFolder}/service/.venv/bin/python"
+    }
+  ]
+}
+```
+
+#### 其他 IDE 配置
+
+##### WebStorm/IntelliJ IDEA
+
+1. **启用 ESLint 和 Prettier**
+   - 在设置中启用 ESLint 和 Prettier 插件
+   - 配置保存时自动格式化
+
+2. **Python 解释器**
+   - 设置项目解释器为 `./service/.venv/bin/python`
+   - 启用类型检查
+
+##### Vim/Neovim
+
+如果使用 Vim 或 Neovim，建议安装以下插件：
+
+- **ALE** - 异步语法检查
+- **Prettier** - 代码格式化
+- **Coc.nvim** - 智能补全
+
+### 调试工具
+
+#### 前端调试
+
+使用浏览器开发者工具或 VS Code 调试器：
+
+```json
+// .vscode/launch.json
+{
+  "name": "Debug Frontend",
+  "type": "node",
+  "request": "launch",
+  "program": "${workspaceFolder}/node_modules/.bin/next",
+  "args": ["dev"],
+  "cwd": "${workspaceFolder}",
+  "console": "integratedTerminal"
+}
+```
+
+#### 后端调试
+
+```json
+// .vscode/launch.json
+{
+  "name": "Debug Backend",
+  "type": "python",
+  "request": "launch",
+  "program": "${workspaceFolder}/service/cmd/main.py",
+  "args": ["--dev"],
+  "console": "integratedTerminal",
+  "python": "${workspaceFolder}/service/.venv/bin/python"
+}
+```
+
+## 开发工作流
+
+### 1. 创建功能分支
+
+```bash
+# 确保在主分支
+git checkout main
+git pull origin main
+
+# 创建功能分支
+git checkout -b feature/your-feature-name
+```
+
+### 2. 开发功能
+
+在开发过程中：
+
+1. **编写代码**：遵循项目的代码规范
+2. **运行测试**：确保所有测试通过
+3. **代码检查**：使用 pre-commit 钩子检查代码质量
+
+```bash
+# 运行测试
+yarn test
+
+# 检查代码质量
+pre-commit run --all-files
+
+# 类型检查
+yarn type-check
+```
+
+### 3. 提交代码
+
+```bash
+# 添加文件
+git add .
+
+# 提交代码（pre-commit 钩子会自动运行）
+git commit -m "feat: add your feature description"
+
+# 推送到远程
+git push origin feature/your-feature-name
+```
+
+### 4. 创建 Pull Request
+
+1. 在 GitHub 上创建 Pull Request
+2. 填写详细的描述和测试说明
+3. 等待代码审查
+4. 根据反馈修改代码
+
+## 项目结构
+
+### 前端结构
+
+```
+src/
+├── app/                 # Next.js 应用路由
+├── components/          # React 组件
+├── lib/                 # 工具函数
+├── styles/              # 样式文件
+└── types/               # TypeScript 类型定义
+```
+
+### 后端结构
+
+```
+service/
+├── cmd/                 # 命令行入口
+├── src/                 # 源代码
+│   ├── api/            # API 路由
+│   ├── core/           # 核心业务逻辑
+│   ├── models/         # 数据模型
+│   └── utils/          # 工具函数
+├── tests/              # 测试文件
+└── requirements.txt    # Python 依赖
+```
+
+## 测试
+
+### 前端测试
+
+```bash
+# 运行单元测试
+yarn test
+
+# 运行测试并生成覆盖率报告
+yarn test:coverage
+
+# 运行端到端测试
+yarn test:e2e
+
+# 运行测试并监听文件变化
+yarn test:watch
+```
+
+### 后端测试
+
+```bash
+cd service
+
+# 运行所有测试
+pytest
+
+# 运行特定测试文件
+pytest tests/test_api.py
+
+# 运行测试并生成覆盖率报告
+pytest --cov=src tests/
+
+# 运行测试并监听文件变化
+pytest-watch
+```
+
+## 代码规范
+
+### 提交信息规范
+
+使用 [Conventional Commits](https://www.conventionalcommits.org/) 规范：
+
+```
+<type>[optional scope]: <description>
+
+[optional body]
+
+[optional footer(s)]
+```
+
+类型包括：
+- `feat`: 新功能
+- `fix`: 修复 bug
+- `docs`: 文档更新
+- `style`: 代码格式调整
+- `refactor`: 代码重构
+- `test`: 测试相关
+- `chore`: 构建过程或辅助工具的变动
+
+### 代码风格
+
+- **前端**：使用 ESLint + Prettier
+- **后端**：使用 Black + isort + flake8
+- **TypeScript**：严格模式，启用所有类型检查
+
+## 贡献指南
+
+### 贡献类型
+
+1. **Bug 报告**：在 GitHub Issues 中报告问题
+2. **功能请求**：提出新功能建议
+3. **代码贡献**：提交 Pull Request
+4. **文档改进**：完善文档和示例
+5. **测试贡献**：添加测试用例
+
+### 贡献流程
+
+1. **Fork 项目**：在 GitHub 上 Fork 项目
+2. **创建分支**：为你的功能创建分支
+3. **开发功能**：编写代码和测试
+4. **提交代码**：遵循提交规范
+5. **创建 PR**：提交 Pull Request
+6. **代码审查**：等待审查和反馈
+7. **合并代码**：审查通过后合并
+
+### 行为准则
+
+- 尊重所有贡献者
+- 保持专业和友好的交流
+- 接受建设性的批评
+- 关注社区利益
+
+## 获取帮助
+
+### 开发资源
+
+- [API 文档](/api) - 详细的 API 参考
+- [架构文档](/architecture) - 系统架构说明
+- [设计指南](/design) - UI/UX 设计规范
+
+### 社区支持
+
+- [GitHub Issues](https://github.com/sciol/xyzen/issues) - 问题反馈
+- [GitHub Discussions](https://github.com/sciol/xyzen/discussions) - 讨论交流
+- [Discord 社区](https://discord.gg/sciol) - 实时交流
+
+### 学习资源
+
+- [贡献指南](https://github.com/sciol/xyzen/blob/main/CONTRIBUTING.md)
+- [开发文档](https://github.com/sciol/xyzen/wiki)
+- [示例项目](https://github.com/sciol/xyzen-examples)

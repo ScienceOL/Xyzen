@@ -96,6 +96,26 @@ build-lib:
 check-web: lint-web type-web test-web
 
 # =============================================================================
+# Docs (docs/)
+# =============================================================================
+
+# Start docs dev server
+dev-docs:
+    cd docs && yarn dev
+
+# Type check docs code
+type-docs:
+    cd docs && yarn tsc
+
+# Lint docs code
+lint-docs:
+    cd docs && yarn lint
+
+# Build docs for production
+build-docs:
+    cd docs && yarn build
+
+# =============================================================================
 # Full Stack
 # =============================================================================
 

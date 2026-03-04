@@ -1,0 +1,62 @@
+# 自定义 MCP 服务
+
+<Note>
+如果用户希望使用自定义的 MCP 服务，可以仔细阅读以下步骤
+</Note>
+
+
+
+## Xyzen仓库里新建 MCP 服务
+
+1. 克隆 Xyzen 仓库到本地：
+
+```bash
+git clone https://github.com/sciol/xyzen.git
+cd Xyzen
+yarn install
+```
+
+2. 在 `service/handler/mcp/` 目录下创建一个python可执行文件（.py），命名为你的 MCP 服务名称（例如 `my-custom-mcp.py`）。
+可以参考仓库中现有的 MCP 服务脚本进行编写，确保实现 MCP 协议所需的接口和功能。
+
+<Note>
+确保你的 MCP 服务脚本在 `service/handler/mcp/` 目录下，并且可执行。
+例如，可以使用以下命令赋予执行权限：
+
+```bash
+chmod +x service/handler/mcp/my-custom-mcp.py
+```
+</Note>
+
+3. 在本地添加 MCP 服务后，启动Xyzen服务：
+
+```bash
+cd Xyzen
+./launch/dev.sh
+```
+此处运行`dev.sh`启动本地服务器如果遇到问题可参考[部署与使用](/deploy)。
+
+4. 在 Xyzen 平台上添加自定义 MCP 服务：
+
+<img alt={'添加自定义MCP服务'} src={'https://storage.sciol.ac.cn/library/docs/Xyzen/custom_server.png'} />
+如上图所示依次填入`Server Name、Description（可选）`和`Server URL`，点击右下角Add Server按钮，即可完成MCP服务的添加。其中Server URL为提供服务的MCP Server地址，例如`http://localhost:8000/xyzen/mcp/my-custom-mcp`。
+添加助手教程和MCP工具调用请参阅[快速开始 - MCP工具调用](/quickstart#mcp-tool-call)。
+
+## 从外部网站导入 MCP 服务器的链接
+
+如果你已经有成熟的 MCP 库想把它导入到Xyzen平台使用或者想使用其他开发者的 MCP 库，
+则只需把对应 MCP 服务器的 URL 填入 `Server URL` 即可完成导入。具体获取 MCP 服务器 URL 的方式请参考对应 MCP 服务器的文档说明（以[Smithery](https://smithery.ai/docs/getting_started/quickstart_connect)网站为例）。
+
+<img alt={'添加自定义MCP服务'} src={'https://storage.sciol.ac.cn/library/docs/Xyzen/smithery_mcp.png'} />
+
+Xyzen 支持通过一键部署多个 MCP 社区的服务器，下面的视频是以 MCP Forge 中的Remote MCP Servers 为例，
+展示如何将外部 MCP 服务器导入到 Xyzen 平台中使用。
+
+<div style={{ display: 'flex', gap: '12px' }}>
+  <div style={{ flex: 1 }}>
+    <video src="https://storage.sciol.ac.cn/library/docs/Xyzen/MCP_forge.mov" controls style={{ width: '100%', borderRadius: '8px' }} />
+  </div>
+</div>
+
+更多详情请参阅：[外部MCP工具调用](https://mcpservers.org/remote-mcp-servers)<br />
+欢迎大家贡献新的 MCP 服务到 Xyzen 平台中使用！👏

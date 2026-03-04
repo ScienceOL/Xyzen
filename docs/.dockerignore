@@ -1,0 +1,17 @@
+# Docker configuration files
+Dockerfile
+.dockerignore
+
+# Node.js related files and directories
+node_modules
+npm-debug.log
+
+# Build and output directories
+.next/
+buildx.sh
+launch/
+.temp/
+
+# Development environment files
+.git/
+.vscode/

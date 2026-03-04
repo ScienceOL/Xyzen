@@ -11,6 +11,8 @@ services:
         condition: service_healthy
       web:
         condition: service_started
+      docs:
+        condition: service_started
     restart: unless-stopped
     attach: false
     networks:
@@ -98,6 +100,14 @@ services:
     depends_on:
       service:
         condition: service_healthy
+    networks:
+      - xyzen-network
+
+  docs:
+    image: ghcr.io/scienceol/xyzen-docs:latest
+    pull_policy: if_not_present
+    restart: unless-stopped
+    attach: false
     networks:
       - xyzen-network
 
