@@ -160,7 +160,7 @@ async def _generate_image_with_langchain(
     from app.core.consume.consume_service import record_response_usage_from_context
 
     await record_response_usage_from_context(
-        response, source="tool:generate_image", model_name=image_cfg.Model, provider=image_cfg.Provider
+        response, source="tool:generate_image", model_name=image_cfg.Model, provider_id=image_cfg.Provider
     )
 
     # Extract image from response content blocks
@@ -597,7 +597,7 @@ async def _analyze_image_with_vision_model(image_bytes: bytes, content_type: str
     from app.core.consume.consume_service import record_response_usage_from_context
 
     await record_response_usage_from_context(
-        response, source="tool:read_image", model_name=image_cfg.VisionModel, provider=image_cfg.VisionProvider
+        response, source="tool:read_image", model_name=image_cfg.VisionModel, provider_id=image_cfg.VisionProvider
     )
 
     # Extract text from response

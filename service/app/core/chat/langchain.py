@@ -97,20 +97,6 @@ async def get_ai_response_stream_langchain_legacy(
         user_provider_manager=user_provider_manager,
     )
 
-    # Immediately backfill TrackingContext so all tools (subagent, delegation,
-    # image gen, read_image) executed during this chat turn have complete
-    # model metadata available before the first TOKEN_USAGE event arrives.
-    from app.core.consume.consume_service import get_tracking_context
-
-    tracking_ctx = get_tracking_context()
-    if tracking_ctx is not None:
-        tracking_ctx.model_tier = model_tier
-        tracking_ctx.model_name = model_name
-        tracking_ctx.model_provider = provider_id
-
-    if not all([model_tier, provider_id, model_name]):
-        logger.warning(f"Incomplete model metadata: tier={model_tier}, provider={provider_id}, model={model_name}")
-
     # Build system prompt layers (with memory context: Core Memory + auto-retrieved)
     memory_ctx = await fetch_memory_context(user_id, message_text)
     prompt_layers = await build_system_prompt_layers(db, agent, model_name, memory_ctx=memory_ctx)
@@ -132,6 +118,7 @@ async def get_ai_response_stream_langchain_legacy(
             model_name=model_name,
             system_prompt=system_prompt,
             prompt_layers=prompt_layers,
+            model_tier=model_tier,
         )
 
         # Initialize stream context
@@ -403,6 +390,7 @@ async def create_langchain_agent(
     model_name: str | None,
     system_prompt: str,
     prompt_layers: "SystemPromptLayers | None" = None,
+    model_tier: str | None = None,
 ) -> tuple[CompiledStateGraph[Any, None, Any, Any], AgentEventContext, Any]:
     """Create and configure the LangChain agent using the agent factory.
 
@@ -431,6 +419,7 @@ async def create_langchain_agent(
         store=store,
         checkpointer=checkpointer,
         prompt_layers=prompt_layers,
+        model_tier=model_tier,
     )
     return graph, event_ctx, checkpointer
 

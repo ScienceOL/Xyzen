@@ -48,6 +48,10 @@ class TrackingContext:
 
     Most fields are set once at task start, but ``message_id`` is mutable —
     it is set to ``None`` initially and updated after the AI message is created.
+
+    Note: model_tier, model_name, and model_provider are NOT stored here.
+    They are passed explicitly through function parameters from the call site
+    all the way to ConsumeRecord creation.
     """
 
     user_id: str
@@ -55,13 +59,10 @@ class TrackingContext:
     session_id: UUID | None
     topic_id: UUID | None
     message_id: UUID | None
-    model_tier: str | None
     db_session_factory: Any  # async_sessionmaker
     agent_id: UUID | None = None
     marketplace_id: UUID | None = None
     developer_user_id: str | None = None
-    model_name: str | None = None
-    model_provider: str | None = None
     scheduled_task_metadata: dict[str, Any] | None = None
 
 
@@ -110,7 +111,7 @@ class ConsumptionTrackingService:
         auth_provider: str,
         model_name: str,
         model_tier: str | None,
-        provider: str | None,
+        provider_id: str | None,
         input_tokens: int,
         output_tokens: int,
         total_tokens: int,
@@ -147,7 +148,7 @@ class ConsumptionTrackingService:
             input_tokens,
             output_tokens,
             cache_read_input_tokens=cache_read_input_tokens,
-            provider=provider,
+            provider_id=provider_id,
         )
         record = ConsumeRecord(
             record_type="llm",
@@ -161,7 +162,7 @@ class ConsumptionTrackingService:
             consume_state="pending",
             model_name=model_name,
             model_tier=model_tier,
-            provider=provider,
+            provider=provider_id,
             input_tokens=input_tokens,
             output_tokens=output_tokens,
             total_tokens=total_tokens,
@@ -296,7 +297,8 @@ class ConsumeService:
 async def record_llm_usage_from_context(
     *,
     model_name: str,
-    provider: str | None,
+    model_tier: str | None,
+    provider_id: str | None,
     input_tokens: int,
     output_tokens: int,
     total_tokens: int,
@@ -305,6 +307,9 @@ async def record_llm_usage_from_context(
     cache_read_input_tokens: int = 0,
 ) -> ConsumeRecord | None:
     """Record LLM usage using the current tracking context (ContextVar).
+
+    Model metadata (model_name, model_tier, provider) must be passed
+    explicitly by the caller — they are NOT read from TrackingContext.
 
     Returns the record if successful, or None if no context is available.
     Failures are logged but never raised — consumption tracking must not
@@ -321,9 +326,9 @@ async def record_llm_usage_from_context(
             record = await service.record_llm_usage_with_pricing(
                 user_id=ctx.user_id,
                 auth_provider=ctx.auth_provider,
-                model_name=model_name if model_name != "unknown" else (ctx.model_name or model_name),
-                model_tier=ctx.model_tier,
-                provider=provider or ctx.model_provider,
+                model_name=model_name,
+                model_tier=model_tier,
+                provider_id=provider_id,
                 input_tokens=input_tokens,
                 output_tokens=output_tokens,
                 total_tokens=total_tokens,
@@ -347,15 +352,20 @@ async def record_llm_usage_from_context(
 async def record_messages_usage_from_context(
     messages: list[Any],
     source: str,
-    provider: str | None = None,
+    model_name: str,
+    model_tier: str | None = None,
+    provider_id: str | None = None,
 ) -> ConsumeRecord | None:
-    """Sum usage_metadata across LangChain messages and record as a single entry."""
+    """Sum usage_metadata across LangChain messages and record as a single entry.
+
+    Model metadata (model_name, model_tier, provider) must be passed
+    explicitly by the caller.
+    """
     total_input = 0
     total_output = 0
     total_total = 0
     total_cache_creation = 0
     total_cache_read = 0
-    model_name = "unknown"
 
     for msg in messages:
         usage = getattr(msg, "usage_metadata", None)
@@ -366,24 +376,14 @@ async def record_messages_usage_from_context(
             details = usage.get("input_token_details") or {}
             total_cache_creation += details.get("cache_creation", 0) or 0
             total_cache_read += details.get("cache_read", 0) or 0
-        resp_meta = getattr(msg, "response_metadata", None)
-        if resp_meta and isinstance(resp_meta, dict):
-            m = resp_meta.get("model_name") or resp_meta.get("model")
-            if m:
-                model_name = m
 
     if total_input == 0 and total_output == 0:
         return None
 
-    ctx = get_tracking_context()
-    if model_name == "unknown" and ctx and ctx.model_name:
-        model_name = ctx.model_name
-    if provider is None and ctx and ctx.model_provider:
-        provider = ctx.model_provider
-
     return await record_llm_usage_from_context(
         model_name=model_name,
-        provider=provider,
+        model_tier=model_tier,
+        provider_id=provider_id,
         input_tokens=total_input,
         output_tokens=total_output,
         total_tokens=total_total if total_total else total_input + total_output,
@@ -397,7 +397,8 @@ async def record_response_usage_from_context(
     response: Any,
     source: str,
     model_name: str,
-    provider: str | None,
+    provider_id: str | None = None,
+    model_tier: str | None = None,
 ) -> ConsumeRecord | None:
     """Extract usage_metadata from a single LLM response and record."""
     usage = getattr(response, "usage_metadata", None)
@@ -417,7 +418,8 @@ async def record_response_usage_from_context(
 
     return await record_llm_usage_from_context(
         model_name=model_name,
-        provider=provider,
+        model_tier=model_tier,
+        provider_id=provider_id,
         input_tokens=input_tokens,
         output_tokens=output_tokens,
         total_tokens=total_tokens if total_tokens else input_tokens + output_tokens,
@@ -425,3 +427,57 @@ async def record_response_usage_from_context(
         cache_creation_input_tokens=cache_creation,
         cache_read_input_tokens=cache_read,
     )
+
+
+async def record_response_usage_direct(
+    response: Any,
+    *,
+    user_id: str,
+    source: str,
+    model_name: str,
+    provider_id: str | None = None,
+    model_tier: str | None = None,
+) -> ConsumeRecord | None:
+    """Record LLM usage from a response without requiring TrackingContext.
+
+    For use in API/WS handlers where no Celery task context exists.
+    Failures are logged but never raised.
+    """
+    usage = getattr(response, "usage_metadata", None)
+    if not usage or not isinstance(usage, dict):
+        return None
+
+    input_tokens = usage.get("input_tokens", 0)
+    output_tokens = usage.get("output_tokens", 0)
+    total_tokens = usage.get("total_tokens", 0)
+
+    if input_tokens == 0 and output_tokens == 0:
+        return None
+
+    details = usage.get("input_token_details") or {}
+    cache_creation = details.get("cache_creation", 0) or 0
+    cache_read = details.get("cache_read", 0) or 0
+
+    try:
+        from app.infra.database import AsyncSessionLocal
+
+        async with AsyncSessionLocal() as db:
+            svc = ConsumptionTrackingService(db)
+            record = await svc.record_llm_usage_with_pricing(
+                user_id=user_id,
+                auth_provider="system",
+                model_name=model_name,
+                model_tier=model_tier,
+                provider_id=provider_id,
+                input_tokens=input_tokens,
+                output_tokens=output_tokens,
+                total_tokens=total_tokens if total_tokens else input_tokens + output_tokens,
+                source=source,
+                cache_creation_input_tokens=cache_creation,
+                cache_read_input_tokens=cache_read,
+            )
+            await db.commit()
+            return record
+    except Exception:
+        logger.warning("Failed to record LLM usage direct (source=%s)", source, exc_info=True)
+        return None
