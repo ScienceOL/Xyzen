@@ -57,6 +57,51 @@ class TopicService {
       upToMessageId ? { up_to_message_id: upToMessageId } : {},
     );
   }
+
+  // ---------------------------------------------------------------------------
+  // Chat actions (REST replacements for WS client→server messages)
+  // ---------------------------------------------------------------------------
+
+  async sendMessage(
+    topicId: string,
+    data: {
+      message: string;
+      client_id?: string;
+      file_ids?: string[];
+      context?: Record<string, unknown>;
+    },
+  ): Promise<SendMessageResponse> {
+    return http.post(`/xyzen/api/v1/topics/${topicId}/messages`, data);
+  }
+
+  async abort(topicId: string): Promise<void> {
+    return http.post(`/xyzen/api/v1/topics/${topicId}/abort`);
+  }
+
+  async regenerate(topicId: string): Promise<RegenerateResponse> {
+    return http.post(`/xyzen/api/v1/topics/${topicId}/regenerate`);
+  }
+
+  async answerQuestion(
+    topicId: string,
+    data: {
+      question_id: string;
+      selected_options?: string[];
+      text?: string;
+    },
+  ): Promise<void> {
+    return http.post(`/xyzen/api/v1/topics/${topicId}/question-response`, data);
+  }
+}
+
+export interface SendMessageResponse {
+  message_id: string;
+  stream_id: string;
+  created_at: string;
+}
+
+export interface RegenerateResponse {
+  stream_id: string;
 }
 
 export const topicService = new TopicService();
