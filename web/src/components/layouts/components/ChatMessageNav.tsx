@@ -48,6 +48,7 @@ const ChatMessageNav = React.memo(function ChatMessageNav({
   const [activeId, setActiveId] = useState<string | null>(null);
   const [hoveredId, setHoveredId] = useState<string | null>(null);
   const dotRefs = useRef<Map<string, HTMLButtonElement>>(new Map());
+  const scrollTicking = useRef(false);
 
   const highlightMessage = useXyzen((s) => s.highlightMessage);
 
@@ -62,6 +63,38 @@ const ChatMessageNav = React.memo(function ChatMessageNav({
     () => userMessages.map((m) => m.dbId || m.id),
     [userMessages],
   );
+
+  // Default to first user message when list changes or on mount
+  useEffect(() => {
+    if (userMessageIds.length > 0) {
+      setActiveId((prev) =>
+        prev === null || !userMessageIds.includes(prev)
+          ? userMessageIds[0]
+          : prev,
+      );
+    }
+  }, [userMessageIds]);
+
+  // When scrolled near the top, force-activate the first message
+  useEffect(() => {
+    const container = scrollContainerRef.current;
+    if (!container || userMessageIds.length === 0) return;
+
+    const handleScroll = () => {
+      if (!scrollTicking.current) {
+        scrollTicking.current = true;
+        requestAnimationFrame(() => {
+          if (container.scrollTop <= 80) {
+            setActiveId(userMessageIds[0]);
+          }
+          scrollTicking.current = false;
+        });
+      }
+    };
+
+    container.addEventListener("scroll", handleScroll, { passive: true });
+    return () => container.removeEventListener("scroll", handleScroll);
+  }, [userMessageIds, scrollContainerRef]);
 
   // IntersectionObserver: track which user message is in the middle of the viewport
   useEffect(() => {
