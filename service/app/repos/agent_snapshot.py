@@ -39,6 +39,7 @@ class AgentSnapshotRepository:
             configuration=snapshot_data.configuration,
             mcp_server_configs=snapshot_data.mcp_server_configs,
             knowledge_set_config=snapshot_data.knowledge_set_config,
+            skill_configs=snapshot_data.skill_configs,
             commit_message=snapshot_data.commit_message,
         )
 

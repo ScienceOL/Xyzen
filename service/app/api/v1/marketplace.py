@@ -362,6 +362,7 @@ async def fork_agent(
             original_marketplace_id=marketplace_id,
         )
     except ValueError as e:
+        await db.rollback()
         raise HTTPException(status_code=400, detail=str(e))
 
 

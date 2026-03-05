@@ -56,6 +56,29 @@ class SkillRepository:
         result = await self.db.exec(select(Skill).where(Skill.name == name).limit(1))
         return result.first()
 
+    async def get_builtin_skill_by_name(self, name: str) -> Skill | None:
+        """Fetch a builtin skill by exact name."""
+        result = await self.db.exec(
+            select(Skill)
+            .where(Skill.name == name)
+            .where(Skill.scope == SkillScope.BUILTIN)
+            .order_by(col(Skill.created_at).desc())
+            .limit(1)
+        )
+        return result.first()
+
+    async def get_user_skill_by_name(self, name: str, user_id: str) -> Skill | None:
+        """Fetch a user-scoped skill by exact name for a specific owner."""
+        result = await self.db.exec(
+            select(Skill)
+            .where(Skill.name == name)
+            .where(Skill.scope == SkillScope.USER)
+            .where(Skill.user_id == user_id)
+            .order_by(col(Skill.created_at).desc())
+            .limit(1)
+        )
+        return result.first()
+
     async def get_skills_by_user(self, user_id: str) -> Sequence[Skill]:
         """Fetch all skills owned by a user."""
         result = await self.db.exec(

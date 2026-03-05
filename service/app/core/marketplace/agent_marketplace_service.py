@@ -5,11 +5,18 @@ from uuid import UUID
 
 from sqlmodel.ext.asyncio.session import AsyncSession
 
+from app.core.skills.storage import (
+    build_skill_prefix,
+    load_skill_md,
+    load_skill_resource_files,
+    sync_skill_folder,
+)
 from app.core.storage import FileScope
 from app.models.agent import Agent, AgentCreate, AgentScope, ConfigVisibility, ForkMode
 from app.models.agent_marketplace import AgentMarketplace, AgentMarketplaceCreate, AgentMarketplaceUpdate
 from app.models.agent_snapshot import AgentSnapshot, AgentSnapshotCreate
 from app.models.file import FileCreate
+from app.models.skill import Skill, SkillCreate, SkillScope, SkillUpdate
 from app.repos import (
     AgentLikeRepository,
     AgentMarketplaceRepository,
@@ -498,22 +505,12 @@ class AgentMarketplaceService:
 
         # Handle skills: Attach matching skills to forked agent
         if snapshot.skill_configs:
-            for skill_config in snapshot.skill_configs:
-                skill_name = skill_config.get("name")
-                skill_scope = skill_config.get("scope")
-                if not skill_name:
-                    continue
-
-                try:
-                    if skill_scope == "builtin":
-                        # Find builtin skill by name and attach
-                        skill = await self.skill_repo.get_skill_by_name(skill_name)
-                        if skill:
-                            await self.skill_repo.attach_skill_to_agent(forked_agent.id, skill.id)
-                    # User-scoped skills can't be cloned, skip them
-                except Exception as e:
-                    logger.warning(f"Failed to attach skill '{skill_name}' during fork: {e}")
-
+            await self._restore_skills_from_snapshot(
+                snapshot=snapshot,
+                listing=listing,
+                forked_agent_id=forked_agent.id,
+                target_user_id=user_id,
+            )
             await self.db.flush()
 
         # Increment forks count
@@ -530,6 +527,193 @@ class AgentMarketplaceService:
 
         logger.info(f"Successfully forked agent {listing.agent_id} to {forked_agent.id} for user {user_id}")
         return forked_agent
+
+    async def _restore_skills_from_snapshot(
+        self,
+        *,
+        snapshot: AgentSnapshot,
+        listing: AgentMarketplace,
+        forked_agent_id: UUID,
+        target_user_id: str,
+    ) -> None:
+        """Restore snapshot skills onto a forked agent (builtin attach, user clone+attach)."""
+        cloned_by_source: dict[str, Skill] = {}
+
+        for skill_config in snapshot.skill_configs:
+            skill_id = self._parse_skill_id(skill_config.get("id"))
+            skill_name = skill_config.get("name")
+            skill_scope = self._normalize_skill_scope(skill_config.get("scope"))
+
+            if skill_scope == SkillScope.BUILTIN:
+                builtin = await self._resolve_builtin_skill(skill_id=skill_id, skill_name=skill_name)
+                if not builtin:
+                    raise ValueError(
+                        f"Failed to restore builtin skill during fork (id={skill_config.get('id')}, name={skill_name})"
+                    )
+                await self.skill_repo.attach_skill_to_agent(forked_agent_id, builtin.id)
+                continue
+
+            if skill_scope == SkillScope.USER:
+                source_key = self._build_skill_source_key(skill_id=skill_id, skill_name=skill_name)
+                cloned = cloned_by_source.get(source_key)
+                if not cloned:
+                    source_skill = await self._resolve_user_source_skill(
+                        skill_id=skill_id,
+                        skill_name=skill_name,
+                        source_user_id=listing.user_id,
+                    )
+                    if not source_skill:
+                        raise ValueError(
+                            f"Failed to clone user skill during fork (id={skill_config.get('id')}, name={skill_name})"
+                        )
+                    cloned = await self._clone_user_skill_for_fork(
+                        source_skill=source_skill,
+                        target_user_id=target_user_id,
+                    )
+                    cloned_by_source[source_key] = cloned
+                await self.skill_repo.attach_skill_to_agent(forked_agent_id, cloned.id)
+                continue
+
+            # Unknown/missing scope: infer from the referenced skill id if available.
+            if skill_id:
+                inferred = await self.skill_repo.get_skill_by_id(skill_id)
+                if inferred:
+                    if inferred.scope == SkillScope.BUILTIN:
+                        await self.skill_repo.attach_skill_to_agent(forked_agent_id, inferred.id)
+                        continue
+                    cloned = await self._clone_user_skill_for_fork(
+                        source_skill=inferred,
+                        target_user_id=target_user_id,
+                    )
+                    await self.skill_repo.attach_skill_to_agent(forked_agent_id, cloned.id)
+                    continue
+
+            raise ValueError(
+                f"Failed to restore skill during fork (id={skill_config.get('id')}, name={skill_name}, scope={skill_config.get('scope')})"
+            )
+
+    @staticmethod
+    def _parse_skill_id(raw_skill_id: Any) -> UUID | None:
+        if not raw_skill_id:
+            return None
+        try:
+            return UUID(str(raw_skill_id))
+        except (TypeError, ValueError):
+            return None
+
+    @staticmethod
+    def _normalize_skill_scope(raw_scope: Any) -> SkillScope | None:
+        if isinstance(raw_scope, SkillScope):
+            return raw_scope
+        if not raw_scope:
+            return None
+        try:
+            return SkillScope(str(raw_scope))
+        except ValueError:
+            return None
+
+    @staticmethod
+    def _build_skill_source_key(*, skill_id: UUID | None, skill_name: Any) -> str:
+        if skill_id:
+            return f"id:{skill_id}"
+        if isinstance(skill_name, str) and skill_name.strip():
+            return f"name:{skill_name.strip().lower()}"
+        return "unknown"
+
+    async def _resolve_builtin_skill(self, *, skill_id: UUID | None, skill_name: Any) -> Skill | None:
+        if skill_id:
+            skill = await self.skill_repo.get_skill_by_id(skill_id)
+            if skill and skill.scope == SkillScope.BUILTIN:
+                return skill
+
+        if isinstance(skill_name, str) and skill_name.strip():
+            return await self.skill_repo.get_builtin_skill_by_name(skill_name.strip())
+
+        return None
+
+    async def _resolve_user_source_skill(
+        self,
+        *,
+        skill_id: UUID | None,
+        skill_name: Any,
+        source_user_id: str | None,
+    ) -> Skill | None:
+        if skill_id:
+            skill = await self.skill_repo.get_skill_by_id(skill_id)
+            if skill and skill.scope == SkillScope.USER:
+                return skill
+
+        if isinstance(skill_name, str) and skill_name.strip() and source_user_id:
+            return await self.skill_repo.get_user_skill_by_name(skill_name.strip(), source_user_id)
+
+        return None
+
+    async def _clone_user_skill_for_fork(
+        self,
+        *,
+        source_skill: Skill,
+        target_user_id: str,
+    ) -> Skill:
+        final_name = await self._generate_unique_user_skill_name(source_skill.name, target_user_id)
+        cloned = await self.skill_repo.create_skill(
+            SkillCreate(
+                name=final_name,
+                description=source_skill.description,
+                scope=SkillScope.USER,
+                license=source_skill.license,
+                compatibility=source_skill.compatibility,
+                metadata_json=source_skill.metadata_json,
+            ),
+            target_user_id,
+        )
+
+        skill_md = await load_skill_md(
+            source_skill.resource_prefix,
+            skill=source_skill,
+            db=self.db,
+        )
+        resource_files = await load_skill_resource_files(
+            source_skill.resource_prefix,
+            skill=source_skill,
+            db=self.db,
+        )
+        resources = [{"path": item["path"], "content": item["content"]} for item in resource_files] or None
+
+        if skill_md is None and not resources:
+            return cloned
+        if skill_md is None:
+            skill_md = self._build_fallback_skill_md(skill_name=final_name, description=source_skill.description)
+
+        prefix = build_skill_prefix(target_user_id, cloned.id)
+        await sync_skill_folder(prefix=prefix, skill_md=skill_md, resources=resources)
+        updated = await self.skill_repo.update_skill(cloned.id, SkillUpdate(resource_prefix=prefix))
+        if not updated:
+            raise ValueError(f"Failed to persist cloned skill prefix for skill {cloned.id}")
+        return updated
+
+    async def _generate_unique_user_skill_name(self, desired_name: str, user_id: str) -> str:
+        existing_skills = await self.skill_repo.get_skills_by_user(user_id)
+        existing_names = {skill.name.lower() for skill in existing_skills}
+
+        if desired_name.lower() not in existing_names:
+            return desired_name
+
+        base_name = f"{desired_name} (Fork)"
+        if base_name.lower() not in existing_names:
+            return base_name
+
+        counter = 1
+        while True:
+            candidate = f"{base_name} ({counter})"
+            if candidate.lower() not in existing_names:
+                return candidate
+            counter += 1
+
+    @staticmethod
+    def _build_fallback_skill_md(*, skill_name: str, description: str) -> str:
+        escaped_name = skill_name.replace('"', '\\"')
+        escaped_description = description.replace('"', '\\"')
+        return f'---\nname: "{escaped_name}"\ndescription: "{escaped_description}"\n---\n'
 
     async def get_listing_with_snapshot(self, marketplace_id: UUID) -> tuple[AgentMarketplace, AgentSnapshot] | None:
         """
