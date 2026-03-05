@@ -2,6 +2,12 @@
 
 All notable changes to Xyzen will be documented in this file.
 
+## [1.6.24](https://github.com/ScienceOL/Xyzen/compare/v1.6.23...v1.6.24) (2026-03-05)
+
+### 🐛 Bug Fixes
+
+* preserve hired agent skills and preload skill badge count ([#299](https://github.com/ScienceOL/Xyzen/issues/299)) ([3f9a065](https://github.com/ScienceOL/Xyzen/commit/3f9a065df187891af2a52796119e4bd757800f9f))
+
 ## [1.6.23](https://github.com/ScienceOL/Xyzen/compare/v1.6.22...v1.6.23) (2026-03-05)
 
 ### 🐛 Bug Fixes
