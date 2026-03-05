@@ -389,6 +389,18 @@ export function createConnectionActions(
           });
         },
       });
+
+      // Optimistically mark connected — sseClient.connect() registers the
+      // connection synchronously (hasConnection=true) and starts the fetch
+      // in the background.  If the fetch fails, onStatusChange will correct
+      // this to false.  Without this, the "Connecting..." banner flashes on
+      // every channel switch while the HTTP response is in flight.
+      set((state: ChatSlice) => {
+        if (state.channels[topicId]) {
+          state.channels[topicId].connected = true;
+          state.channels[topicId].error = null;
+        }
+      });
     },
 
     disconnectFromChannel: () => {

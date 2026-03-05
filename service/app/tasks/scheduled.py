@@ -56,6 +56,9 @@ class HeadlessPublisher:
     async def close(self) -> None:
         pass
 
+    async def set_generation_cursor(self, entry_id: str) -> None:  # noqa: ARG002
+        pass
+
     async def check_abort(self) -> bool:
         return False
 
