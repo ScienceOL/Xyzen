@@ -83,6 +83,11 @@ MIIE3TCCAsWgAwIBAgIDAeJAMA0GCSqGSIb3DQEBCwUAMCgxDjAMBgNVBAoTBWFkbWluMRYwFAYDVQQD
         description="Casdoor application name",
     )
 
+    ApplicationOwner: str = Field(
+        default="admin",
+        description="Casdoor application owner (used to build applicationId = '{owner}/{app}')",
+    )
+
 
 class BohriumAuthConfig(AuthProviderConfigBase):
     """Bohrium 认证配置"""

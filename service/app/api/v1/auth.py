@@ -183,7 +183,8 @@ def _require_casdoor() -> tuple[CasdoorAuthProvider, str, str, str, str]:
             status_code=status.HTTP_500_INTERNAL_SERVER_ERROR, detail="Organization or Application missing"
         )
     client_secret = getattr(provider.config, "ClientSecret", None) or ""
-    app_id = f"admin/{app}"
+    app_owner = getattr(provider.config, "ApplicationOwner", "admin")
+    app_id = f"{app_owner}/{app}"
     return provider, org, app, client_secret, app_id
 
 
@@ -254,6 +255,20 @@ def _send_casdoor_code(api_base: str, email: str, app_id: str, method: str, clie
         timeout=10,
     )
     return resp.json()
+
+
+def _check_user_exists(provider: CasdoorAuthProvider, org: str, email: str, client_secret: str) -> bool:
+    """Check if a user with the given email exists in Casdoor.
+
+    Uses ``GET /api/get-user?owner=org&email=email`` which returns the user
+    object when found or ``null`` when not.
+    """
+    resp = http_requests.get(
+        f"{provider.api_base}/api/get-user",
+        params={"owner": org, "email": email, "clientId": provider.audience, "clientSecret": client_secret},
+        timeout=10,
+    )
+    return resp.json().get("data") is not None
 
 
 def _casdoor_code_login(
@@ -510,8 +525,9 @@ async def send_verification_code(
     - Existing user → return ``action="login"`` (no email sent; frontend shows password form).
     - New user → send signup verification code, return ``action="signup"``.
 
-    Detection strategy: attempt ``method=signup`` via Casdoor. If Casdoor rejects
-    it because the user already exists, we know it's an existing account.
+    Detection: probe Casdoor password grant with a dummy password. Casdoor
+    returns distinct errors for "wrong password" vs "user does not exist",
+    so no email is sent and no side effects occur.
     """
     _validate_email_format(request.email)
 
@@ -525,19 +541,19 @@ async def send_verification_code(
     provider, _org, _app, client_secret, app_id = _require_casdoor()
 
     try:
+        if _check_user_exists(provider, _org, request.email, client_secret):
+            return SendCodeResponse(status="ok", action="login")
+
+        # New user — send signup verification code
         normalized = _normalize_email(request.email)
         data = _send_casdoor_code(provider.api_base, normalized, app_id, "signup", client_secret)
 
         if data.get("status") == "ok":
             return SendCodeResponse(status="ok", action="signup")
 
-        # Casdoor returns an error when the email is already registered
-        msg = (data.get("msg") or data.get("message") or "").lower()
-        if "exist" in msg or "registered" in msg or "taken" in msg:
-            return SendCodeResponse(status="ok", action="login")
-
-        logger.warning(f"Casdoor send-code (signup) failed: {msg}")
-        raise HTTPException(status_code=status.HTTP_400_BAD_REQUEST, detail=msg or "Failed to send verification code")
+        detail = data.get("msg") or data.get("message") or "Failed to send verification code"
+        logger.warning(f"Casdoor send-code (signup) failed: {detail}")
+        raise HTTPException(status_code=status.HTTP_400_BAD_REQUEST, detail=detail)
     except HTTPException:
         raise
     except Exception as e:
