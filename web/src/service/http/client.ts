@@ -28,8 +28,10 @@ async function handleResponse<T>(
     return response.json();
   }
 
-  // Auto-logout on 401 for authenticated endpoints
-  if (response.status === 401 && triggersAutoLogout) {
+  // Auto-logout on 401 for authenticated endpoints.
+  // Guard: only trigger if a token still exists — prevents infinite loop when
+  // logout() fires cleanup requests (e.g. push-unsubscribe) that also 401.
+  if (response.status === 401 && triggersAutoLogout && authService.getToken()) {
     import("@/core/auth").then((m) => m.logout()).catch(() => {});
   }
 
@@ -160,7 +162,11 @@ class HttpClient {
     if (options?.signal) init.signal = options.signal;
     const response = await fetch(url, init);
     if (!response.ok) {
-      if (response.status === 401 && options?.auth !== false) {
+      if (
+        response.status === 401 &&
+        options?.auth !== false &&
+        authService.getToken()
+      ) {
         import("@/core/auth").then((m) => m.logout()).catch(() => {});
       }
       throw new HttpError(response.status, `HTTP ${response.status}`);
