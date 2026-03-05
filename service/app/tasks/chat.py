@@ -28,6 +28,27 @@ from app.tasks.chat_event_handlers import (
 logger = logging.getLogger(__name__)
 
 
+def _suppress_closed_loop_errors(loop: asyncio.AbstractEventLoop) -> None:
+    """Install an exception handler that silences 'Event loop is closed' errors.
+
+    Libraries like httpx schedule transport cleanup via ``__del__`` / weak-ref
+    callbacks.  When the Celery task's event loop is already closed at that
+    point, the callback raises ``RuntimeError('Event loop is closed')``.  The
+    error is harmless (the OS reclaims socket resources anyway), but it pollutes
+    the worker logs.  Setting a no-op handler just before ``loop.close()``
+    prevents the traceback from being printed.
+    """
+
+    def _handler(loop: asyncio.AbstractEventLoop, context: dict[str, Any]) -> None:
+        exc = context.get("exception")
+        if isinstance(exc, RuntimeError) and "Event loop is closed" in str(exc):
+            return
+        # Fall back to default handling for any other exception.
+        loop.default_exception_handler(context)
+
+    loop.set_exception_handler(_handler)
+
+
 # Helper to publish events to Redis Streams
 class RedisPublisher:
     def __init__(self, connection_id: str, topic_id: str | None = None):
@@ -195,6 +216,14 @@ async def _abortable_stream(
             await poller
         except asyncio.CancelledError:
             pass
+        # Explicitly close the wrapped async generator so its finally block
+        # (e.g. checkpointer cleanup) runs immediately instead of waiting for GC.
+        aclose = getattr(stream_iter, "aclose", None)
+        if aclose is not None:
+            try:
+                await aclose()
+            except Exception:
+                pass
 
 
 @celery_app.task(name="process_chat_message")
@@ -255,6 +284,10 @@ def process_chat_message(
             loop.run_until_complete(loop.shutdown_asyncgens())
             loop.run_until_complete(loop.shutdown_default_executor())
         finally:
+            # Suppress "Event loop is closed" errors from httpx AsyncClient.__del__
+            # running after the loop is closed. These are harmless — the OS reclaims
+            # the socket resources anyway.
+            _suppress_closed_loop_errors(loop)
             asyncio.set_event_loop(None)
             loop.close()
 
@@ -606,6 +639,7 @@ def resume_chat_from_interrupt(
             loop.run_until_complete(loop.shutdown_asyncgens())
             loop.run_until_complete(loop.shutdown_default_executor())
         finally:
+            _suppress_closed_loop_errors(loop)
             asyncio.set_event_loop(None)
             loop.close()
 

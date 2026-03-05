@@ -7,10 +7,9 @@ from uuid import UUID
 import redis.asyncio as redis
 from fastapi import APIRouter, Depends, Header, HTTPException, Request
 from fastapi.responses import StreamingResponse
-from sqlmodel.ext.asyncio.session import AsyncSession
 
 from app.configs import configs
-from app.infra.database import get_session
+from app.infra.database import AsyncSessionLocal
 from app.middleware.auth import AuthContext, get_auth_context
 from app.repos import SessionRepository, TopicRepository
 
@@ -28,7 +27,6 @@ async def topic_events(
     topic_id: UUID,
     request: Request,
     auth_ctx: AuthContext = Depends(get_auth_context),
-    db: AsyncSession = Depends(get_session),
     last_event_id: str | None = Header(None, alias="Last-Event-ID"),
 ) -> StreamingResponse:
     """SSE stream of chat events for a topic.
@@ -39,15 +37,18 @@ async def topic_events(
     """
     user = auth_ctx.user_id
 
-    # Validate topic authorization
-    topic_repo = TopicRepository(db)
-    session_repo = SessionRepository(db)
-    topic = await topic_repo.get_topic_by_id(topic_id)
-    if not topic:
-        raise HTTPException(status_code=404, detail="Topic not found")
-    session = await session_repo.get_session_by_id(topic.session_id)
-    if not session or session.user_id != user:
-        raise HTTPException(status_code=403, detail="Access denied")
+    # Validate topic authorization in a short-lived session scope.
+    # The DB session is released immediately after the auth check so that
+    # the long-lived SSE streaming loop does not hold a connection idle.
+    async with AsyncSessionLocal() as db:
+        topic_repo = TopicRepository(db)
+        session_repo = SessionRepository(db)
+        topic = await topic_repo.get_topic_by_id(topic_id)
+        if not topic:
+            raise HTTPException(status_code=404, detail="Topic not found")
+        session = await session_repo.get_session_by_id(topic.session_id)
+        if not session or session.user_id != user:
+            raise HTTPException(status_code=403, detail="Access denied")
 
     stream_key = f"events:{topic_id}"
 

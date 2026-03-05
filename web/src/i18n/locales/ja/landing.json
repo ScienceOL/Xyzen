@@ -1,4 +1,9 @@
 {
+  "nav": {
+    "docs": "ドキュメント",
+    "github": "GitHub",
+    "getStarted": "始める"
+  },
   "hero": {
     "badge": "A Sociology Experiment",
     "title": "価値あるエージェント資産コミュニティ",
@@ -202,6 +207,7 @@
   },
   "v2": {
     "nav": {
+      "docs": "ドキュメント",
       "github": "GitHub",
       "getStarted": "始める"
     },

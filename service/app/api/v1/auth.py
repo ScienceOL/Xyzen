@@ -1,10 +1,16 @@
 import logging
 from typing import Optional
 
-from fastapi import APIRouter, File, Header, HTTPException, Query, UploadFile, status
+from fastapi import APIRouter, Depends, File, Header, HTTPException, Query, Request, UploadFile, status
 from pydantic import BaseModel
 
 from app.core.auth.authentication import authentication_service
+from app.core.rate_limit import (
+    enforce_login_code_rate_limit,
+    enforce_password_login_rate_limit,
+    enforce_send_code_rate_limit,
+    enforce_signup_rate_limit,
+)
 from app.middleware.auth import AuthProvider
 from app.middleware.auth.casdoor import CasdoorAuthProvider
 
@@ -12,6 +18,34 @@ from app.middleware.auth.casdoor import CasdoorAuthProvider
 logger = logging.getLogger(__name__)
 
 router = APIRouter(tags=["auth"])
+
+
+_GMAIL_DOMAINS = {"gmail.com", "googlemail.com"}
+
+
+def _normalize_email(email: str) -> str:
+    """Normalize email to a canonical form.
+
+    - Lowercase the domain.
+    - For Gmail/Googlemail: strip dots from the local part (Gmail ignores them).
+    """
+    local, _, domain = email.partition("@")
+    if not domain:
+        return email
+    domain = domain.lower()
+    if domain in _GMAIL_DOMAINS:
+        local = local.replace(".", "")
+    return f"{local}@{domain}"
+
+
+def _validate_email_format(email: str) -> None:
+    """Reject email addresses with + subaddressing (bulk registration vector)."""
+    local_part = email.split("@")[0] if "@" in email else ""
+    if "+" in local_part:
+        raise HTTPException(
+            status_code=status.HTTP_400_BAD_REQUEST,
+            detail="Email addresses with + are not allowed",
+        )
 
 
 class LoginRequest(BaseModel):
@@ -41,6 +75,9 @@ class AuthProviderConfigResponse(BaseModel):
     audience: Optional[str] = None
     jwks_uri: Optional[str] = None
     algorithm: Optional[str] = None
+    organization: Optional[str] = None
+    application: Optional[str] = None
+    turnstile_site_key: Optional[str] = None
 
 
 class UserInfoResponse(BaseModel):
@@ -114,7 +151,10 @@ async def get_auth_config() -> AuthProviderConfigResponse:
     - jwks_uri: 若为 JWT 提供商用于验证签名
     - algorithm: JWT 算法 (展示/调试用途)
     """
+    from app.configs import configs
+
     provider = AuthProvider
+    turnstile_key = configs.Auth.TurnstileSiteKey or None
     # BaseAuthProvider 暴露的字段
     return AuthProviderConfigResponse(
         provider=provider.get_provider_name(),
@@ -122,6 +162,9 @@ async def get_auth_config() -> AuthProviderConfigResponse:
         audience=getattr(provider, "audience", None),
         jwks_uri=getattr(provider, "jwks_uri", None),
         algorithm=getattr(provider, "algorithm", None),
+        organization=getattr(provider.config, "Organization", None),
+        application=getattr(provider.config, "Application", None),
+        turnstile_site_key=turnstile_key,
     )
 
 
@@ -251,6 +294,663 @@ async def login_casdoor(request: LoginRequest) -> LoginResponse:
         )
     except Exception as e:
         logger.error(f"Login failed: {e}")
+        raise HTTPException(status_code=status.HTTP_400_BAD_REQUEST, detail=str(e))
+
+
+class SendCodeRequest(BaseModel):
+    email: str
+    captcha_token: str | None = None
+
+
+class SendCodeResponse(BaseModel):
+    status: str
+    action: str  # "login" or "signup"
+
+
+def _verify_turnstile_token(token: str, secret: str) -> bool:
+    """Verify a Cloudflare Turnstile token. Returns True if valid."""
+    import requests as http_requests
+
+    try:
+        resp = http_requests.post(
+            "https://challenges.cloudflare.com/turnstile/v0/siteverify",
+            data={"secret": secret, "response": token},
+            timeout=5,
+        )
+        data = resp.json()
+        return bool(data.get("success"))
+    except Exception:
+        logger.warning("Turnstile verification request failed")
+        return False
+
+
+def _send_casdoor_code(api_base: str, email: str, app_id: str, method: str, client_secret: str) -> dict:
+    """Low-level helper: POST to Casdoor send-verification-code and return parsed JSON."""
+    import requests as http_requests
+
+    resp = http_requests.post(
+        f"{api_base}/api/send-verification-code",
+        data={
+            "dest": email,
+            "type": "email",
+            "applicationId": app_id,
+            "method": method,
+            "captchaType": "none",
+            "captchaToken": "",
+            "clientSecret": client_secret,
+        },
+        timeout=10,
+    )
+    return resp.json()
+
+
+def _find_user_email(api_base: str, org: str, email: str, client_id: str, client_secret: str) -> str | None:
+    """Find the stored email for a user in Casdoor.
+
+    Tries the exact email first.  For Gmail addresses, also tries the
+    normalized form (dots stripped) to handle dot-alias mismatches.
+    Returns the email as stored in Casdoor, or None if not found.
+    """
+    import requests as http_requests
+
+    def _query(addr: str) -> str | None:
+        resp = http_requests.get(
+            f"{api_base}/api/get-users",
+            params={
+                "owner": org,
+                "field": "email",
+                "value": addr,
+                "pageSize": "10",
+                "clientId": client_id,
+                "clientSecret": client_secret,
+            },
+            timeout=10,
+        )
+        data = resp.json()
+        users = data.get("data") or []
+        # Casdoor may ignore field/value filters and return all users,
+        # so we must verify the returned email actually matches our query.
+        addr_lower = addr.lower()
+        addr_normalized = _normalize_email(addr)
+        for user in users:
+            stored = user.get("email", "")
+            if stored.lower() == addr_lower:
+                return stored
+            if _normalize_email(stored) == addr_normalized:
+                return stored
+        return None
+
+    found = _query(email)
+    if found:
+        return found
+    # Fallback: try normalized form for Gmail dot-alias issues
+    normalized = _normalize_email(email)
+    if normalized != email:
+        return _query(normalized)
+    return None
+
+
+@router.post("/send-code", response_model=SendCodeResponse)
+async def send_verification_code(
+    request: SendCodeRequest, _: None = Depends(enforce_send_code_rate_limit)
+) -> SendCodeResponse:
+    """Send a verification code to the given email via Casdoor.
+
+    Tries method=login first. If Casdoor responds with "user does not exist",
+    automatically retries with method=signup and returns action="signup" so the
+    frontend can show a registration form.
+    """
+    _validate_email_format(request.email)
+
+    # Verify Turnstile CAPTCHA if token provided and secret configured
+    if request.captcha_token:
+        from app.configs import configs
+
+        turnstile_secret = configs.Auth.TurnstileSecret
+        if turnstile_secret and not _verify_turnstile_token(request.captcha_token, turnstile_secret):
+            raise HTTPException(status_code=status.HTTP_400_BAD_REQUEST, detail="CAPTCHA verification failed")
+
+    provider = AuthProvider
+
+    if not isinstance(provider, CasdoorAuthProvider):
+        raise HTTPException(
+            status_code=status.HTTP_501_NOT_IMPLEMENTED,
+            detail="Verification code login is only available with Casdoor provider",
+        )
+
+    org = getattr(provider.config, "Organization", None)
+    app = getattr(provider.config, "Application", None)
+    if not org or not app:
+        raise HTTPException(
+            status_code=status.HTTP_500_INTERNAL_SERVER_ERROR,
+            detail="Server configuration error: Organization or Application missing",
+        )
+
+    client_secret = getattr(provider.config, "ClientSecret", None) or ""
+    app_id = f"admin/{app}"
+
+    try:
+        # 1. Check if user exists (no code sent for existing users — they use password login)
+        found_email = _find_user_email(provider.api_base, org, request.email, provider.audience, client_secret)
+
+        if found_email:
+            return SendCodeResponse(status="ok", action="login")
+
+        # 2. New user — send signup verification code (use normalized email)
+        normalized_email = _normalize_email(request.email)
+        data = _send_casdoor_code(provider.api_base, normalized_email, app_id, "signup", client_secret)
+
+        if data.get("status") == "ok":
+            return SendCodeResponse(status="ok", action="signup")
+
+        detail = data.get("msg") or data.get("message") or "Failed to send verification code"
+        logger.warning(f"Casdoor send-code (signup) failed: {detail}")
+        raise HTTPException(status_code=status.HTTP_400_BAD_REQUEST, detail=detail)
+    except HTTPException:
+        raise
+    except Exception as e:
+        logger.error(f"Send verification code failed: {e}")
+        raise HTTPException(status_code=status.HTTP_400_BAD_REQUEST, detail=str(e))
+
+
+class SignupRequest(BaseModel):
+    email: str
+    password: str
+    code: str
+
+
+@router.post("/signup", response_model=LoginResponse)
+async def signup(request: SignupRequest, _: None = Depends(enforce_signup_rate_limit)) -> LoginResponse:
+    """Register a new user via Casdoor and return an access token.
+
+    Username is derived from the email prefix. After Casdoor creates the user,
+    the returned auth code is exchanged for an access token.
+    """
+    _validate_email_format(request.email)
+
+    provider = AuthProvider
+
+    if not isinstance(provider, CasdoorAuthProvider):
+        raise HTTPException(
+            status_code=status.HTTP_501_NOT_IMPLEMENTED,
+            detail="Signup is only available with Casdoor provider",
+        )
+
+    org = getattr(provider.config, "Organization", None)
+    app = getattr(provider.config, "Application", None)
+    if not org or not app:
+        raise HTTPException(
+            status_code=status.HTTP_500_INTERNAL_SERVER_ERROR,
+            detail="Server configuration error: Organization or Application missing",
+        )
+
+    normalized_email = _normalize_email(request.email)
+    username = normalized_email.split("@")[0]
+
+    try:
+        import requests as http_requests
+
+        # Step 1: Register user via Casdoor
+        signup_resp = http_requests.post(
+            f"{provider.api_base}/api/signup",
+            json={
+                "organization": org,
+                "application": app,
+                "username": username,
+                "name": username,
+                "email": normalized_email,
+                "password": request.password,
+                "emailCode": request.code,
+            },
+            timeout=10,
+        )
+        signup_data = signup_resp.json()
+
+        if signup_data.get("status") != "ok":
+            detail = signup_data.get("msg") or signup_data.get("message") or "Signup failed"
+            logger.warning(f"Casdoor signup failed: {detail}")
+            raise HTTPException(status_code=status.HTTP_400_BAD_REQUEST, detail=detail)
+
+        # Step 2: Exchange auth code for access token (fallback: password grant)
+        access_token: str | None = None
+        auth_code = signup_data.get("data")
+        if auth_code:
+            try:
+                access_token = provider.exchange_code_for_token(auth_code)
+            except Exception as exc:
+                logger.warning(f"Code exchange after signup failed, trying password grant: {exc}")
+
+        if not access_token:
+            client_secret = getattr(provider.config, "ClientSecret", None) or ""
+            token_resp = http_requests.post(
+                f"{provider.api_base}/api/login/oauth/access_token",
+                data={
+                    "grant_type": "password",
+                    "client_id": provider.audience,
+                    "client_secret": client_secret,
+                    "username": username,
+                    "password": request.password,
+                    "scope": "openid profile email",
+                },
+                timeout=10,
+            )
+            token_data = token_resp.json()
+            access_token = token_data.get("access_token")
+            if not access_token:
+                raise HTTPException(
+                    status_code=status.HTTP_400_BAD_REQUEST,
+                    detail="Signup succeeded but auto-login failed",
+                )
+
+        # Step 3: Validate token to extract user info
+        auth_result = provider.validate_token(access_token)
+        user_info = None
+        if auth_result.success and auth_result.user_info:
+            u = auth_result.user_info
+            user_info = UserInfoResponse(
+                id=u.id,
+                username=u.username,
+                email=u.email,
+                display_name=u.display_name,
+                avatar_url=u.avatar_url,
+                roles=u.roles,
+            )
+
+        return LoginResponse(
+            access_token=access_token,
+            token_type="Bearer",
+            user_info=user_info,
+        )
+    except HTTPException:
+        raise
+    except Exception as e:
+        logger.error(f"Signup failed: {e}")
+        raise HTTPException(status_code=status.HTTP_400_BAD_REQUEST, detail=str(e))
+
+
+class CodeLoginRequest(BaseModel):
+    email: str
+    code: str
+
+
+@router.post("/login/code", response_model=LoginResponse)
+async def login_code(
+    request: CodeLoginRequest, http_request: Request, _: None = Depends(enforce_login_code_rate_limit)
+) -> LoginResponse:
+    """Login with email verification code via Casdoor.
+
+    On success, exchanges the returned auth code for an access token.
+    """
+    provider = AuthProvider
+
+    if not isinstance(provider, CasdoorAuthProvider):
+        raise HTTPException(
+            status_code=status.HTTP_501_NOT_IMPLEMENTED,
+            detail="Verification code login is only available with Casdoor provider",
+        )
+
+    org = getattr(provider.config, "Organization", None)
+    app = getattr(provider.config, "Application", None)
+    if not org or not app:
+        raise HTTPException(
+            status_code=status.HTTP_500_INTERNAL_SERVER_ERROR,
+            detail="Server configuration error: Organization or Application missing",
+        )
+
+    try:
+        import requests as http_requests
+
+        # Build redirect_uri from request headers (Origin → Referer → X-Forwarded → Host)
+        origin = http_request.headers.get("origin", "")
+        if not origin:
+            referer = http_request.headers.get("referer", "")
+            if referer:
+                # Extract origin from referer (scheme + host)
+                from urllib.parse import urlparse
+
+                parsed = urlparse(referer)
+                origin = f"{parsed.scheme}://{parsed.netloc}" if parsed.scheme and parsed.netloc else ""
+        if not origin:
+            proto = http_request.headers.get("x-forwarded-proto", "https")
+            host = http_request.headers.get("x-forwarded-host", "") or http_request.headers.get("host", "")
+            if host:
+                origin = f"{proto}://{host}"
+        redirect_uri = f"{origin}/" if origin else ""
+        logger.info(f"Code login redirect_uri={redirect_uri}")
+
+        # Step 1: POST /api/login with type=code
+        # Casdoor reads responseType, clientId, redirect_uri from query params
+        login_payload = {
+            "username": request.email,
+            "code": request.code,
+            "type": "code",
+            "organization": org,
+            "application": app,
+        }
+        login_url = f"{provider.api_base}/api/login"
+        login_resp = http_requests.post(
+            login_url,
+            params={
+                "responseType": "code",
+                "clientId": provider.audience,
+                "redirectUri": redirect_uri,
+                "scope": "openid profile email",
+            },
+            json=login_payload,
+            timeout=10,
+        )
+        logger.info(f"Casdoor login response: status={login_resp.status_code} body={login_resp.text[:500]}")
+        login_data = login_resp.json()
+
+        if login_data.get("status") != "ok":
+            detail = login_data.get("msg") or login_data.get("message") or "Login failed"
+            logger.warning(f"Casdoor code login failed: {detail}")
+            raise HTTPException(status_code=status.HTTP_400_BAD_REQUEST, detail=detail)
+
+        auth_code = login_data.get("data")
+        if not auth_code:
+            raise HTTPException(status_code=status.HTTP_400_BAD_REQUEST, detail="No auth code returned from Casdoor")
+
+        # Step 2: Exchange auth code for access token
+        access_token = provider.exchange_code_for_token(auth_code)
+
+        # Step 3: Validate token to extract user info
+        auth_result = provider.validate_token(access_token)
+        user_info = None
+        if auth_result.success and auth_result.user_info:
+            u = auth_result.user_info
+            user_info = UserInfoResponse(
+                id=u.id,
+                username=u.username,
+                email=u.email,
+                display_name=u.display_name,
+                avatar_url=u.avatar_url,
+                roles=u.roles,
+            )
+
+        return LoginResponse(
+            access_token=access_token,
+            token_type="Bearer",
+            user_info=user_info,
+        )
+    except HTTPException:
+        raise
+    except Exception as e:
+        logger.error(f"Code login failed: {e}")
+        raise HTTPException(status_code=status.HTTP_400_BAD_REQUEST, detail=str(e))
+
+
+class PasswordLoginRequest(BaseModel):
+    email: str
+    password: str
+
+
+@router.post("/login/password", response_model=LoginResponse)
+async def login_password(
+    request: PasswordLoginRequest, _: None = Depends(enforce_password_login_rate_limit)
+) -> LoginResponse:
+    """Login with email and password via Casdoor resource owner password grant."""
+    provider = AuthProvider
+
+    if not isinstance(provider, CasdoorAuthProvider):
+        raise HTTPException(
+            status_code=status.HTTP_501_NOT_IMPLEMENTED,
+            detail="Password login is only available with Casdoor provider",
+        )
+
+    client_secret = getattr(provider.config, "ClientSecret", None) or ""
+
+    try:
+        import requests as http_requests
+
+        # Try email as username first, then normalized email, then prefix variants
+        normalized = _normalize_email(request.email)
+        candidates = [request.email]
+        if normalized != request.email:
+            candidates.append(normalized)
+        candidates.append(normalized.split("@")[0])
+        if request.email.split("@")[0] not in candidates:
+            candidates.append(request.email.split("@")[0])
+        usernames = candidates
+        access_token: str | None = None
+        last_error = ""
+
+        for username in usernames:
+            token_resp = http_requests.post(
+                f"{provider.api_base}/api/login/oauth/access_token",
+                data={
+                    "grant_type": "password",
+                    "client_id": provider.audience,
+                    "client_secret": client_secret,
+                    "username": username,
+                    "password": request.password,
+                    "scope": "openid profile email",
+                },
+                timeout=10,
+            )
+            token_data = token_resp.json()
+            access_token = token_data.get("access_token")
+            if access_token:
+                break
+            last_error = token_data.get("error_description") or token_data.get("error") or "Invalid credentials"
+
+        if not access_token:
+            raise HTTPException(status_code=status.HTTP_400_BAD_REQUEST, detail=last_error)
+
+        # Validate token to extract user info
+        auth_result = provider.validate_token(access_token)
+        user_info = None
+        if auth_result.success and auth_result.user_info:
+            u = auth_result.user_info
+            user_info = UserInfoResponse(
+                id=u.id,
+                username=u.username,
+                email=u.email,
+                display_name=u.display_name,
+                avatar_url=u.avatar_url,
+                roles=u.roles,
+            )
+
+        return LoginResponse(
+            access_token=access_token,
+            token_type="Bearer",
+            user_info=user_info,
+        )
+    except HTTPException:
+        raise
+    except Exception as e:
+        logger.error(f"Password login failed: {e}")
+        raise HTTPException(status_code=status.HTTP_400_BAD_REQUEST, detail=str(e))
+
+
+class SendResetCodeRequest(BaseModel):
+    email: str
+
+
+@router.post("/send-reset-code", response_model=SendCodeResponse)
+async def send_reset_code(
+    request: SendResetCodeRequest, _: None = Depends(enforce_send_code_rate_limit)
+) -> SendCodeResponse:
+    """Send a password reset verification code to an existing user."""
+    _validate_email_format(request.email)
+
+    provider = AuthProvider
+
+    if not isinstance(provider, CasdoorAuthProvider):
+        raise HTTPException(
+            status_code=status.HTTP_501_NOT_IMPLEMENTED,
+            detail="Password reset is only available with Casdoor provider",
+        )
+
+    org = getattr(provider.config, "Organization", None)
+    app = getattr(provider.config, "Application", None)
+    if not org or not app:
+        raise HTTPException(
+            status_code=status.HTTP_500_INTERNAL_SERVER_ERROR,
+            detail="Server configuration error: Organization or Application missing",
+        )
+
+    client_secret = getattr(provider.config, "ClientSecret", None) or ""
+    app_id = f"admin/{app}"
+
+    try:
+        # Verify user exists and resolve stored email (handles Gmail dot-alias)
+        found_email = _find_user_email(provider.api_base, org, request.email, provider.audience, client_secret)
+        if not found_email:
+            raise HTTPException(status_code=status.HTTP_400_BAD_REQUEST, detail="User not found")
+
+        # Send verification code to the stored email (for existing user)
+        data = _send_casdoor_code(provider.api_base, found_email, app_id, "login", client_secret)
+
+        if data.get("status") == "ok":
+            return SendCodeResponse(status="ok", action="login")
+
+        detail = data.get("msg") or data.get("message") or "Failed to send reset code"
+        logger.warning(f"Casdoor send-reset-code failed: {detail}")
+        raise HTTPException(status_code=status.HTTP_400_BAD_REQUEST, detail=detail)
+    except HTTPException:
+        raise
+    except Exception as e:
+        logger.error(f"Send reset code failed: {e}")
+        raise HTTPException(status_code=status.HTTP_400_BAD_REQUEST, detail=str(e))
+
+
+class ResetPasswordRequest(BaseModel):
+    email: str
+    code: str
+    new_password: str
+
+
+@router.post("/reset-password", response_model=LoginResponse)
+async def reset_password(
+    request: ResetPasswordRequest, http_request: Request, _: None = Depends(enforce_login_code_rate_limit)
+) -> LoginResponse:
+    """Reset password using verification code, then auto-login.
+
+    1. Login with code to verify ownership and get access token
+    2. Set new password via Casdoor admin API
+    3. Return LoginResponse (auto-login)
+    """
+    provider = AuthProvider
+
+    if not isinstance(provider, CasdoorAuthProvider):
+        raise HTTPException(
+            status_code=status.HTTP_501_NOT_IMPLEMENTED,
+            detail="Password reset is only available with Casdoor provider",
+        )
+
+    org = getattr(provider.config, "Organization", None)
+    app = getattr(provider.config, "Application", None)
+    if not org or not app:
+        raise HTTPException(
+            status_code=status.HTTP_500_INTERNAL_SERVER_ERROR,
+            detail="Server configuration error: Organization or Application missing",
+        )
+
+    client_secret = getattr(provider.config, "ClientSecret", None) or ""
+
+    try:
+        import requests as http_requests
+
+        # Resolve the stored email (handles Gmail dot-alias)
+        resolved_email = _find_user_email(provider.api_base, org, request.email, provider.audience, client_secret)
+        if not resolved_email:
+            raise HTTPException(status_code=status.HTTP_400_BAD_REQUEST, detail="User not found")
+
+        # Step 1: Login with code to verify ownership
+        origin = http_request.headers.get("origin", "")
+        if not origin:
+            referer = http_request.headers.get("referer", "")
+            if referer:
+                from urllib.parse import urlparse
+
+                parsed = urlparse(referer)
+                origin = f"{parsed.scheme}://{parsed.netloc}" if parsed.scheme and parsed.netloc else ""
+        if not origin:
+            proto = http_request.headers.get("x-forwarded-proto", "https")
+            host = http_request.headers.get("x-forwarded-host", "") or http_request.headers.get("host", "")
+            if host:
+                origin = f"{proto}://{host}"
+        redirect_uri = f"{origin}/" if origin else ""
+
+        login_payload = {
+            "username": resolved_email,
+            "code": request.code,
+            "type": "code",
+            "organization": org,
+            "application": app,
+        }
+        login_resp = http_requests.post(
+            f"{provider.api_base}/api/login",
+            params={
+                "responseType": "code",
+                "clientId": provider.audience,
+                "redirectUri": redirect_uri,
+                "scope": "openid profile email",
+            },
+            json=login_payload,
+            timeout=10,
+        )
+        login_data = login_resp.json()
+
+        if login_data.get("status") != "ok":
+            detail = login_data.get("msg") or login_data.get("message") or "Invalid verification code"
+            raise HTTPException(status_code=status.HTTP_400_BAD_REQUEST, detail=detail)
+
+        auth_code = login_data.get("data")
+        if not auth_code:
+            raise HTTPException(status_code=status.HTTP_400_BAD_REQUEST, detail="No auth code returned")
+
+        # Exchange for access token
+        access_token = provider.exchange_code_for_token(auth_code)
+
+        # Step 2: Get user info to find the username for set-password
+        auth_result = provider.validate_token(access_token)
+        if not auth_result.success or not auth_result.user_info:
+            raise HTTPException(status_code=status.HTTP_400_BAD_REQUEST, detail="Failed to verify user identity")
+
+        u = auth_result.user_info
+        logger.debug(f"Reset password: resolved user org={org} username={u.username} email={u.email}")
+
+        # Step 3: Set new password via Casdoor admin API
+        # Casdoor set-password expects form data, not JSON
+        set_pw_resp = http_requests.post(
+            f"{provider.api_base}/api/set-password",
+            data={
+                "userOwner": org,
+                "userName": u.username,
+                "newPassword": request.new_password,
+            },
+            params={
+                "clientId": provider.audience,
+                "clientSecret": client_secret,
+            },
+            timeout=10,
+        )
+        set_pw_data = set_pw_resp.json()
+        if set_pw_data.get("status") != "ok":
+            detail = set_pw_data.get("msg") or set_pw_data.get("message") or "Failed to set new password"
+            logger.warning(f"Casdoor set-password failed: {detail}")
+            raise HTTPException(status_code=status.HTTP_400_BAD_REQUEST, detail=detail)
+
+        user_info = UserInfoResponse(
+            id=u.id,
+            username=u.username,
+            email=u.email,
+            display_name=u.display_name,
+            avatar_url=u.avatar_url,
+            roles=u.roles,
+        )
+
+        return LoginResponse(
+            access_token=access_token,
+            token_type="Bearer",
+            user_info=user_info,
+        )
+    except HTTPException:
+        raise
+    except Exception as e:
+        logger.error(f"Reset password failed: {e}")
         raise HTTPException(status_code=status.HTTP_400_BAD_REQUEST, detail=str(e))
 
 

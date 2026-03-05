@@ -7,8 +7,25 @@ export const metadata: Metadata = {
     process.env.NEXT_PUBLIC_BASE_URL || 'http://127.0.0.1:32235',
   ),
   title: {
-    template: '%s - Protocol API',
-    default: 'Protocol API',
+    template: '%s - Xyzen Docs',
+    default: 'Xyzen Docs',
+  },
+  description:
+    'Documentation for Xyzen — the open-source AI Laboratory Server for multi-agent LLM orchestration, real-time chat, and document processing.',
+  openGraph: {
+    type: 'website',
+    title: 'Xyzen Docs',
+    description:
+      'Documentation for Xyzen — the open-source AI Laboratory Server for multi-agent LLM orchestration, real-time chat, and document processing.',
+    siteName: 'Xyzen',
+    images: ['https://storage.sciol.ac.cn/public/icon.png'],
+  },
+  twitter: {
+    card: 'summary',
+    title: 'Xyzen Docs',
+    description:
+      'Documentation for Xyzen — the open-source AI Laboratory Server for multi-agent LLM orchestration, real-time chat, and document processing.',
+    images: ['https://storage.sciol.ac.cn/public/icon.png'],
   },
   icons: [
     { rel: 'icon', url: '/@brand/logo/Logo.png' },

@@ -156,13 +156,17 @@ async def get_task_db_session():
 
     if cache_key not in _worker_engines:
         # Evict engines from previous event loops in this process.
-        # We intentionally do NOT await old_engine.dispose() here because the
-        # underlying asyncpg connections are bound to the old (now-closed) loop
-        # and calling close() on them from the new loop raises RuntimeError.
-        # Dropping the reference lets the GC + pool finalizers clean up safely.
+        # We cannot ``await engine.dispose()`` because the asyncpg connections
+        # are bound to the old (now-closed) loop.  Instead we dispose the
+        # *sync* engine which synchronously invalidates the pool and closes
+        # the underlying DBAPI connections without needing an event loop.
         old_keys = [k for k in _worker_engines if k[0] == pid and k[1] != loop_id]
         for old_key in old_keys:
-            _worker_engines.pop(old_key)
+            old_engine, _ = _worker_engines.pop(old_key)
+            try:
+                old_engine.sync_engine.dispose()
+            except Exception:
+                pass  # best-effort; GC will finalize remaining sockets
 
         task_engine = create_async_engine(
             ASYNC_DATABASE_URL,

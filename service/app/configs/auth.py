@@ -73,6 +73,16 @@ MIIE3TCCAsWgAwIBAgIDAeJAMA0GCSqGSIb3DQEBCwUAMCgxDjAMBgNVBAoTBWFkbWluMRYwFAYDVQQD
         description="Casdoor application Client Secret",
     )
 
+    Organization: str = Field(
+        default="scienceol",
+        description="Casdoor organization name",
+    )
+
+    Application: str = Field(
+        default="scienceol",
+        description="Casdoor application name",
+    )
+
 
 class BohriumAuthConfig(AuthProviderConfigBase):
     """Bohrium 认证配置"""
@@ -167,3 +177,6 @@ class AuthConfig(BaseSettings):
         default_factory=lambda: BohrAppAuthConfig(),
         description="Bohr App authentication configuration",
     )
+
+    TurnstileSiteKey: str = Field(default="", description="Cloudflare Turnstile site key (public, sent to frontend)")
+    TurnstileSecret: str = Field(default="", description="Cloudflare Turnstile secret key")

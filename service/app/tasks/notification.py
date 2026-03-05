@@ -71,36 +71,46 @@ async def _send_web_push_async(
     icon: str,
 ) -> None:
     from pywebpush import WebPushException
+    from sqlalchemy.ext.asyncio import async_sessionmaker, create_async_engine
+    from sqlmodel.ext.asyncio.session import AsyncSession
 
     from app.configs import configs
     from app.core.notification.vapid import send_push
-    from app.infra.database.connection import get_task_db_session
+    from app.infra.database import ASYNC_DATABASE_URL
     from app.repos.push_subscription import PushSubscriptionRepository
 
     if not configs.Novu.VapidPublicKey:
         return
 
-    async with get_task_db_session() as db:
-        repo = PushSubscriptionRepository(db)
-        subs = await repo.get_by_user_id(user_id)
+    # Use a one-shot engine instead of the cached _worker_engines pattern.
+    # asyncio.run() creates and closes a new event loop per call, which
+    # causes the cache to orphan engines.  A local engine avoids the leak.
+    task_engine = create_async_engine(ASYNC_DATABASE_URL, echo=False, pool_size=1, max_overflow=1)
+    TaskSessionLocal = async_sessionmaker(bind=task_engine, class_=AsyncSession, expire_on_commit=False)
+    try:
+        async with TaskSessionLocal() as db:
+            repo = PushSubscriptionRepository(db)
+            subs = await repo.get_by_user_id(user_id)
 
-        payload = {"title": title, "body": body, "url": url, "icon": icon}
+            payload = {"title": title, "body": body, "url": url, "icon": icon}
 
-        for sub in subs:
-            subscription_info: dict[str, str | bytes | dict[str, str | bytes]] = {
-                "endpoint": sub.endpoint,
-                "keys": {"p256dh": sub.keys_p256dh, "auth": sub.keys_auth},
-            }
-            try:
-                send_push(subscription_info, payload)
-            except WebPushException as e:
-                # 410 Gone → subscription expired, remove it
-                response = getattr(e, "response", None)
-                if response is not None and response.status_code == 410:
-                    logger.info("Push subscription expired (410), removing: %s", sub.endpoint[:60])
-                    await repo.delete_by_endpoint(sub.endpoint)
-                    await db.commit()
-                else:
-                    logger.warning("Web push failed for %s: %s", sub.endpoint[:60], e)
-            except Exception:
-                logger.exception("Unexpected error sending web push to %s", sub.endpoint[:60])
+            for sub in subs:
+                subscription_info: dict[str, str | bytes | dict[str, str | bytes]] = {
+                    "endpoint": sub.endpoint,
+                    "keys": {"p256dh": sub.keys_p256dh, "auth": sub.keys_auth},
+                }
+                try:
+                    send_push(subscription_info, payload)
+                except WebPushException as e:
+                    # 410 Gone → subscription expired, remove it
+                    response = getattr(e, "response", None)
+                    if response is not None and response.status_code == 410:
+                        logger.info("Push subscription expired (410), removing: %s", sub.endpoint[:60])
+                        await repo.delete_by_endpoint(sub.endpoint)
+                        await db.commit()
+                    else:
+                        logger.warning("Web push failed for %s: %s", sub.endpoint[:60], e)
+                except Exception:
+                    logger.exception("Unexpected error sending web push to %s", sub.endpoint[:60])
+    finally:
+        await task_engine.dispose()

@@ -13,6 +13,9 @@ export interface AuthProviderConfig {
   audience?: string;
   jwks_uri?: string;
   algorithm?: string;
+  organization?: string;
+  application?: string;
+  turnstile_site_key?: string;
 }
 
 export interface UserInfo {
@@ -99,6 +102,90 @@ class AuthService {
     return http.post(
       "/xyzen/api/v1/auth/login/casdoor",
       { code, state },
+      { auth: false },
+    );
+  }
+
+  async sendVerificationCode(
+    email: string,
+    captchaToken?: string,
+  ): Promise<{ action: "login" | "signup" }> {
+    return http.post(
+      "/xyzen/api/v1/auth/send-code",
+      {
+        email,
+        ...(captchaToken ? { captcha_token: captchaToken } : {}),
+      },
+      { auth: false },
+    );
+  }
+
+  async signup(
+    email: string,
+    password: string,
+    code: string,
+  ): Promise<{
+    access_token: string;
+    token_type: string;
+    user_info: UserInfo;
+  }> {
+    return http.post(
+      "/xyzen/api/v1/auth/signup",
+      { email, password, code },
+      { auth: false },
+    );
+  }
+
+  async loginWithCode(
+    email: string,
+    code: string,
+  ): Promise<{
+    access_token: string;
+    token_type: string;
+    user_info: UserInfo;
+  }> {
+    return http.post(
+      "/xyzen/api/v1/auth/login/code",
+      { email, code },
+      { auth: false },
+    );
+  }
+
+  async loginWithPassword(
+    email: string,
+    password: string,
+  ): Promise<{
+    access_token: string;
+    token_type: string;
+    user_info: UserInfo;
+  }> {
+    return http.post(
+      "/xyzen/api/v1/auth/login/password",
+      { email, password },
+      { auth: false },
+    );
+  }
+
+  async sendResetCode(email: string): Promise<{ action: "login" | "signup" }> {
+    return http.post(
+      "/xyzen/api/v1/auth/send-reset-code",
+      { email },
+      { auth: false },
+    );
+  }
+
+  async resetPassword(
+    email: string,
+    code: string,
+    newPassword: string,
+  ): Promise<{
+    access_token: string;
+    token_type: string;
+    user_info: UserInfo;
+  }> {
+    return http.post(
+      "/xyzen/api/v1/auth/reset-password",
+      { email, code, new_password: newPassword },
       { auth: false },
     );
   }
