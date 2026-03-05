@@ -148,125 +148,127 @@ function CoreMemoryTab() {
   }
 
   return (
-    <div className="space-y-3 p-4">
-      {CORE_SECTIONS.map((section, index) => {
-        const content = coreMemory?.[section] ?? "";
-        const isEditing = editingSection === section;
-        const isEmpty = !content.trim();
+    <div className="h-full overflow-auto custom-scrollbar p-4">
+      <div className="space-y-3">
+        {CORE_SECTIONS.map((section, index) => {
+          const content = coreMemory?.[section] ?? "";
+          const isEditing = editingSection === section;
+          const isEmpty = !content.trim();
 
-        return (
-          <motion.div
-            key={section}
-            initial={{ opacity: 0, y: 12 }}
-            animate={{ opacity: 1, y: 0 }}
-            transition={{ ...springTransition, delay: index * 0.05 }}
-            className="rounded-lg bg-neutral-100/60 dark:bg-white/[0.04]"
-          >
-            {/* Section header */}
-            <div className="flex items-center justify-between px-3.5 pt-3 pb-1">
-              <span className="text-[13px] font-medium text-neutral-700 dark:text-neutral-300">
-                {t(SECTION_LABEL_KEYS[section])}
-              </span>
-              {!isEditing && (
-                <motion.button
-                  whileHover={{ scale: 1.15 }}
-                  whileTap={{ scale: 0.9 }}
-                  onClick={() => startEdit(section)}
-                  className="p-1 rounded-md text-neutral-400 hover:text-indigo-500 hover:bg-indigo-50 dark:text-neutral-500 dark:hover:text-indigo-400 dark:hover:bg-indigo-950/30 transition-colors"
-                  title={t("capsule.memory.edit")}
-                >
-                  <PencilIcon className="w-3.5 h-3.5" />
-                </motion.button>
-              )}
-            </div>
-
-            {/* Section content */}
-            <div className="px-3.5 pb-3">
-              <AnimatePresence mode="wait">
-                {isEditing ? (
-                  <motion.div
-                    key="edit"
-                    initial={{ opacity: 0 }}
-                    animate={{ opacity: 1 }}
-                    exit={{ opacity: 0 }}
-                    transition={{ duration: 0.15 }}
+          return (
+            <motion.div
+              key={section}
+              initial={{ opacity: 0, y: 12 }}
+              animate={{ opacity: 1, y: 0 }}
+              transition={{ ...springTransition, delay: index * 0.05 }}
+              className="rounded-lg bg-neutral-100/60 dark:bg-white/[0.04]"
+            >
+              {/* Section header */}
+              <div className="flex items-center justify-between px-3.5 pt-3 pb-1">
+                <span className="text-[13px] font-medium text-neutral-700 dark:text-neutral-300">
+                  {t(SECTION_LABEL_KEYS[section])}
+                </span>
+                {!isEditing && (
+                  <motion.button
+                    whileHover={{ scale: 1.15 }}
+                    whileTap={{ scale: 0.9 }}
+                    onClick={() => startEdit(section)}
+                    className="p-1 rounded-md text-neutral-400 hover:text-indigo-500 hover:bg-indigo-50 dark:text-neutral-500 dark:hover:text-indigo-400 dark:hover:bg-indigo-950/30 transition-colors"
+                    title={t("capsule.memory.edit")}
                   >
-                    <Textarea
-                      autoFocus
-                      value={editContent}
-                      onChange={(e) => {
-                        if (e.target.value.length <= MAX_SECTION_CHARS) {
-                          setEditContent(e.target.value);
-                        }
-                      }}
-                      className="text-[13px]"
-                      rows={4}
-                      onKeyDown={(e) => {
-                        if (e.key === "Escape") cancelEdit();
-                        if (e.key === "Enter" && (e.metaKey || e.ctrlKey)) {
-                          void handleSave();
-                        }
-                      }}
-                    />
-                    <div className="mt-2 flex items-center justify-between">
-                      <span className="text-xs text-neutral-400 dark:text-neutral-500">
-                        {t("capsule.memory.core.charCount", {
-                          count: editContent.length,
-                          max: MAX_SECTION_CHARS,
-                        })}
-                      </span>
-                      <div className="flex items-center gap-1.5">
-                        <motion.button
-                          whileHover={{ scale: 1.05 }}
-                          whileTap={{ scale: 0.95 }}
-                          onClick={cancelEdit}
-                          disabled={saving}
-                          className="flex items-center gap-1 rounded-lg px-2.5 py-1.5 text-xs text-neutral-500 hover:bg-neutral-200/60 dark:text-neutral-400 dark:hover:bg-white/[0.06] transition-colors"
-                        >
-                          <XMarkIcon className="w-3.5 h-3.5" />
-                          {t("capsule.memory.cancel")}
-                        </motion.button>
-                        <motion.button
-                          whileHover={{ scale: 1.05 }}
-                          whileTap={{ scale: 0.95 }}
-                          onClick={() => void handleSave()}
-                          disabled={saving}
-                          className="flex items-center gap-1 rounded-lg bg-indigo-500 px-2.5 py-1.5 text-xs font-semibold text-white hover:bg-indigo-600 disabled:opacity-50 dark:hover:bg-indigo-400 transition-colors"
-                        >
-                          {saving ? (
-                            <ArrowPathIcon className="w-3.5 h-3.5 animate-spin" />
-                          ) : (
-                            <CheckIcon className="w-3.5 h-3.5" />
-                          )}
-                          {t("capsule.memory.save")}
-                        </motion.button>
-                      </div>
-                    </div>
-                  </motion.div>
-                ) : (
-                  <motion.div
-                    key="view"
-                    initial={{ opacity: 0 }}
-                    animate={{ opacity: 1 }}
-                    exit={{ opacity: 0 }}
-                    transition={{ duration: 0.15 }}
-                  >
-                    {isEmpty ? (
-                      <p className="text-xs text-neutral-400 dark:text-neutral-500 italic py-1">
-                        {t("capsule.memory.core.emptyHint")}
-                      </p>
-                    ) : (
-                      <p className="text-[13px] text-neutral-700 dark:text-neutral-300 whitespace-pre-wrap break-words leading-relaxed">
-                        {content}
-                      </p>
-                    )}
-                  </motion.div>
+                    <PencilIcon className="w-3.5 h-3.5" />
+                  </motion.button>
                 )}
-              </AnimatePresence>
-            </div>
-          </motion.div>
-        );
-      })}
+              </div>
+
+              {/* Section content */}
+              <div className="px-3.5 pb-3">
+                <AnimatePresence mode="wait">
+                  {isEditing ? (
+                    <motion.div
+                      key="edit"
+                      initial={{ opacity: 0 }}
+                      animate={{ opacity: 1 }}
+                      exit={{ opacity: 0 }}
+                      transition={{ duration: 0.15 }}
+                    >
+                      <Textarea
+                        autoFocus
+                        value={editContent}
+                        onChange={(e) => {
+                          if (e.target.value.length <= MAX_SECTION_CHARS) {
+                            setEditContent(e.target.value);
+                          }
+                        }}
+                        className="text-[13px]"
+                        rows={4}
+                        onKeyDown={(e) => {
+                          if (e.key === "Escape") cancelEdit();
+                          if (e.key === "Enter" && (e.metaKey || e.ctrlKey)) {
+                            void handleSave();
+                          }
+                        }}
+                      />
+                      <div className="mt-2 flex items-center justify-between">
+                        <span className="text-xs text-neutral-400 dark:text-neutral-500">
+                          {t("capsule.memory.core.charCount", {
+                            count: editContent.length,
+                            max: MAX_SECTION_CHARS,
+                          })}
+                        </span>
+                        <div className="flex items-center gap-1.5">
+                          <motion.button
+                            whileHover={{ scale: 1.05 }}
+                            whileTap={{ scale: 0.95 }}
+                            onClick={cancelEdit}
+                            disabled={saving}
+                            className="flex items-center gap-1 rounded-lg px-2.5 py-1.5 text-xs text-neutral-500 hover:bg-neutral-200/60 dark:text-neutral-400 dark:hover:bg-white/[0.06] transition-colors"
+                          >
+                            <XMarkIcon className="w-3.5 h-3.5" />
+                            {t("capsule.memory.cancel")}
+                          </motion.button>
+                          <motion.button
+                            whileHover={{ scale: 1.05 }}
+                            whileTap={{ scale: 0.95 }}
+                            onClick={() => void handleSave()}
+                            disabled={saving}
+                            className="flex items-center gap-1 rounded-lg bg-indigo-500 px-2.5 py-1.5 text-xs font-semibold text-white hover:bg-indigo-600 disabled:opacity-50 dark:hover:bg-indigo-400 transition-colors"
+                          >
+                            {saving ? (
+                              <ArrowPathIcon className="w-3.5 h-3.5 animate-spin" />
+                            ) : (
+                              <CheckIcon className="w-3.5 h-3.5" />
+                            )}
+                            {t("capsule.memory.save")}
+                          </motion.button>
+                        </div>
+                      </div>
+                    </motion.div>
+                  ) : (
+                    <motion.div
+                      key="view"
+                      initial={{ opacity: 0 }}
+                      animate={{ opacity: 1 }}
+                      exit={{ opacity: 0 }}
+                      transition={{ duration: 0.15 }}
+                    >
+                      {isEmpty ? (
+                        <p className="text-xs text-neutral-400 dark:text-neutral-500 italic py-1">
+                          {t("capsule.memory.core.emptyHint")}
+                        </p>
+                      ) : (
+                        <p className="text-[13px] text-neutral-700 dark:text-neutral-300 whitespace-pre-wrap break-words leading-relaxed">
+                          {content}
+                        </p>
+                      )}
+                    </motion.div>
+                  )}
+                </AnimatePresence>
+              </div>
+            </motion.div>
+          );
+        })}
+      </div>
     </div>
   );
 }
@@ -424,7 +426,7 @@ function EpisodicMemoriesTab() {
   }, []);
 
   return (
-    <div className="flex flex-1 flex-col overflow-hidden">
+    <div className="flex h-full flex-col overflow-hidden">
       {/* Header actions */}
       <div className="flex items-center justify-between px-4 py-2 shrink-0">
         <span className="text-xs text-neutral-500 dark:text-neutral-400">
@@ -492,7 +494,7 @@ function EpisodicMemoriesTab() {
       </div>
 
       {/* Content */}
-      <div className="flex-1 overflow-auto custom-scrollbar p-4">
+      <div className="flex-1 min-h-0 overflow-auto custom-scrollbar p-4">
         <AnimatePresence>
           {error && (
             <motion.div
@@ -760,7 +762,7 @@ export default function MemoryPanel() {
         </div>
 
         {/* Tab Content */}
-        <div className="flex-1 overflow-auto custom-scrollbar">
+        <div className="flex-1 min-h-0 overflow-hidden">
           {activeTab === "profile" ? (
             <CoreMemoryTab />
           ) : (
