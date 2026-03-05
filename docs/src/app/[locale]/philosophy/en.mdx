@@ -1,69 +1,48 @@
 export const metadata = {
   title: 'Philosophy',
   description:
-    'The design principles behind Xyzen: stateless async execution, no-foreign-key databases, and pub/sub bridging.',
+    'The beliefs behind Xyzen: from doing to thinking, Agent as Asset, and the democratization of science.',
 }
 
 export const sections = [
-  { title: 'Stateless Async Execution', id: 'stateless-async-execution' },
-  { title: 'No-Foreign-Key Database', id: 'no-foreign-key-database' },
-  { title: 'Pub/Sub Bridge', id: 'pubsub-bridge' },
-  { title: 'Repository Pattern', id: 'repository-pattern' },
-  { title: 'Component Reuse', id: 'component-reuse' },
+  { title: 'From Doing to Thinking', id: 'from-doing-to-thinking' },
+  { title: 'Agent as Asset', id: 'agent-as-asset' },
+  { title: 'Digital Twin of Scientific Thinking', id: 'digital-twin-of-scientific-thinking' },
+  { title: 'Democratization of Science', id: 'democratization-of-science' },
 ]
 
 # Philosophy
 
-Xyzen is built on a small set of opinionated design principles that prioritize horizontal scalability, operational simplicity, and developer ergonomics. {{ className: 'lead' }}
+Xyzen is driven by a singular conviction: curiosity should never be limited by resources, and research should never be held hostage by scale. {{ className: 'lead' }}
 
-## Stateless Async Execution
+## From Doing to Thinking
 
-The core architectural decision in Xyzen is the strict separation between **connection management** (FastAPI) and **heavy computation** (Celery workers).
+We started by writing code line by line, trying to solve a deceptively simple problem: how to make large models truly **act** — calling search engines, generating code, accessing databases, manipulating files, even plugging into external APIs. Computation itself became the agent's hands.
 
-API containers remain completely stateless. When a user sends a message, the API pod publishes a task to Celery and immediately returns. The actual LLM orchestration — tool calls, streaming, multi-step reasoning — happens in a worker process that has no knowledge of which API pod the user is connected to.
+But after taking that first solid step toward "doing", we found ourselves facing a new question: **is this enough?** Scientists don't need an obedient assembly-line worker. They need a thinking partner — one that understands fuzzy intentions and proactively proposes solutions.
 
-This means you can scale API pods and worker pods independently. If you need to handle more concurrent connections, add API replicas. If LLM inference is the bottleneck, add worker replicas. The two layers never need to know about each other.
+**From "can do" to "can think."**
 
-**Ephemeral state** (streaming channels, pub/sub subscriptions) lives in Redis. **Persistent state** (conversations, messages, agent configs) lives in PostgreSQL. API containers hold nothing.
+So we rebuilt the product logic. We introduced graph-based orchestration and a DSL that lets researchers semi-naturally design their own reasoning paths. We built a multi-agent collaboration architecture so that a single deep research session can work the way human research does — decompose, hypothesize, verify, synthesize. (This is also where the name *Zen* comes from — originally the only name that lived in our memory for what Xyzen was meant to be.)
 
-## No-Foreign-Key Database
+## Agent as Asset
 
-Xyzen uses **logical references** (`user_id: str`, `agent_id: str`) instead of SQL foreign key constraints. Relationships are enforced in the service layer, not the database layer.
+This is why we proposed the idea: **Agent as Asset**.
 
-This is a deliberate tradeoff:
+Every carefully trained agent is a crystallization of a researcher's tacit knowledge — a concrete, inheritable form of methodology that can be reused and evolved. It is not disposable tooling. It is intellectual capital.
 
-- **Simpler migrations** — Adding or removing relationships doesn't require coordinated schema changes across tables
-- **Flexible storage** — Individual tables can be moved to different databases or sharded without breaking referential integrity constraints
-- **Faster writes** — No cascading constraint checks on INSERT/UPDATE
-- **Explicit logic** — Relationship rules are visible in application code rather than hidden in DB constraints
+When a researcher spends hours refining an agent's system prompt, attaching the right skills, and tuning its tool set, they are encoding domain expertise into a living, executable artifact. That artifact can be shared with collaborators, published to the [marketplace](/marketplace), or forked and adapted by the next generation.
 
-The cost is that you must handle orphaned references and relationship validation in code. Xyzen's [repository pattern](#repository-pattern) provides consistent CRUD operations that handle this.
+## Digital Twin of Scientific Thinking
 
-## Pub/Sub Bridge
+Imagine a future where your agent is no longer just a tool, but a **digital twin of your scientific thinking** — it understands your logic, remembers your academic taste, continues exploring your hypotheses while you rest, and greets you with fresh insights and a rough draft when you return.
 
-Workers process tasks independently and broadcast results back to the specific API pod via Redis channels (`chat:{connection_id}`). This enables the stateless async model:
+This is the vision we are building toward. Through [memory](/memory), agents accumulate knowledge about you across conversations. Through [skills](/skills), they learn your methodology. Through [knowledge bases](/knowledge), they internalize your data. Over time, the agent becomes an extension of your intellectual self.
 
-1. User sends message → API pod creates Celery task
-2. Celery worker picks up task, runs LLM chain
-3. Worker publishes streaming events to Redis channel
-4. API pod subscribes to channel, streams events to user via SSE
+## Democratization of Science
 
-The user's SSE connection is tied to one API pod, but the worker doesn't care which pod it is. Redis acts as the bridge. If an API pod restarts, the user reconnects and picks up events from where they left off using Redis Streams' `Last-Event-ID` replay.
+This is the belief we want to convey through Xyzen: **one person can own an entire self-driven laboratory. A small team can tackle problems once reserved for large institutions.**
 
-## Repository Pattern
+This is not merely technological progress. It is the **democratization of science** — ensuring that curiosity is no longer constrained by resources, and that research is no longer gated by scale.
 
-All database access goes through repository classes in `repos/`. Business logic lives in `core/` services that compose repository calls.
-
-```
-Component → Core Service → Repository → Database
-                ↕
-            Redis (cache, pub/sub)
-```
-
-This keeps database queries centralized and testable. Repositories handle query construction and data mapping. Services handle business rules, validation, and cross-cutting concerns.
-
-## Component Reuse
-
-Agents in Xyzen are composed from **reusable components** — small subgraphs that handle specific capabilities (tool-calling loops, research phases, planning steps). Components are registered globally and resolved at graph compilation time.
-
-This means you can build a new agent type by composing existing components rather than writing everything from scratch. The Deep Research agent, for example, is composed of four components (clarify, brief, supervisor, report) that could each be reused in other agent types.
+Let research have warmth. Let genuine scientific exploration happen. The same boundless curiosity that drives a child is the force behind every line of code, every refactor, every deeper understanding of what an agent can become. Let Xyzen be the bridge — so that before the vast unknown, you can reach for the stars with the strength of one.

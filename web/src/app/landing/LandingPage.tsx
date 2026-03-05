@@ -1,7 +1,18 @@
 import { motion, useInView } from "motion/react";
 import { useTranslation } from "react-i18next";
-import { useRef } from "react";
-import { Github, ArrowRight, ChevronDown, Scale, Shield } from "lucide-react";
+import { useEffect, useRef, useState } from "react";
+
+/**
+ * @deprecated Use `LandingPageV2` from `app/landing/v2/LandingPageV2` instead.
+ */
+import {
+  Github,
+  ArrowRight,
+  BookOpen,
+  ChevronDown,
+  Scale,
+  Shield,
+} from "lucide-react";
 
 const GITHUB_REPO_URL = "https://github.com/ScienceOL/Xyzen";
 
@@ -120,9 +131,22 @@ interface LandingPageProps {
 
 export function LandingPage({ onGetStarted }: LandingPageProps) {
   const { t } = useTranslation();
+  const scrollRef = useRef<HTMLDivElement>(null);
+  const [scrolled, setScrolled] = useState(false);
+
+  useEffect(() => {
+    const el = scrollRef.current;
+    if (!el) return;
+    const handler = () => setScrolled(el.scrollTop > 40);
+    el.addEventListener("scroll", handler, { passive: true });
+    return () => el.removeEventListener("scroll", handler);
+  }, []);
 
   return (
-    <div className="custom-scrollbar fixed inset-0 z-0 overflow-y-auto overflow-x-hidden bg-gradient-to-b from-[#fdf6ee] via-[#fef9f4] to-[#f8f0fa] text-neutral-800 dark:from-[#0d0b10] dark:via-[#100e15] dark:to-[#0d0b10] dark:text-neutral-200">
+    <div
+      ref={scrollRef}
+      className="custom-scrollbar fixed inset-0 z-0 overflow-y-auto overflow-x-hidden bg-gradient-to-b from-[#fdf6ee] via-[#fef9f4] to-[#f8f0fa] text-neutral-800 dark:from-[#0d0b10] dark:via-[#100e15] dark:to-[#0d0b10] dark:text-neutral-200"
+    >
       {/* ============================================================ */}
       {/*  WATERCOLOR WASH — decorative background blobs               */}
       {/* ============================================================ */}
@@ -136,6 +160,62 @@ export function LandingPage({ onGetStarted }: LandingPageProps) {
         {/* Bottom gold wash */}
         <div className="absolute -left-[10%] bottom-[10%] h-[40vh] w-[40vh] rounded-full bg-[radial-gradient(circle,rgba(255,210,120,0.18),transparent_70%)] blur-3xl dark:bg-[radial-gradient(circle,rgba(120,100,60,0.05),transparent_70%)]" />
       </div>
+
+      {/* ============================================================ */}
+      {/*  NAV BAR                                                     */}
+      {/* ============================================================ */}
+      <motion.nav
+        initial={{ opacity: 0, y: -20 }}
+        animate={{ opacity: 1, y: 0 }}
+        transition={{ duration: 0.6, delay: 0.2 }}
+        className={`fixed left-0 right-0 top-0 z-50 transition-all duration-300 ${
+          scrolled
+            ? "border-b border-neutral-200/40 bg-[#fdf6ee]/80 backdrop-blur-xl dark:border-white/[0.06] dark:bg-[#0d0b10]/80"
+            : "bg-transparent"
+        }`}
+      >
+        <div className="mx-auto flex max-w-5xl items-center justify-between px-6 py-4">
+          <a href="#" className="flex items-center gap-2.5">
+            <img
+              src="/icon-512.png"
+              alt="Xyzen"
+              className="h-8 w-8 rounded-lg"
+            />
+            <span className="text-[15px] font-bold tracking-wide text-neutral-800 dark:text-white">
+              Xyzen
+            </span>
+          </a>
+
+          <div className="flex items-center gap-3">
+            <a
+              href="/docs"
+              target="_blank"
+              rel="noopener noreferrer"
+              className="inline-flex items-center gap-1.5 rounded-lg px-3 py-2 text-[13px] font-medium text-neutral-500 transition-colors hover:text-neutral-800 dark:text-neutral-400 dark:hover:text-white"
+            >
+              <BookOpen className="h-4 w-4" />
+              <span className="hidden sm:inline">{t("landing.nav.docs")}</span>
+            </a>
+            <a
+              href={GITHUB_REPO_URL}
+              target="_blank"
+              rel="noopener noreferrer"
+              className="inline-flex items-center gap-1.5 rounded-lg px-3 py-2 text-[13px] font-medium text-neutral-500 transition-colors hover:text-neutral-800 dark:text-neutral-400 dark:hover:text-white"
+            >
+              <Github className="h-4 w-4" />
+              <span className="hidden sm:inline">
+                {t("landing.nav.github")}
+              </span>
+            </a>
+            <button
+              onClick={onGetStarted}
+              className="rounded-lg bg-violet-600/10 px-4 py-2 text-[13px] font-semibold text-violet-600 transition-all hover:bg-violet-600/20 dark:bg-white/[0.08] dark:text-white dark:hover:bg-white/[0.14]"
+            >
+              {t("landing.nav.getStarted")}
+            </button>
+          </div>
+        </div>
+      </motion.nav>
 
       {/* ============================================================ */}
       {/*  HERO                                                        */}

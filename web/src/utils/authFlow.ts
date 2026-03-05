@@ -7,6 +7,7 @@ export function buildAuthorizeUrl(
   provider: string,
   cfg: AuthProviderConfig,
   state?: string,
+  casdoorProvider?: string,
 ): string | null {
   if (!cfg.issuer) return null;
   const redirectUri = encodeURIComponent(
@@ -18,7 +19,11 @@ export function buildAuthorizeUrl(
     // Casdoor OAuth2 Authorization Code Flow
     const base = cfg.issuer.replace(/\/$/, "");
 
-    return `${base}/login/oauth/authorize?client_id=${audience}&response_type=code&redirect_uri=${redirectUri}&scope=openid%20profile%20email&state=${state}`;
+    let url = `${base}/login/oauth/authorize?client_id=${audience}&response_type=code&redirect_uri=${redirectUri}&scope=openid%20profile%20email&state=${state}`;
+    if (casdoorProvider) {
+      url += `&provider_hint=${encodeURIComponent(casdoorProvider)}`;
+    }
+    return url;
   }
   if (provider === "bohrium") {
     // Best-effort: common authorize path; adjust if backend exposes a dedicated login endpoint

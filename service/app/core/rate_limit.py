@@ -56,6 +56,11 @@ UPLOAD_RATE_LIMIT = RateLimitConfig(max_requests=30, window_seconds=60)
 DOWNLOAD_RATE_LIMIT = RateLimitConfig(max_requests=60, window_seconds=60)
 REDEEM_RATE_LIMIT = RateLimitConfig(max_requests=10, window_seconds=60)
 ADMIN_AUTH_RATE_LIMIT = RateLimitConfig(max_requests=10, window_seconds=60)
+SEND_CODE_RATE_LIMIT = RateLimitConfig(max_requests=5, window_seconds=60)
+SEND_CODE_RATE_LIMIT_HOUR = RateLimitConfig(max_requests=20, window_seconds=3600)
+LOGIN_CODE_RATE_LIMIT = RateLimitConfig(max_requests=10, window_seconds=60)
+PASSWORD_LOGIN_RATE_LIMIT = RateLimitConfig(max_requests=10, window_seconds=60)
+SIGNUP_RATE_LIMIT = RateLimitConfig(max_requests=5, window_seconds=60)
 
 
 async def _check_rate_limit(action: str, user_id: str, config: RateLimitConfig) -> None:
@@ -117,3 +122,28 @@ async def enforce_admin_rate_limit(
     """FastAPI dependency that enforces admin endpoint rate limiting by IP."""
     client_ip = request.client.host if request.client else "unknown"
     await _check_rate_limit("admin_auth", client_ip, ADMIN_AUTH_RATE_LIMIT)
+
+
+async def enforce_send_code_rate_limit(request: Request) -> None:
+    """FastAPI dependency that enforces send-code rate limiting by IP (5/min + 20/hour)."""
+    client_ip = request.client.host if request.client else "unknown"
+    await _check_rate_limit("send_code_min", client_ip, SEND_CODE_RATE_LIMIT)
+    await _check_rate_limit("send_code_hour", client_ip, SEND_CODE_RATE_LIMIT_HOUR)
+
+
+async def enforce_login_code_rate_limit(request: Request) -> None:
+    """FastAPI dependency that enforces login/code rate limiting by IP (10/min)."""
+    client_ip = request.client.host if request.client else "unknown"
+    await _check_rate_limit("login_code", client_ip, LOGIN_CODE_RATE_LIMIT)
+
+
+async def enforce_password_login_rate_limit(request: Request) -> None:
+    """FastAPI dependency that enforces password login rate limiting by IP (10/min)."""
+    client_ip = request.client.host if request.client else "unknown"
+    await _check_rate_limit("password_login", client_ip, PASSWORD_LOGIN_RATE_LIMIT)
+
+
+async def enforce_signup_rate_limit(request: Request) -> None:
+    """FastAPI dependency that enforces signup rate limiting by IP (5/min)."""
+    client_ip = request.client.host if request.client else "unknown"
+    await _check_rate_limit("signup", client_ip, SIGNUP_RATE_LIMIT)

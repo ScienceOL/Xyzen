@@ -123,6 +123,7 @@ export function MobileMoreMenu({
   );
 
   const skillsAuto = isSkillsAutoEnabled(agent);
+  const agentId = agent?.id;
 
   const handleSkillAutoToggle = async () => {
     if (!agent) return;
@@ -160,14 +161,14 @@ export function MobileMoreMenu({
     ) || 0;
 
   const loadSkills = useCallback(async () => {
-    if (!agent) return;
+    if (!agentId) return;
 
     setIsLoadingSkills(true);
     setSkillsError(null);
     try {
       const [skills, agentSkills] = await Promise.all([
         skillService.listSkills(),
-        skillService.listAgentSkills(agent.id),
+        skillService.listAgentSkills(agentId),
       ]);
       setAllSkills(skills);
       setAttachedSkills(agentSkills);
@@ -180,7 +181,12 @@ export function MobileMoreMenu({
     } finally {
       setIsLoadingSkills(false);
     }
-  }, [agent, t]);
+  }, [agentId, t]);
+
+  useEffect(() => {
+    if (!isOpen || !agentId) return;
+    void loadSkills();
+  }, [isOpen, agentId, loadSkills]);
 
   const handleMcpServerToggle = async (serverId: string, connect: boolean) => {
     if (!agent || isUpdating) return;

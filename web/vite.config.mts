@@ -45,7 +45,8 @@ export default defineConfig(() => {
         manifest: {
           name: "Xyzen",
           short_name: "Xyzen",
-          description: "Xyzen Application",
+          description:
+            "The infrastructure for a world where Agents specialize, trade, and evolve — like civilization itself.",
           display: "standalone",
           display_override: ["window-controls-overlay"],
           // background_color: "#000000",

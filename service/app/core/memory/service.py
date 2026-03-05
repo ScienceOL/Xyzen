@@ -12,6 +12,7 @@ independent of Alembic migrations.
 from __future__ import annotations
 
 import asyncio
+import inspect
 import logging
 from typing import TYPE_CHECKING, Any, cast
 
@@ -96,10 +97,15 @@ class MemoryService:
                 pool_config=pool_config,
             )
             store = await cm.__aenter__()
+            try:
+                # Create tables if they don't exist (also creates pgvector extension + store_vectors when indexed)
+                await store.setup()
+            except Exception:
+                # setup() failed — close the pool we just opened so connections
+                # are not leaked back to PostgreSQL.
+                await cm.__aexit__(None, None, None)
+                raise
             self._context_manager = cm
-
-            # Create tables if they don't exist (also creates pgvector extension + store_vectors when indexed)
-            await store.setup()
             self._store = store
 
             logger.info(
@@ -340,10 +346,39 @@ async def get_or_initialize_memory_service() -> MemoryService:
     if _memory_service is not None:
         if _memory_service.is_store_loop_alive():
             return _memory_service
-        # Store's event loop is closed — discard and re-initialize
+        # Store's event loop is closed — attempt best-effort pool cleanup, then
+        # discard and re-initialize.  We cannot await __aexit__ because the pool
+        # is bound to the old (now-closed) loop, but the underlying psycopg
+        # AsyncConnectionPool exposes a synchronous close-like path via _pool.
         logger.info("Memory store event loop is closed, re-initializing for new loop")
+        old_service = _memory_service
         _memory_service = None
+        await _try_close_stale_store(old_service)
     return await initialize_memory_service()
+
+
+async def _try_close_stale_store(service: MemoryService) -> None:
+    """Best-effort cleanup of an orphaned MemoryService whose event loop is closed.
+
+    We try ``await pool.close()`` on the current (new) event loop.  psycopg's
+    ``AsyncConnectionPool`` may raise because its internal ``asyncio.Condition``
+    was created on the old loop, but the underlying TCP closes often still succeed.
+    Any failure is caught and logged — we are no worse off than dropping the reference.
+    """
+    try:
+        store = service.store
+        if store is None:
+            return
+        # AsyncPostgresStore wraps a psycopg AsyncConnectionPool in ._pool
+        pool = getattr(store, "_pool", None) or getattr(store, "pool", None)
+        if pool is None:
+            return
+        # pool.close() is async — attempt it on the current loop.
+        if hasattr(pool, "close") and inspect.iscoroutinefunction(pool.close):
+            await asyncio.wait_for(pool.close(), timeout=5.0)
+            logger.info("Closed stale memory store connection pool")
+    except Exception:
+        logger.debug("Best-effort stale memory store cleanup failed (non-fatal)", exc_info=True)
 
 
 async def shutdown_memory_service() -> None:

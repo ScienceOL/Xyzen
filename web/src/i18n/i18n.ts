@@ -4,6 +4,7 @@ import { initReactI18next } from "react-i18next";
 
 import enAgents from "./locales/en/agents.json";
 import enApp from "./locales/en/app.json";
+import enAuth from "./locales/en/auth.json";
 import enCapsule from "./locales/en/capsule.json";
 import enCommon from "./locales/en/common.json";
 import enGift from "./locales/en/gift.json";
@@ -20,6 +21,7 @@ import enTerminal from "./locales/en/terminal.json";
 
 import jaAgents from "./locales/ja/agents.json";
 import jaApp from "./locales/ja/app.json";
+import jaAuth from "./locales/ja/auth.json";
 import jaCapsule from "./locales/ja/capsule.json";
 import jaCommon from "./locales/ja/common.json";
 import jaGift from "./locales/ja/gift.json";
@@ -36,6 +38,7 @@ import jaTerminal from "./locales/ja/terminal.json";
 
 import zhAgents from "./locales/zh/agents.json";
 import zhApp from "./locales/zh/app.json";
+import zhAuth from "./locales/zh/auth.json";
 import zhCapsule from "./locales/zh/capsule.json";
 import zhCommon from "./locales/zh/common.json";
 import zhGift from "./locales/zh/gift.json";
@@ -72,6 +75,7 @@ export function initI18n() {
         en: {
           translation: {
             app: enApp,
+            auth: enAuth,
             capsule: enCapsule,
             common: enCommon,
             gift: enGift,
@@ -91,6 +95,7 @@ export function initI18n() {
         zh: {
           translation: {
             app: zhApp,
+            auth: zhAuth,
             capsule: zhCapsule,
             common: zhCommon,
             gift: zhGift,
@@ -110,6 +115,7 @@ export function initI18n() {
         ja: {
           translation: {
             app: jaApp,
+            auth: jaAuth,
             capsule: jaCapsule,
             common: jaCommon,
             gift: jaGift,

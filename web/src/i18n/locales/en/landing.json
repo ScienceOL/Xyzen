@@ -1,4 +1,9 @@
 {
+  "nav": {
+    "docs": "Docs",
+    "github": "GitHub",
+    "getStarted": "Get Started"
+  },
   "hero": {
     "badge": "A Sociology Experiment",
     "title": "The Valued Agent Asset Community",
@@ -202,6 +207,7 @@
   },
   "v2": {
     "nav": {
+      "docs": "Docs",
       "github": "GitHub",
       "getStarted": "Get Started"
     },

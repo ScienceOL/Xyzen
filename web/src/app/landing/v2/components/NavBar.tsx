@@ -1,5 +1,5 @@
 import { motion } from "motion/react";
-import { Github } from "lucide-react";
+import { BookOpen, Github } from "lucide-react";
 import { useTranslation } from "react-i18next";
 import { usePageScroll } from "../hooks/useScrollProgress";
 
@@ -40,13 +40,28 @@ export function NavBar({ onGetStarted }: NavBarProps) {
       />
 
       <div className="mx-auto flex max-w-6xl items-center justify-between px-6 py-4">
-        {/* Logo */}
-        <a href="#" className="flex items-center gap-2.5">
-          <img src="/icon-512.png" alt="Xyzen" className="h-8 w-8 rounded-lg" />
-          <span className="text-[15px] font-bold tracking-wide text-white">
-            Xyzen
-          </span>
-        </a>
+        {/* Left: Logo + Nav links */}
+        <div className="flex items-center gap-6">
+          <a href="#" className="flex items-center gap-2.5">
+            <img
+              src="/icon-512.png"
+              alt="Xyzen"
+              className="h-8 w-8 rounded-lg"
+            />
+            <span className="text-[15px] font-bold tracking-wide text-white">
+              Xyzen
+            </span>
+          </a>
+          <a
+            href="/docs"
+            target="_blank"
+            rel="noopener noreferrer"
+            className="inline-flex items-center gap-1.5 rounded-lg px-3 py-2 text-[13px] font-medium text-neutral-400 transition-colors hover:text-white"
+          >
+            <BookOpen className="h-4 w-4" />
+            {t("landing.v2.nav.docs")}
+          </a>
+        </div>
 
         {/* Right actions */}
         <div className="flex items-center gap-3">

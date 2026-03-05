@@ -1,4 +1,4 @@
-import { autoLogin, handleRelinkCallback } from "@/core/auth";
+import { autoLogin, handleRelinkCallback, login } from "@/core/auth";
 import { useAuth } from "@/hooks/useAuth";
 import { useXyzen } from "@/store";
 import { QueryClient, QueryClientProvider } from "@tanstack/react-query";
@@ -16,6 +16,7 @@ import {
 } from "@/service/giftService";
 
 import AuthErrorScreen from "@/app/auth/AuthErrorScreen";
+import { LoginPage } from "@/app/auth/LoginPage";
 import SharedAgentDetailPage from "@/app/marketplace/SharedAgentDetailPage";
 import SharedChatPage from "@/app/share/SharedChatPage";
 import { CenteredInput } from "@/components/features";
@@ -140,6 +141,8 @@ export function Xyzen({
     typeof window !== "undefined" ? window.location.hash : "",
   );
   const [showAuthScreen, setShowAuthScreen] = useState(false);
+  const [showLoginPage, setShowLoginPage] = useState(false);
+  const [turnstileSiteKey, setTurnstileSiteKey] = useState<string>();
   const [showGiftModal, setShowGiftModal] = useState(false);
   const [giftCampaigns, setGiftCampaigns] = useState<CampaignStatusResponse[]>(
     [],
@@ -249,6 +252,7 @@ export function Xyzen({
     if (status === "succeeded" && !initialLoadComplete) {
       // Reset auth screen state when authentication succeeds
       setShowAuthScreen(false);
+      setShowLoginPage(false);
 
       const loadData = async () => {
         try {
@@ -465,23 +469,25 @@ export function Xyzen({
   }, []);
 
   const handleShowAuthScreen = useCallback(async () => {
-    // For OAuth providers (non-bohr_app), redirect directly to the login page
+    // For Casdoor, show our custom login page with provider selection
     try {
-      const [status, config] = await Promise.all([
+      const [authStatus, config] = await Promise.all([
         authService.getAuthStatus(),
         authService.getAuthConfig(),
       ]);
-      const provider = config?.provider ?? status?.provider;
+      const provider = config?.provider ?? authStatus?.provider;
 
-      if (provider && provider !== "bohr_app") {
-        let url: string | null = null;
-        if (provider === "casdoor") {
-          const state = Math.random().toString(36).substring(7);
-          sessionStorage.setItem("auth_state", state);
-          url = buildAuthorizeUrl(provider, config, state);
-        } else {
-          url = buildAuthorizeUrl(provider, config);
+      if (provider === "casdoor") {
+        if (config?.turnstile_site_key) {
+          setTurnstileSiteKey(config.turnstile_site_key);
         }
+        setShowLoginPage(true);
+        return;
+      }
+
+      // For other OAuth providers (non-bohr_app), redirect directly
+      if (provider && provider !== "bohr_app") {
+        const url = buildAuthorizeUrl(provider, config);
         if (url) {
           window.location.href = url;
           return;
@@ -492,6 +498,66 @@ export function Xyzen({
     }
     setShowAuthScreen(true);
   }, []);
+
+  const handleSelectProvider = useCallback(async (casdoorProvider: string) => {
+    try {
+      const config = await authService.getAuthConfig();
+      const state = Math.random().toString(36).substring(7);
+      sessionStorage.setItem("auth_state", state);
+      const url = buildAuthorizeUrl("casdoor", config, state, casdoorProvider);
+      if (url) {
+        window.location.href = url;
+      }
+    } catch (error) {
+      console.error("Failed to initiate provider login:", error);
+      setShowLoginPage(false);
+      setShowAuthScreen(true);
+    }
+  }, []);
+
+  const handleLoginBack = useCallback(() => {
+    setShowLoginPage(false);
+  }, []);
+
+  const handleSendCode = useCallback(
+    async (email: string, captchaToken?: string) => {
+      return authService.sendVerificationCode(email, captchaToken);
+    },
+    [],
+  );
+
+  const handleCodeLogin = useCallback(async (email: string, code: string) => {
+    const result = await authService.loginWithCode(email, code);
+    await login(result.access_token, result.user_info);
+  }, []);
+
+  const handleSignup = useCallback(
+    async (email: string, password: string, code: string) => {
+      const result = await authService.signup(email, password, code);
+      await login(result.access_token, result.user_info);
+    },
+    [],
+  );
+
+  const handlePasswordLogin = useCallback(
+    async (email: string, password: string) => {
+      const result = await authService.loginWithPassword(email, password);
+      await login(result.access_token, result.user_info);
+    },
+    [],
+  );
+
+  const handleSendResetCode = useCallback(async (email: string) => {
+    await authService.sendResetCode(email);
+  }, []);
+
+  const handleResetPassword = useCallback(
+    async (email: string, code: string, newPassword: string) => {
+      const result = await authService.resetPassword(email, code, newPassword);
+      await login(result.access_token, result.user_info);
+    },
+    [],
+  );
 
   const isAuthenticating =
     status === "idle" ||
@@ -578,7 +644,19 @@ export function Xyzen({
   const gatedContent = isAuthenticating ? (
     <AuthLoadingScreen progress={progress} />
   ) : authFailed ? (
-    showLandingPage && !showAuthScreen ? (
+    showLoginPage ? (
+      <LoginPage
+        onSelectProvider={handleSelectProvider}
+        onBack={handleLoginBack}
+        onSendCode={handleSendCode}
+        onCodeLogin={handleCodeLogin}
+        onSignup={handleSignup}
+        onPasswordLogin={handlePasswordLogin}
+        onSendResetCode={handleSendResetCode}
+        onResetPassword={handleResetPassword}
+        turnstileSiteKey={turnstileSiteKey}
+      />
+    ) : showLandingPage && !showAuthScreen ? (
       <LandingPageV2 onGetStarted={handleShowAuthScreen} />
     ) : (
       <AuthErrorScreen onRetry={handleRetry} variant="fullscreen" />

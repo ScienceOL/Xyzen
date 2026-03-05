@@ -1,4 +1,9 @@
 {
+  "nav": {
+    "docs": "文档",
+    "github": "GitHub",
+    "getStarted": "开始使用"
+  },
   "hero": {
     "badge": "A Sociology Experiment",
     "title": "有价值的 Agent 资产社区",
@@ -202,6 +207,7 @@
   },
   "v2": {
     "nav": {
+      "docs": "文档",
       "github": "GitHub",
       "getStarted": "开始使用"
     },
