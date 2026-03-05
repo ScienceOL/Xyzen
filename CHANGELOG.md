@@ -2,6 +2,12 @@
 
 All notable changes to Xyzen will be documented in this file.
 
+## [1.6.21](https://github.com/ScienceOL/Xyzen/compare/v1.6.20...v1.6.21) (2026-03-05)
+
+### 🐛 Bug Fixes
+
+* **docs:** fix search index generating broken URLs after en.mdx rename ([d4130a5](https://github.com/ScienceOL/Xyzen/commit/d4130a515b68d1ed5769e1b9d4f1aa93c9d041cf))
+
 ## [1.6.20](https://github.com/ScienceOL/Xyzen/compare/v1.6.19...v1.6.20) (2026-03-05)
 
 ### ♻️ Refactoring
