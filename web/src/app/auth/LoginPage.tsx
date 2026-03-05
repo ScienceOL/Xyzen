@@ -979,9 +979,8 @@ export function LoginPage({
             className="w-full max-w-[420px]"
           >
             {/* Tagline + Subtitle */}
-            <h1 className="text-[28px] font-bold leading-[1.2] tracking-tight text-white md:text-[32px]">
-              The infrastructure for a world where Agents specialize, trade, and
-              evolve.
+            <h1 className="whitespace-pre-line text-[28px] font-bold leading-[1.2] tracking-tight text-white md:text-[32px]">
+              {t("auth.login.tagline")}
             </h1>
             <p className="mt-4 text-[15px] text-neutral-500">
               {t("auth.login.title")}
