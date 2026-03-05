@@ -57,10 +57,10 @@ export default function (nextConfig = {}) {
             let appDir = path.resolve('./src/app/',)
             this.addContextDependency(appDir)
 
-            let files = glob.sync('**/*.mdx', { cwd: appDir })
+            let files = glob.sync('**/en.mdx', { cwd: appDir })
 
             let data = files.map((file) => {
-              let url = '/' + file.replace(/(^|\/)page\.mdx$/, '')
+              let url = '/' + file.replace(/(^|\/)en\.mdx$/, '')
               let mdx = fs.readFileSync(path.join(appDir, file), 'utf8')
 
               let sections = []
