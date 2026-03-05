@@ -2,6 +2,12 @@
 
 All notable changes to Xyzen will be documented in this file.
 
+## [1.6.22](https://github.com/ScienceOL/Xyzen/compare/v1.6.21...v1.6.22) (2026-03-05)
+
+### 🐛 Bug Fixes
+
+* **deployment:** correct namespace for xyzen-docs image in deployment script ([530e003](https://github.com/ScienceOL/Xyzen/commit/530e003d8db23b95b20de8bc58da6835e6428c91))
+
 ## [1.6.21](https://github.com/ScienceOL/Xyzen/compare/v1.6.20...v1.6.21) (2026-03-05)
 
 ### 🐛 Bug Fixes
