@@ -176,12 +176,12 @@ export function MobileMoreMenu({
       const message =
         error instanceof Error && error.message.trim()
           ? error.message
-          : "Failed to load skills";
+          : t("app.toolbar.skills.loadFailed", "Failed to load skills");
       setSkillsError(message);
     } finally {
       setIsLoadingSkills(false);
     }
-  }, [agentId]);
+  }, [agentId, t]);
 
   useEffect(() => {
     if (!isOpen || !agentId) return;

@@ -7,6 +7,7 @@ from app.models.agent import AgentCreate, AgentScope
 from app.models.skill import SkillCreate, SkillScope
 from app.main import app
 from app.middleware.auth import UserInfo, get_current_user, get_current_user_info
+from app.core.marketplace.agent_marketplace_service import AgentMarketplaceService
 from app.repos.agent import AgentRepository
 from app.repos.skill import SkillRepository
 
@@ -311,3 +312,80 @@ async def test_fork_agent_fails_when_snapshot_user_skill_is_missing(
 
     fork_user_agents = await agent_repo.get_agents_by_user(fork_user_id)
     assert len(fork_user_agents) == 0
+
+
+@pytest.mark.asyncio
+async def test_fork_agent_clones_user_skill_with_unique_name_when_collision_exists(
+    async_client: AsyncClient,
+    db_session: AsyncSession,
+    monkeypatch: pytest.MonkeyPatch,
+):
+    owner_user_id = "test-user-id"
+    fork_user_id = "fork-user-id"
+
+    agent_repo = AgentRepository(db_session)
+    skill_repo = SkillRepository(db_session)
+
+    agent = await agent_repo.create_agent(
+        AgentCreate(
+            name="Fork Collision Agent",
+            description="Ensure cloned skill name collision is resolved",
+            scope=AgentScope.USER,
+            model="gpt-4",
+            prompt="Collision test prompt",
+        ),
+        owner_user_id,
+    )
+    source_user_skill = await skill_repo.create_skill(
+        SkillCreate(
+            name="collision-skill",
+            description="Source skill",
+            scope=SkillScope.USER,
+        ),
+        owner_user_id,
+    )
+    await skill_repo.attach_skill_to_agent(agent.id, source_user_skill.id)
+    await db_session.commit()
+
+    await skill_repo.create_skill(
+        SkillCreate(
+            name="collision-skill",
+            description="Existing target skill",
+            scope=SkillScope.USER,
+        ),
+        fork_user_id,
+    )
+    await db_session.commit()
+
+    publish_response = await async_client.post(
+        "/xyzen/api/v1/marketplace/publish",
+        json={
+            "agent_id": str(agent.id),
+            "commit_message": "Publish with user skill for collision",
+            "is_published": True,
+            "skill_ids": [str(source_user_skill.id)],
+        },
+    )
+    assert publish_response.status_code == 200
+    marketplace_id = publish_response.json()["marketplace_id"]
+
+    _override_auth_user(monkeypatch, fork_user_id)
+    fork_response = await async_client.post(
+        f"/xyzen/api/v1/marketplace/fork/{marketplace_id}",
+        json={},
+    )
+    assert fork_response.status_code == 200
+    forked_agent_id = UUID(fork_response.json()["agent_id"])
+
+    forked_skills = await skill_repo.get_skills_for_agent(forked_agent_id)
+    assert len(forked_skills) == 1
+    assert forked_skills[0].scope == SkillScope.USER
+    assert forked_skills[0].name == "collision-skill (Fork)"
+    assert forked_skills[0].user_id == fork_user_id
+
+
+def test_build_fallback_skill_md_handles_missing_description() -> None:
+    skill_md = AgentMarketplaceService._build_fallback_skill_md(skill_name='My "Skill"', description=None)
+
+    assert 'name: "My \\"Skill\\""' in skill_md
+    assert 'description: "Forked copy of My \\"Skill\\"."' in skill_md

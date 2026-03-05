@@ -692,27 +692,30 @@ class AgentMarketplaceService:
         return updated
 
     async def _generate_unique_user_skill_name(self, desired_name: str, user_id: str) -> str:
-        existing_skills = await self.skill_repo.get_skills_by_user(user_id)
-        existing_names = {skill.name.lower() for skill in existing_skills}
+        normalized_desired_name = desired_name.strip() or "Untitled Skill"
 
-        if desired_name.lower() not in existing_names:
-            return desired_name
+        if not await self.skill_repo.user_skill_name_exists(user_id, normalized_desired_name):
+            return normalized_desired_name
 
-        base_name = f"{desired_name} (Fork)"
-        if base_name.lower() not in existing_names:
+        base_name = f"{normalized_desired_name} (Fork)"
+        if not await self.skill_repo.user_skill_name_exists(user_id, base_name):
             return base_name
 
         counter = 1
         while True:
             candidate = f"{base_name} ({counter})"
-            if candidate.lower() not in existing_names:
+            if not await self.skill_repo.user_skill_name_exists(user_id, candidate):
                 return candidate
             counter += 1
 
     @staticmethod
-    def _build_fallback_skill_md(*, skill_name: str, description: str) -> str:
+    def _build_fallback_skill_md(*, skill_name: str, description: str | None) -> str:
+        normalized_description = (description or "").strip()
+        if not normalized_description:
+            normalized_description = f"Forked copy of {skill_name}."
+
         escaped_name = skill_name.replace('"', '\\"')
-        escaped_description = description.replace('"', '\\"')
+        escaped_description = normalized_description.replace('"', '\\"')
         return f'---\nname: "{escaped_name}"\ndescription: "{escaped_description}"\n---\n'
 
     async def get_listing_with_snapshot(self, marketplace_id: UUID) -> tuple[AgentMarketplace, AgentSnapshot] | None:

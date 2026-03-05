@@ -28,11 +28,11 @@ interface SkillsButtonProps {
   buttonClassName?: string;
 }
 
-function toErrorMessage(error: unknown): string {
+function toErrorMessage(error: unknown): string | null {
   if (error instanceof Error && error.message.trim()) {
     return error.message;
   }
-  return "Unknown error";
+  return null;
 }
 
 export function SkillsButton({
@@ -70,11 +70,14 @@ export function SkillsButton({
       setAllSkills(skills);
       setAttachedSkills(agentSkills);
     } catch (err) {
-      setError(toErrorMessage(err));
+      setError(
+        toErrorMessage(err) ||
+          t("app.toolbar.skills.loadFailed", "Failed to load skills"),
+      );
     } finally {
       setIsLoading(false);
     }
-  }, [agent.id]);
+  }, [agent.id, t]);
 
   useEffect(() => {
     void loadSkills();
@@ -87,7 +90,13 @@ export function SkillsButton({
       await onUpdateAgent({ ...agent, graph_config: newGraphConfig });
       await onAgentRefresh();
     } catch (err) {
-      setError(toErrorMessage(err));
+      setError(
+        toErrorMessage(err) ||
+          t(
+            "app.toolbar.skills.autoToggleFailed",
+            "Failed to update skills auto mode",
+          ),
+      );
     }
   };
 

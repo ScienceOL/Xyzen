@@ -79,6 +79,21 @@ class SkillRepository:
         )
         return result.first()
 
+    async def user_skill_name_exists(self, user_id: str, name: str) -> bool:
+        """Check whether a user-scoped skill name already exists for a specific owner."""
+        normalized_name = name.strip().lower()
+        if not normalized_name:
+            return False
+
+        result = await self.db.exec(
+            select(Skill.id)
+            .where(Skill.scope == SkillScope.USER)
+            .where(Skill.user_id == user_id)
+            .where(sa.func.lower(col(Skill.name)) == normalized_name)
+            .limit(1)
+        )
+        return result.first() is not None
+
     async def get_skills_by_user(self, user_id: str) -> Sequence[Skill]:
         """Fetch all skills owned by a user."""
         result = await self.db.exec(
