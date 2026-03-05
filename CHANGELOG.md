@@ -2,6 +2,12 @@
 
 All notable changes to Xyzen will be documented in this file.
 
+## [1.6.20](https://github.com/ScienceOL/Xyzen/compare/v1.6.19...v1.6.20) (2026-03-05)
+
+### ♻️ Refactoring
+
+* **subscription:** optimize PointsInfoModal motion perf and remove survey link ([3bd5239](https://github.com/ScienceOL/Xyzen/commit/3bd5239da3e7da8bd76c2eaa15ede029a1e30c8e))
+
 ## [1.6.19](https://github.com/ScienceOL/Xyzen/compare/v1.6.18...v1.6.19) (2026-03-04)
 
 ### 🐛 Bug Fixes
