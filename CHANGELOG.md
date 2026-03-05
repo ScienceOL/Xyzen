@@ -2,6 +2,12 @@
 
 All notable changes to Xyzen will be documented in this file.
 
+## [1.6.23](https://github.com/ScienceOL/Xyzen/compare/v1.6.22...v1.6.23) (2026-03-05)
+
+### 🐛 Bug Fixes
+
+* add missing set_generation_cursor to HeadlessPublisher and fix SSE connecting banner flash ([17a3cef](https://github.com/ScienceOL/Xyzen/commit/17a3cef05959070011b92cb3163e8d308375dfd5))
+
 ## [1.6.22](https://github.com/ScienceOL/Xyzen/compare/v1.6.21...v1.6.22) (2026-03-05)
 
 ### 🐛 Bug Fixes
