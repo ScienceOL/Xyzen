@@ -17,7 +17,7 @@ import { cn } from "@/lib/utils";
 import type { Agent } from "@/types/agents";
 import type { SkillRead } from "@/types/skills";
 import { CheckIcon, SparklesIcon } from "@heroicons/react/24/outline";
-import { useCallback, useMemo, useState } from "react";
+import { useCallback, useEffect, useMemo, useState } from "react";
 import { useTranslation } from "react-i18next";
 import { partitionSkills, toggleSkillAttachment } from "./skillActions";
 
@@ -70,14 +70,15 @@ export function SkillsButton({
       setAllSkills(skills);
       setAttachedSkills(agentSkills);
     } catch (err) {
-      setError(
-        toErrorMessage(err) ||
-          t("app.toolbar.skills.loadFailed", "Failed to load skills"),
-      );
+      setError(toErrorMessage(err));
     } finally {
       setIsLoading(false);
     }
-  }, [agent.id, t]);
+  }, [agent.id]);
+
+  useEffect(() => {
+    void loadSkills();
+  }, [loadSkills]);
 
   const handleToggleAuto = async () => {
     setError(null);
