@@ -43,15 +43,11 @@ services:
       resources: {}
 
   web:
-    image: ghcr.io/scienceol/xyzen-web:beta
+    build:
+      context: ../web
+      target: dev
     env_file:
       - .env.dev
-    # build:
-    #   context: ../web
-    #   platforms:
-    #     - linux/amd64
-    #     - linux/arm64
-    #   dockerfile: Dockerfile
     volumes:
       - ../web:/app
       - /app/node_modules
