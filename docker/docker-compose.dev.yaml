@@ -1,14 +1,10 @@
 services:
   service:
-    image: ghcr.io/scienceol/xyzen-service:beta
+    build:
+      context: ../service
+      target: dev
     env_file:
       - .env.dev
-    # build:
-    #   context: ../service
-    #   platforms:
-    #     - linux/amd64
-    #     - linux/arm64
-    #   dockerfile: Dockerfile
     volumes:
       - ../service:/app
       - /app/.venv
@@ -31,7 +27,9 @@ services:
       resources: {}
 
   celery:
-    image: ghcr.io/scienceol/xyzen-service:beta
+    build:
+      context: ../service
+      target: dev
     env_file:
       - .env.dev
     volumes:
@@ -57,7 +55,9 @@ services:
       resources: {}
 
   docs:
-    image: ghcr.io/scienceol/xyzen-docs:beta
+    build:
+      context: ../docs
+      target: dev
     environment:
       - NODE_ENV=development
     volumes:
