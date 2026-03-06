@@ -2,6 +2,12 @@
 
 All notable changes to Xyzen will be documented in this file.
 
+## [1.6.26](https://github.com/ScienceOL/Xyzen/compare/v1.6.25...v1.6.26) (2026-03-06)
+
+### 🐛 Bug Fixes
+
+* beta survey QR code, internal application improvements and i18n fixes ([37f4f07](https://github.com/ScienceOL/Xyzen/commit/37f4f07d5affb386eaf0d08c74527f8fb1f4ed81))
+
 ## [1.6.25](https://github.com/ScienceOL/Xyzen/compare/v1.6.24...v1.6.25) (2026-03-06)
 
 ### 🐛 Bug Fixes
