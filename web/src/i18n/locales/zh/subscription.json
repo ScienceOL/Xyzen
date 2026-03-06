@@ -51,8 +51,8 @@
   "topUp": {
     "title": "积分加量包",
     "subtitle": "随时补充，按需购买",
-    "rateIntl": "500 积分 = $1",
-    "rateChina": "100 积分 = ¥1",
+    "rateIntl": "200 积分 = $1",
+    "rateChina": "40 积分 = ¥1",
     "methodsIntl": "PayPal / 信用卡",
     "methodsChina": "支付宝 / 微信",
     "buy": "购买积分",
@@ -74,8 +74,8 @@
   "fullAccess": {
     "title": "模型开放订阅包",
     "subtitle": "解锁所有模型 30 天",
-    "rateIntl": "$6.80 / 30 天",
-    "rateChina": "¥48 / 30 天",
+    "rateIntl": "$5 / 30 天",
+    "rateChina": "¥35 / 30 天",
     "buy": "立即购买",
     "renew": "续期",
     "duration": "30 天全部模型",

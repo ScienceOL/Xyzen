@@ -56,6 +56,15 @@ function MessageContent({
     [deferredContent],
   );
 
+  // Defer phase content for simple agent streaming path (most common agent type).
+  // Without this, the growing streamedContent triggers a full markdown re-parse
+  // on every rAF frame (~60fps), causing severe jank during long responses.
+  const simplePhaseContent =
+    agentExecution?.phases.length === 1
+      ? agentExecution.phases[0].streamedContent || ""
+      : "";
+  const deferredPhaseContent = useDeferredValue(simplePhaseContent || content);
+
   const hasTimeline =
     !!agentExecution &&
     (agentExecution.phases.length > 0 || agentExecution.status === "cancelled");
@@ -144,12 +153,14 @@ function MessageContent({
           }
           // Simple agent: render interleaved content directly in document flow
           if (isSimpleAgent) {
-            const phase = agentExecution!.phases[0];
-            const phaseContent = phase.streamedContent || deferredContent;
-            const toolCalls = phase.toolCalls ?? [];
+            const toolCalls = agentExecution!.phases[0].toolCalls ?? [];
 
             // Brief gap between agent_start and streaming_start
-            if (isExecuting && !phaseContent && toolCalls.length === 0) {
+            if (
+              isExecuting &&
+              !deferredPhaseContent &&
+              toolCalls.length === 0
+            ) {
               return (
                 <span className="inline-flex items-center gap-1">
                   <LoadingMessage size="small" />
@@ -160,12 +171,14 @@ function MessageContent({
             if (toolCalls.length > 0) {
               return (
                 <InterleavedContent
-                  content={phaseContent}
+                  content={deferredPhaseContent}
                   toolCalls={toolCalls}
                 />
               );
             }
-            return phaseContent ? <Markdown content={phaseContent} /> : null;
+            return deferredPhaseContent ? (
+              <Markdown content={deferredPhaseContent} />
+            ) : null;
           }
           // Simple mode (no agent execution)
           return markdownContent;

@@ -1077,7 +1077,7 @@ function TopUpCard({
           value={credits}
           onChange={setCredits}
           minValue={0}
-          step={500}
+          step={200}
           className="w-36 shrink-0"
         />
         {canBuy && (

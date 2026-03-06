@@ -71,4 +71,5 @@ async def user_events_ws(
         except asyncio.CancelledError:
             pass
         await pubsub.unsubscribe(channel)
-        await r.close()
+        await pubsub.aclose()
+        await r.aclose()

@@ -5,6 +5,7 @@ from app.ee import is_ee
 
 from .admin_marketplace import router as admin_marketplace_router
 from .agents import router as agents_router
+from .applications import router as applications_router
 from .auth import router as auth_router
 from .avatar import router as avatar_router
 from .chat_actions import router as chat_actions_router
@@ -127,6 +128,7 @@ v1_router.include_router(chat_actions_router, prefix="/topics")
 v1_router.include_router(tools_router, prefix="/tools")
 v1_router.include_router(admin_marketplace_router, prefix="/admin/marketplace", tags=["admin-marketplace"])
 v1_router.include_router(system_router, tags=["system"])
+v1_router.include_router(applications_router, prefix="/applications")
 
 # EE-only routers: billing, subscription, checkin, gifts, payment
 if is_ee():

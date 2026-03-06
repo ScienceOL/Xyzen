@@ -58,7 +58,7 @@ _PLAN_LIMITS: dict[str, PlanLimitsDefinition] = {
         max_scheduled_tasks=3,
         max_terminals=3,
         max_deployments=3,
-        monthly_credits=5000,
+        monthly_credits=3000,
         max_model_tier="standard",
         is_default=False,
         priority=1,
@@ -73,7 +73,7 @@ _PLAN_LIMITS: dict[str, PlanLimitsDefinition] = {
         max_scheduled_tasks=6,
         max_terminals=6,
         max_deployments=6,
-        monthly_credits=22000,
+        monthly_credits=11000,
         max_model_tier="pro",
         is_default=False,
         priority=2,
@@ -88,7 +88,7 @@ _PLAN_LIMITS: dict[str, PlanLimitsDefinition] = {
         max_scheduled_tasks=10,
         max_terminals=10,
         max_deployments=10,
-        monthly_credits=60000,
+        monthly_credits=30000,
         max_model_tier="ultra",
         is_default=False,
         priority=3,
@@ -201,7 +201,7 @@ _GLOBAL_CATALOG = RegionCatalog(
             plan_key="standard",
             display_name_key="subscription.plan.standard",
             pricing=[
-                CurrencyPricing(currency="USD", amount=990, display_price="$9.9", credits=5000),
+                CurrencyPricing(currency="USD", amount=990, display_price="$9.9", credits=3000),
             ],
             features=[
                 PlanFeatureEntry(key="allBasic", included=True),
@@ -214,7 +214,7 @@ _GLOBAL_CATALOG = RegionCatalog(
             plan_key="professional",
             display_name_key="subscription.plan.professional",
             pricing=[
-                CurrencyPricing(currency="USD", amount=3690, display_price="$36.9", credits=22000),
+                CurrencyPricing(currency="USD", amount=3690, display_price="$36.9", credits=11000),
             ],
             features=[
                 PlanFeatureEntry(key="allStandard", included=True),
@@ -228,7 +228,7 @@ _GLOBAL_CATALOG = RegionCatalog(
             display_name_key="subscription.plan.ultra",
             badge_key="subscription.plan.bestValue",
             pricing=[
-                CurrencyPricing(currency="USD", amount=9990, display_price="$99.9", credits=60000),
+                CurrencyPricing(currency="USD", amount=9990, display_price="$99.9", credits=30000),
             ],
             features=[
                 PlanFeatureEntry(key="allPro", included=True),
@@ -241,7 +241,7 @@ _GLOBAL_CATALOG = RegionCatalog(
     topup_rates=[
         TopUpRate(
             currency="USD",
-            credits_per_unit=500,
+            credits_per_unit=200,
             unit_amount=100,  # $1
             display_rate="subscription.topUp.rateIntl",
             payment_methods=["airwallex"],
@@ -258,8 +258,8 @@ _GLOBAL_CATALOG = RegionCatalog(
     full_access_pass_rates=[
         FullAccessPassRate(
             currency="USD",
-            amount=100,  # $1.00
-            display_price="$1.00",
+            amount=500,  # $5.00
+            display_price="$5.00",
             duration_days=30,
             display_rate="subscription.fullAccess.rateIntl",
         ),
@@ -314,7 +314,7 @@ _CHINA_CATALOG = RegionCatalog(
                     currency="CNY",
                     amount=8990,
                     display_price="¥89.9",
-                    credits=10000,
+                    credits=11000,
                     first_month_amount=7990,
                     first_month_display="¥79.9",
                 ),
@@ -331,7 +331,7 @@ _CHINA_CATALOG = RegionCatalog(
             display_name_key="subscription.plan.ultraChina",
             badge_key="subscription.plan.bestValue",
             pricing=[
-                CurrencyPricing(currency="CNY", amount=26800, display_price="¥268.0", credits=60000),
+                CurrencyPricing(currency="CNY", amount=26800, display_price="¥268.0", credits=30000),
             ],
             features=[
                 PlanFeatureEntry(key="allPro", included=True),
@@ -344,7 +344,7 @@ _CHINA_CATALOG = RegionCatalog(
     topup_rates=[
         TopUpRate(
             currency="CNY",
-            credits_per_unit=100,
+            credits_per_unit=40,
             unit_amount=100,  # ¥1
             display_rate="subscription.topUp.rateChina",
             payment_methods=["airwallex"],
@@ -361,8 +361,8 @@ _CHINA_CATALOG = RegionCatalog(
     full_access_pass_rates=[
         FullAccessPassRate(
             currency="CNY",
-            amount=700,  # ¥7
-            display_price="¥7",
+            amount=3500,  # ¥35
+            display_price="¥35",
             duration_days=30,
             display_rate="subscription.fullAccess.rateChina",
         ),

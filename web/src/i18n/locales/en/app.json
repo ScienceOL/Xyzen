@@ -548,6 +548,7 @@
     "provider.unavailable": "The AI service is temporarily unavailable. Please try again later.",
     "provider.invalid_response": "Received an invalid response from the AI provider.",
     "provider.quota_exhausted": "The AI service provider encountered an internal error. Please try again later.",
+    "provider.timeout": "The upstream LLM provider timed out. This is a service-side issue, not an agent error. Please try again.",
     "content.filtered": "Your message was flagged by the content filter. Please rephrase and try again.",
     "content.unsafe": "The content was blocked for safety reasons.",
     "agent.execution_failed": "The agent encountered an error during execution.",
@@ -667,6 +668,69 @@
     "answered": "Answered",
     "typeAnswer": "Type your answer...",
     "other": "Other"
+  },
+  "betaModal": {
+    "title": "Join Xyzen",
+    "tabSurvey": "Join Beta",
+    "tabInternal": "Internal Application",
+    "survey": {
+      "discoveryChannel": "How did you learn about Xyzen?",
+      "occupation": "What's your primary occupation?",
+      "problemToSolve": "What problem do you hope Xyzen solves?",
+      "problemPlaceholder": "Describe the problem you'd like Xyzen to help with...",
+      "submit": "Submit Survey",
+      "submitting": "Submitting...",
+      "thankYou": "Thank you for your feedback!",
+      "thankYouDesc": "Your response helps us build a better product. Scan the QR code below to join our community.",
+      "joinDiscord": "Scan to join our Discord community",
+      "channels": {
+        "social_media": "Social Media",
+        "friend": "Friend Recommendation",
+        "search": "Search Engine",
+        "community": "Community / Forum",
+        "other": "Other"
+      },
+      "occupations": {
+        "student": "Student",
+        "researcher": "Researcher",
+        "engineer": "Engineer",
+        "designer": "Designer",
+        "pm": "Product Manager",
+        "other": "Other"
+      }
+    },
+    "internal": {
+      "loginRequired": "Please log in to submit an internal application.",
+      "history": "Application History",
+      "companyName": "Company Name",
+      "companyEmail": "Company Email",
+      "realName": "Real Name",
+      "reason": "Reason for Application",
+      "reasonPlaceholder": "Describe why you need internal access...",
+      "applicationItems": "Application Content",
+      "items": {
+        "subscription": "Subscription",
+        "subscription_pro": "Subscription (Pro)",
+        "subscription_ultra": "Subscription (Ultra)",
+        "credits": "Credits",
+        "sandbox": "Sandbox",
+        "model_access": "Model Access"
+      },
+      "submit": "Submit Application",
+      "submitting": "Submitting...",
+      "certificate": {
+        "title": "Certificate of Internal Application",
+        "serialNumber": "Serial Number",
+        "appId": "Application ID",
+        "applicant": "Applicant",
+        "company": "Company",
+        "email": "Email",
+        "date": "Date",
+        "items": "Items",
+        "token": "Certificate Token",
+        "copyToken": "Copy"
+      }
+    }
   },
   "tabContextMenu": {
     "close": "Close",

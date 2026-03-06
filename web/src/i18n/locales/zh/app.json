@@ -546,6 +546,7 @@
     "provider.unavailable": "AI 服务暂时不可用，请稍后重试。",
     "provider.invalid_response": "收到了来自 AI 服务商的无效响应。",
     "provider.quota_exhausted": "AI 服务商内部错误，请稍后重试。",
+    "provider.timeout": "上游 LLM 服务商响应超时，这是服务端问题而非智能体错误，请重试。",
     "content.filtered": "您的消息被内容过滤器标记，请修改后重试。",
     "content.unsafe": "内容因安全原因被阻止。",
     "agent.execution_failed": "智能体执行过程中遇到错误。",
@@ -665,6 +666,69 @@
     "answered": "已回答",
     "typeAnswer": "输入你的回答...",
     "other": "其他"
+  },
+  "betaModal": {
+    "title": "加入 Xyzen",
+    "tabSurvey": "加入内测",
+    "tabInternal": "内部申请",
+    "survey": {
+      "discoveryChannel": "你是如何了解到 Xyzen 的？",
+      "occupation": "你的主要职业是什么？",
+      "problemToSolve": "你希望 Xyzen 帮你解决什么问题？",
+      "problemPlaceholder": "描述你希望 Xyzen 帮助解决的问题...",
+      "submit": "提交问卷",
+      "submitting": "提交中...",
+      "thankYou": "感谢你的反馈！",
+      "thankYouDesc": "你的回答将帮助我们打造更好的产品。扫描下方二维码加入我们的社区。",
+      "joinDiscord": "扫码加入 Discord 社区",
+      "channels": {
+        "social_media": "社交媒体",
+        "friend": "朋友推荐",
+        "search": "搜索引擎",
+        "community": "社区 / 论坛",
+        "other": "其他"
+      },
+      "occupations": {
+        "student": "学生",
+        "researcher": "研究员",
+        "engineer": "工程师",
+        "designer": "设计师",
+        "pm": "产品经理",
+        "other": "其他"
+      }
+    },
+    "internal": {
+      "loginRequired": "请先登录后再提交内部申请。",
+      "history": "申请记录",
+      "companyName": "公司名称",
+      "companyEmail": "公司邮箱",
+      "realName": "真实姓名",
+      "reason": "申请原因",
+      "reasonPlaceholder": "描述你需要内部权限的原因...",
+      "applicationItems": "申请内容",
+      "items": {
+        "subscription": "订阅",
+        "subscription_pro": "订阅 (Pro)",
+        "subscription_ultra": "订阅 (Ultra)",
+        "credits": "积分",
+        "sandbox": "沙盒",
+        "model_access": "模型访问"
+      },
+      "submit": "提交申请",
+      "submitting": "提交中...",
+      "certificate": {
+        "title": "内部申请证书",
+        "serialNumber": "编号",
+        "appId": "申请 ID",
+        "applicant": "申请人",
+        "company": "公司",
+        "email": "邮箱",
+        "date": "日期",
+        "items": "申请项",
+        "token": "证书令牌",
+        "copyToken": "复制"
+      }
+    }
   },
   "tabContextMenu": {
     "close": "关闭",

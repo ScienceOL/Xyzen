@@ -51,8 +51,8 @@
   "topUp": {
     "title": "クレジットチャージ",
     "subtitle": "従量課金",
-    "rateIntl": "500 クレジット = $1",
-    "rateChina": "100 クレジット = ¥1",
+    "rateIntl": "200 クレジット = $1",
+    "rateChina": "40 クレジット = ¥1",
     "methodsIntl": "PayPal / クレジットカード",
     "methodsChina": "Alipay / WeChat Pay",
     "buy": "クレジット購入",
@@ -74,8 +74,8 @@
   "fullAccess": {
     "title": "モデル開放パック",
     "subtitle": "全モデル30日間アンロック",
-    "rateIntl": "$6.80 / 30日",
-    "rateChina": "¥48 / 30日",
+    "rateIntl": "$5 / 30日",
+    "rateChina": "¥35 / 30日",
     "buy": "今すぐ購入",
     "renew": "更新",
     "duration": "30日間全モデル",

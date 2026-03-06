@@ -25,6 +25,7 @@ class ChatErrorCode(StrEnum):
     PROVIDER_UNAVAILABLE = "provider.unavailable"
     PROVIDER_INVALID_RESPONSE = "provider.invalid_response"
     PROVIDER_QUOTA_EXHAUSTED = "provider.quota_exhausted"
+    PROVIDER_TIMEOUT = "provider.timeout"
 
     # Content moderation
     CONTENT_FILTERED = "content.filtered"
@@ -68,6 +69,7 @@ class ChatErrorCode(StrEnum):
             ChatErrorCode.PROVIDER_RATE_LIMITED,
             ChatErrorCode.PROVIDER_UNAVAILABLE,
             ChatErrorCode.PROVIDER_QUOTA_EXHAUSTED,
+            ChatErrorCode.PROVIDER_TIMEOUT,
             ChatErrorCode.AGENT_TIMEOUT,
             ChatErrorCode.TOOL_TIMEOUT,
             ChatErrorCode.SYSTEM_SERVICE_UNAVAILABLE,
@@ -85,6 +87,7 @@ _DEFAULT_MESSAGES: dict[ChatErrorCode, str] = {
     ChatErrorCode.PROVIDER_UNAVAILABLE: "The AI service is temporarily unavailable. Please try again later.",
     ChatErrorCode.PROVIDER_INVALID_RESPONSE: "Received an invalid response from the AI provider.",
     ChatErrorCode.PROVIDER_QUOTA_EXHAUSTED: "The AI service provider encountered an internal error. Please try again later.",
+    ChatErrorCode.PROVIDER_TIMEOUT: "The upstream LLM provider timed out. This is a service-side issue, not an agent error. Please try again.",
     ChatErrorCode.CONTENT_FILTERED: "Your message was flagged by the content filter. Please rephrase and try again.",
     ChatErrorCode.CONTENT_UNSAFE: "The content was blocked for safety reasons.",
     ChatErrorCode.AGENT_EXECUTION_FAILED: "The agent encountered an error during execution.",
@@ -111,6 +114,63 @@ class ClassifiedError:
     occurred_at: str  # ISO 8601 timestamp
 
 
+_PROVIDER_TIMEOUT_TYPES = {
+    "ReadTimeout",
+    "ReadTimeoutError",
+    "ConnectTimeout",
+    "ConnectTimeoutError",
+    "APITimeoutError",  # openai
+    "ServerTimeoutError",  # aiohttp
+    "ResponseNotRead",  # httpx
+}
+
+_PROVIDER_TIMEOUT_PATTERNS = (
+    "connectionpool",
+    "read timed out",
+    "connect timed out",
+    "bedrock-runtime",
+    "endpoint_url",
+)
+
+
+def _is_provider_timeout(e: Exception) -> bool:
+    """Check if the exception is an HTTP/provider-level timeout (not an agent timeout).
+
+    Provider timeouts come from HTTP libraries (urllib3, httpx, botocore, aiohttp)
+    when the LLM service fails to respond.  Agent timeouts come from asyncio.wait_for
+    wrapping agent execution (e.g. subagent 30-min timeout).
+
+    Walks the full exception chain (__cause__ / __context__) because LangChain and
+    LangGraph often wrap the original transport-level error.
+    """
+    # Walk the exception chain: e -> e.__cause__ -> e.__cause__.__cause__ ...
+    current: BaseException | None = e
+    while current is not None:
+        exc_type = type(current).__name__
+        if exc_type in _PROVIDER_TIMEOUT_TYPES:
+            return True
+
+        try:
+            import httpx
+
+            if isinstance(current, httpx.TimeoutException):
+                return True
+        except ImportError:
+            pass
+
+        error_str = str(current).lower()
+        if any(pattern in error_str for pattern in _PROVIDER_TIMEOUT_PATTERNS):
+            return True
+
+        # Move to the next exception in the chain (prefer explicit cause)
+        next_exc = current.__cause__ or current.__context__
+        if next_exc is current:
+            break
+        current = next_exc
+
+    return False
+
+
 def classify_exception(e: Exception) -> ClassifiedError:
     """Classify an exception into a ClassifiedError with debugging metadata.
 
@@ -129,6 +189,8 @@ def classify_exception(e: Exception) -> ClassifiedError:
         code = ChatErrorCode.PROVIDER_RATE_LIMITED
     elif "authentication" in error_str or "401" in error_str or "403" in error_str:
         code = ChatErrorCode.PROVIDER_AUTH_FAILED
+    elif ("timeout" in error_str or "timed out" in error_str) and _is_provider_timeout(e):
+        code = ChatErrorCode.PROVIDER_TIMEOUT
     elif "timeout" in error_str or "timed out" in error_str:
         code = ChatErrorCode.AGENT_TIMEOUT
     elif "recursion limit" in error_str or "recursion_limit" in error_str:

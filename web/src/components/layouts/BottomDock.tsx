@@ -51,6 +51,7 @@ import {
   UserGroupIcon,
 } from "@heroicons/react/24/outline";
 import { GradientButton } from "@/components/ui/gradient-button";
+import { BetaModal } from "@/components/modals/BetaModal";
 import { NotificationCenter } from "@/components/features/NotificationCenter";
 
 // Dock height constant - use this for bottom margin calculations in other components
@@ -383,13 +384,11 @@ function UserAvatar({ compact = false }: { compact?: boolean }) {
 
 // Version info component (GitHub + Version + Region)
 const GITHUB_REPO = "https://github.com/ScienceOL/Xyzen";
-const BETA_SURVEY_URL =
-  "https://sii-czxy.feishu.cn/share/base/form/shrcnYu8Y3GNgI7M14En1xJ7rMb";
-
 function VersionInfo() {
   const { backend } = useVersion();
   const { t } = useTranslation();
   const [hovered, setHovered] = useState(false);
+  const [showBetaModal, setShowBetaModal] = useState(false);
 
   // Current region - hardcoded as international for now
   const isInternational = true;
@@ -397,9 +396,13 @@ function VersionInfo() {
   return (
     <div className="relative flex items-center gap-1.5">
       {/* Beta Survey Button */}
-      <GradientButton href={BETA_SURVEY_URL}>
+      <GradientButton onClick={() => setShowBetaModal(true)}>
         {t("app.toolbar.joinBeta")}
       </GradientButton>
+      <BetaModal
+        isOpen={showBetaModal}
+        onClose={() => setShowBetaModal(false)}
+      />
 
       {/* GitHub Link */}
       <a

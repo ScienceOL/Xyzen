@@ -102,7 +102,8 @@ class RedisBroadcastManager(ConnectionManager):
                 logger.error(f"Redis subscriber error: {e}")
             finally:
                 await pubsub.unsubscribe(self.channel)
-                await r.close()
+                await pubsub.aclose()
+                await r.aclose()
 
         self._subscriber_task = asyncio.create_task(_subscriber_loop())
 

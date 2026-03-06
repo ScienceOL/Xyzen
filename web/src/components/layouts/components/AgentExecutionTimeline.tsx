@@ -58,23 +58,6 @@ export default function AgentExecutionTimeline({
               const isActive = phase.status === "running";
               const isFinalPhase = index === execution.phases.length - 1;
 
-              // Show content for:
-              // 1. Active phase (currently streaming)
-              // 2. Any non-final phase (their content is always shown)
-              // Final phase content is shown below timeline after completion
-              const phaseForDisplay = {
-                ...phase,
-                // Clear content for final completed phase - it will be shown below
-                streamedContent:
-                  isFinalPhase && phase.status === "completed"
-                    ? undefined
-                    : phase.streamedContent,
-                outputSummary:
-                  isFinalPhase && phase.status === "completed"
-                    ? undefined
-                    : phase.outputSummary,
-              };
-
               return (
                 <motion.div
                   key={phase.id}
@@ -85,13 +68,10 @@ export default function AgentExecutionTimeline({
                   transition={{ duration: 0.2 }}
                 >
                   <AgentStepAccordion
-                    phase={phaseForDisplay}
+                    phase={phase}
                     isActive={isActive}
-                    toolCalls={
-                      isFinalPhase && phase.status === "completed"
-                        ? []
-                        : phase.toolCalls
-                    }
+                    toolCalls={phase.toolCalls}
+                    hideContent={isFinalPhase && phase.status === "completed"}
                   />
                 </motion.div>
               );

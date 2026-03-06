@@ -386,7 +386,7 @@ const CodeBlock = React.memo(({ language, code, isDark }: CodeBlockProps) => {
 
                   {/* Preview Content */}
                   <div className="flex-1 overflow-hidden">
-                    renderPreview(true)
+                    {renderPreview(true)}
                   </div>
                 </DialogPanel>
               </motion.div>

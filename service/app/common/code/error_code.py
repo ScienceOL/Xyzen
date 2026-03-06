@@ -187,6 +187,11 @@ class ErrCode(IntEnum):
     GIFT_ALREADY_CLAIMED_TODAY = 14203  # User already claimed today
     GIFT_INVALID_MODE = 14204  # Campaign mode handler not found  # User has already checked in today
 
+    # ========== APPLICATION (14300-14399) ==========
+    # Use when: Beta survey / internal application operations fail
+    APPLICATION_SURVEY_ALREADY_SUBMITTED = 14300  # User already submitted a survey
+    APPLICATION_ALREADY_SUBMITTED = 14301  # User already submitted an internal application
+
     # ========== OSS (OBJECT STORAGE SERVICE) (15xxx) ==========
     # Use when: OSS operations fail
     OSS_UPLOAD_FAILED = 15000  # Failed to upload file to OSS
@@ -314,6 +319,9 @@ def handle_auth_error(error: ErrCodeError) -> HTTPException:
         ErrCode.GIFT_CAMPAIGN_COMPLETED: 400,
         ErrCode.GIFT_ALREADY_CLAIMED_TODAY: 400,
         ErrCode.GIFT_INVALID_MODE: 400,
+        # application errors
+        ErrCode.APPLICATION_SURVEY_ALREADY_SUBMITTED: 409,
+        ErrCode.APPLICATION_ALREADY_SUBMITTED: 409,
         # 404 errors (OSS)
         ErrCode.OSS_BUCKET_NOT_FOUND: 404,
         ErrCode.OSS_OBJECT_NOT_FOUND: 404,

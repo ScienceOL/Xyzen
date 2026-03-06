@@ -205,6 +205,7 @@ class ChatModelFactory:
         Supports Anthropic Claude models and other Bedrock-hosted models.
         Uses explicit AWS credentials to avoid environment variable leaking.
         """
+        from botocore.config import Config as BotoConfig
         from langchain_aws import ChatBedrockConverse
 
         region_name = credentials.get("bedrock_region", "us-west-2")
@@ -231,6 +232,15 @@ class ChatModelFactory:
         runtime_kwargs.pop("bedrock_region", None)
 
         kwargs.update(runtime_kwargs)
+
+        # Apply BotoConfig AFTER runtime_kwargs merge to prevent extra_config
+        # from overwriting our timeout settings (this was the root cause of
+        # read_timeout=300 being ignored — extra_config could contain a "config" key).
+        kwargs["config"] = BotoConfig(
+            read_timeout=600,
+            connect_timeout=10,
+            retries={"max_attempts": 2, "mode": "adaptive"},
+        )
 
         llm = ChatBedrockConverse(**kwargs)
         return llm

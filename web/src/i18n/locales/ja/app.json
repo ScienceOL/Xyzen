@@ -546,6 +546,7 @@
     "provider.unavailable": "AIサービスが一時的に利用できません。しばらくしてからもう一度お試しください。",
     "provider.invalid_response": "AIプロバイダーから無効なレスポンスを受信しました。",
     "provider.quota_exhausted": "AIサービスプロバイダーで内部エラーが発生しました。しばらくしてからもう一度お試しください。",
+    "provider.timeout": "上流LLMプロバイダーがタイムアウトしました。これはサービス側の問題であり、エージェントのエラーではありません。もう一度お試しください。",
     "content.filtered": "メッセージがコンテンツフィルターに引っかかりました。内容を修正してもう一度お試しください。",
     "content.unsafe": "安全上の理由によりコンテンツがブロックされました。",
     "agent.execution_failed": "エージェントの実行中にエラーが発生しました。",
@@ -665,6 +666,69 @@
     "answered": "回答済み",
     "typeAnswer": "回答を入力...",
     "other": "その他"
+  },
+  "betaModal": {
+    "title": "Xyzen に参加",
+    "tabSurvey": "ベータに参加",
+    "tabInternal": "内部申請",
+    "survey": {
+      "discoveryChannel": "Xyzen をどのように知りましたか？",
+      "occupation": "あなたの主な職業は何ですか？",
+      "problemToSolve": "Xyzen に解決してほしい問題は何ですか？",
+      "problemPlaceholder": "Xyzen に手伝ってほしい問題を説明してください...",
+      "submit": "アンケートを送信",
+      "submitting": "送信中...",
+      "thankYou": "フィードバックありがとうございます！",
+      "thankYouDesc": "ご回答はより良い製品の開発に役立てます。下のQRコードをスキャンしてコミュニティに参加してください。",
+      "joinDiscord": "スキャンしてDiscordコミュニティに参加",
+      "channels": {
+        "social_media": "ソーシャルメディア",
+        "friend": "友人の紹介",
+        "search": "検索エンジン",
+        "community": "コミュニティ / フォーラム",
+        "other": "その他"
+      },
+      "occupations": {
+        "student": "学生",
+        "researcher": "研究者",
+        "engineer": "エンジニア",
+        "designer": "デザイナー",
+        "pm": "プロダクトマネージャー",
+        "other": "その他"
+      }
+    },
+    "internal": {
+      "loginRequired": "内部申請を送信するにはログインしてください。",
+      "history": "申請履歴",
+      "companyName": "会社名",
+      "companyEmail": "会社メール",
+      "realName": "本名",
+      "reason": "申請理由",
+      "reasonPlaceholder": "内部アクセスが必要な理由を説明してください...",
+      "applicationItems": "申請内容",
+      "items": {
+        "subscription": "サブスクリプション",
+        "subscription_pro": "サブスクリプション (Pro)",
+        "subscription_ultra": "サブスクリプション (Ultra)",
+        "credits": "クレジット",
+        "sandbox": "サンドボックス",
+        "model_access": "モデルアクセス"
+      },
+      "submit": "申請を送信",
+      "submitting": "送信中...",
+      "certificate": {
+        "title": "内部申請証明書",
+        "serialNumber": "シリアル番号",
+        "appId": "申請ID",
+        "applicant": "申請者",
+        "company": "会社",
+        "email": "メール",
+        "date": "日付",
+        "items": "申請項目",
+        "token": "証明書トークン",
+        "copyToken": "コピー"
+      }
+    }
   },
   "tabContextMenu": {
     "close": "閉じる",

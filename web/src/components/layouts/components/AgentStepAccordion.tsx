@@ -3,14 +3,18 @@ import type { ToolCall } from "@/store/types";
 import type { ExecutionStatus, PhaseExecution } from "@/types/agentEvents";
 import { AnimatePresence, motion } from "framer-motion";
 import { ChevronDown } from "lucide-react";
-import { useEffect, useState } from "react";
+import { memo, useDeferredValue, useEffect, useState } from "react";
 import InterleavedContent from "./InterleavedContent";
 import ToolCallPill from "./ToolCallPill";
+
+const EMPTY_TOOL_CALLS: ToolCall[] = [];
 
 interface AgentStepAccordionProps {
   phase: PhaseExecution;
   isActive: boolean;
   toolCalls?: ToolCall[];
+  /** When true, suppress expandable content (used for final completed phase). */
+  hideContent?: boolean;
   className?: string;
 }
 
@@ -18,10 +22,11 @@ interface AgentStepAccordionProps {
  * AgentStepAccordion displays a single step in the agent execution timeline.
  * Features minimal, content-focused design with subtle animations.
  */
-export default function AgentStepAccordion({
+const AgentStepAccordion = memo(function AgentStepAccordion({
   phase,
   isActive,
-  toolCalls = [],
+  toolCalls = EMPTY_TOOL_CALLS,
+  hideContent = false,
   className = "",
 }: AgentStepAccordionProps) {
   // Auto-collapse completed, auto-expand running
@@ -41,10 +46,16 @@ export default function AgentStepAccordion({
     }
   }, [isActive, phase.status]);
 
-  const hasContent = Boolean(
-    phase.streamedContent || phase.outputSummary || toolCalls.length > 0,
-  );
+  const hasContent =
+    !hideContent &&
+    Boolean(
+      phase.streamedContent || phase.outputSummary || toolCalls.length > 0,
+    );
   const canExpand = hasContent && phase.status !== "pending";
+
+  // Defer streamed content so markdown re-parsing doesn't block the main thread
+  const rawContent = phase.streamedContent || phase.outputSummary || "";
+  const deferredContent = useDeferredValue(rawContent);
 
   // Get custom renderer based on componentKey, or fall back to DefaultRenderer
   const CustomRenderer = getRenderer(phase.componentKey);
@@ -119,7 +130,7 @@ export default function AgentStepAccordion({
                 </>
               ) : (
                 <InterleavedContent
-                  content={phase.streamedContent || phase.outputSummary || ""}
+                  content={deferredContent}
                   toolCalls={toolCalls}
                 />
               )}
@@ -129,7 +140,9 @@ export default function AgentStepAccordion({
       </AnimatePresence>
     </motion.div>
   );
-}
+});
+
+export default AgentStepAccordion;
 
 /**
  * Minimal status indicator - subtle dots and lines
