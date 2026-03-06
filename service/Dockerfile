@@ -1,3 +1,8 @@
+# Dev stage: python + uv for hot-reload with volume mounts
+FROM python:3.13.12-slim AS dev
+COPY --from=ghcr.io/astral-sh/uv:latest /uv /uvx /bin/
+WORKDIR /app
+
 # Stage 1: Build dependencies
 FROM python:3.13.12-slim AS builder
 COPY --from=ghcr.io/astral-sh/uv:latest /uv /uvx /bin/

@@ -1,5 +1,10 @@
 FROM node:24-alpine AS base
 
+# Dev stage: node-based image for hot-reload with volume mounts
+FROM base AS dev
+WORKDIR /app
+RUN corepack enable
+
 FROM base AS deps
 WORKDIR /app
 
