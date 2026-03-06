@@ -1,5 +1,6 @@
 services:
   service:
+    pull_policy: never
     build:
       context: ../service
       target: dev
@@ -21,12 +22,13 @@ services:
       interval: 10s
       timeout: 5s
       retries: 10
-      start_period: 30s
+      start_period: 5m
     deploy:
       replicas: ${SERVICE_REPLICAS:-3}
       resources: {}
 
   celery:
+    pull_policy: never
     build:
       context: ../service
       target: dev
@@ -41,6 +43,7 @@ services:
       resources: {}
 
   web:
+    pull_policy: never
     build:
       context: ../web
       target: dev
@@ -55,6 +58,7 @@ services:
       resources: {}
 
   docs:
+    pull_policy: never
     build:
       context: ../docs
       target: dev
