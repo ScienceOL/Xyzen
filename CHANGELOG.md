@@ -2,6 +2,12 @@
 
 All notable changes to Xyzen will be documented in this file.
 
+## [1.6.25](https://github.com/ScienceOL/Xyzen/compare/v1.6.24...v1.6.25) (2026-03-06)
+
+### 🐛 Bug Fixes
+
+* **docker:** use multi-stage build target for dev web container ([4a58b98](https://github.com/ScienceOL/Xyzen/commit/4a58b98b0ec7193b05e8f715cf8e9a071d5fb6c3))
+
 ## [1.6.24](https://github.com/ScienceOL/Xyzen/compare/v1.6.23...v1.6.24) (2026-03-05)
 
 ### 🐛 Bug Fixes
