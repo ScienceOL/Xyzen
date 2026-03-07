@@ -572,6 +572,7 @@ const AgentSettingsModal: React.FC<AgentSettingsModalProps> = ({
             description: s.description || undefined,
           }))}
           knowledgeSetId={agent.knowledge_set_id}
+          tags={agent.tags}
           onPublishSuccess={(marketplaceId) => {
             console.log("Agent published to marketplace:", marketplaceId);
             setShowPublishModal(false);

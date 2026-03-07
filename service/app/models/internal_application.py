@@ -4,9 +4,8 @@ from datetime import datetime, timezone
 from uuid import UUID, uuid4
 
 from sqlalchemy import TIMESTAMP
-from sqlmodel import Column, Field, SQLModel
-
 from sqlalchemy.dialects.postgresql import JSONB
+from sqlmodel import Column, Field, SQLModel
 
 
 class InternalApplicationBase(SQLModel):
@@ -32,6 +31,7 @@ class InternalApplication(InternalApplicationBase, table=True):
     status: str = Field(default="pending", description="Application status")
     serial_number: str = Field(unique=True, description="Unique serial number (XYZEN-YYYYMMDD-XXXXXXXX)")
     certificate_token: str = Field(description="JWT certificate token")
+    redemption_code_id: UUID | None = Field(default=None, description="Linked redemption code ID (set on approval)")
     created_at: datetime = Field(
         default_factory=lambda: datetime.now(timezone.utc),
         sa_column=Column(TIMESTAMP(timezone=True), nullable=False),
@@ -59,5 +59,6 @@ class InternalApplicationRead(InternalApplicationBase):
     status: str
     serial_number: str
     certificate_token: str
+    redemption_code_id: UUID | None = None
     created_at: datetime
     updated_at: datetime

@@ -875,7 +875,7 @@ function OverflowMenu({
       </PopoverTrigger>
       <PopoverContent
         align="end"
-        className="!rounded-none !border-neutral-200 dark:border-[#30363d] !bg-neutral-50 dark:bg-[#161b22] !p-1 !shadow-xl"
+        className="!rounded-none !border-neutral-200 dark:!border-[#30363d] !bg-neutral-50 dark:!bg-[#161b22] !p-1 !shadow-xl"
       >
         {deleteConfirm ? (
           <div className="space-y-2 p-2">

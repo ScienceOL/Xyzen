@@ -1,7 +1,9 @@
+import hashlib
 import logging
 from datetime import datetime, timezone
 from uuid import UUID
 
+from sqlalchemy import text
 from sqlmodel import col, select
 from sqlmodel.ext.asyncio.session import AsyncSession
 
@@ -10,6 +12,12 @@ from app.models.file_knowledge_set_link import FileKnowledgeSetLink
 from app.models.knowledge_set import KnowledgeSet, KnowledgeSetCreate, KnowledgeSetUpdate
 
 logger = logging.getLogger(__name__)
+
+
+def _default_ks_lock_key(user_id: str) -> int:
+    """Deterministic 32-bit advisory lock key derived from user_id."""
+    digest = hashlib.sha256(f"default_ks:{user_id}".encode()).digest()
+    return int.from_bytes(digest[:4], "big", signed=True)
 
 
 class KnowledgeSetRepository:
@@ -22,10 +30,13 @@ class KnowledgeSetRepository:
         """
         Return the user's "Default" knowledge set, creating it if it doesn't exist.
 
-        Concurrency note: there is no unique constraint on (user_id, name), so
-        concurrent calls may insert duplicates.  We always ORDER BY created_at ASC
-        LIMIT 1 so every caller converges to the same row.
+        Uses a PostgreSQL transaction-level advisory lock to prevent concurrent
+        inserts from creating duplicate rows.
         """
+        # Acquire a per-user advisory lock (released automatically at commit/rollback)
+        lock_key = _default_ks_lock_key(user_id)
+        await self.db.exec(text("SELECT pg_advisory_xact_lock(:key)").bindparams(key=lock_key))  # type: ignore[call-overload]
+
         statement = (
             select(KnowledgeSet)
             .where(
@@ -34,12 +45,22 @@ class KnowledgeSetRepository:
                 col(KnowledgeSet.is_deleted).is_(False),
             )
             .order_by(col(KnowledgeSet.created_at).asc())
-            .limit(1)
         )
         result = await self.db.exec(statement)
-        existing = result.first()
-        if existing:
-            return existing
+        rows = list(result.all())
+
+        if rows:
+            # Soft-delete duplicates, keep only the oldest
+            if len(rows) > 1:
+                now = datetime.now(timezone.utc)
+                for dup in rows[1:]:
+                    dup.is_deleted = True
+                    dup.deleted_at = now
+                    dup.updated_at = now
+                    self.db.add(dup)
+                await self.db.flush()
+                logger.info(f"Cleaned up {len(rows) - 1} duplicate Default knowledge set(s) for user: {user_id}")
+            return rows[0]
 
         logger.debug(f"Creating default knowledge set for user: {user_id}")
         knowledge_set = KnowledgeSet(

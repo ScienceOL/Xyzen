@@ -1,6 +1,7 @@
 from .agent import AgentRepository
 from .agent_like import AgentLikeRepository
 from .agent_marketplace import AgentMarketplaceRepository
+from .agent_review import AgentReviewRepository
 from .agent_run import AgentRunRepository
 from .agent_snapshot import AgentSnapshotRepository
 from .chat_share import ChatShareRepository
@@ -32,6 +33,7 @@ __all__ = [
     "AgentSnapshotRepository",
     "AgentMarketplaceRepository",
     "AgentLikeRepository",
+    "AgentReviewRepository",
     "ChatShareRepository",
     "CitationRepository",
     "ConsumeRepository",

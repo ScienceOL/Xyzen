@@ -214,6 +214,11 @@
       "noPathToEnd": "ENDに到達するエッジがありません — グラフが終了しない可能性があります"
     }
   },
+  "group": {
+    "agents": "{{count}} エージェント",
+    "expand": "展開",
+    "collapse": "折りたたむ"
+  },
   "spatialNode": {
     "yesterdaySummary": "昨日 {{topicCount}} 件のトピック、{{messageCount}} 件のメッセージ",
     "yesterdayNoActivity": "昨日はチャットがありませんでした 😢"

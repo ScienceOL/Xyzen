@@ -12,6 +12,12 @@ export const NODE_SIZES = {
 export const OVERLAP_PADDING = 24;
 export const MAX_OVERLAP_ITERATIONS = 50;
 
+// Group node constants
+export const GROUP_HEADER_HEIGHT = 48;
+export const GROUP_PADDING = { top: 56, right: 30, bottom: 30, left: 30 };
+export const MIN_GROUP_SIZE = { w: 400, h: 280 };
+export const STORAGE_KEY_GROUP_EXPAND = "xyzen_group_expand_state";
+
 // Default viewport configuration
 export const DEFAULT_VIEWPORT = { x: 0, y: 0, zoom: 0.85 };
 export const FOCUS_ZOOM = 1.05;

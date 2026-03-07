@@ -258,6 +258,7 @@ export default function WorkflowEditor({
             description: s.description || undefined,
           }))}
           knowledgeSetId={agentToEdit.knowledge_set_id}
+          tags={agentToEdit.tags}
           onPublishSuccess={(marketplaceId) => {
             console.log("Agent published to marketplace:", marketplaceId);
             setShowPublishModal(false);

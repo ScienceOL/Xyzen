@@ -92,7 +92,7 @@ export function RootAgentNode({ id, data, selected }: AgentFlowNodeProps) {
         {/* Card Background — pure white to stand out from warm canvas */}
         <div
           className={cn(
-            "absolute inset-0 rounded-3xl backdrop-blur-xl transition-all -z-10",
+            "absolute inset-0 rounded-3xl backdrop-blur-xl transition-colors -z-10",
             "bg-white dark:bg-neutral-900/80 border border-white/80 dark:border-amber-500/25 shadow-[0_2px_20px_-4px_rgba(0,0,0,0.06)] dark:shadow-none",
             selected
               ? "ring-2 ring-[#5a6e8c]/20 dark:ring-0 dark:border-indigo-400/50 dark:shadow-[0_0_15px_rgba(99,102,241,0.5),0_0_30px_rgba(168,85,247,0.3)] shadow-2xl"

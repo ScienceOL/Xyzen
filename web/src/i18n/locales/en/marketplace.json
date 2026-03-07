@@ -62,13 +62,15 @@
     "noDescription": "No description provided",
     "stats": {
       "likes": "Likes",
+      "stars": "Stars",
       "forks": "Forks",
       "views": "Views"
     },
     "tabs": {
       "readme": "README",
       "config": "Configuration",
-      "requirements": "Requirements"
+      "requirements": "Requirements",
+      "reviews": "Reviews"
     },
     "readme": {
       "empty": "No README provided for this agent.",
@@ -100,8 +102,8 @@
     "actions": {
       "title": "Actions",
       "fork": "Hire This Agent",
-      "liked": "Liked",
-      "like": "Like This Agent",
+      "liked": "Starred",
+      "like": "Star This Agent",
       "loginToFork": "Login to Hire",
       "loginToLike": "Login to Like",
       "manage": "Manage Agent",
@@ -115,6 +117,40 @@
     "aboutForking": {
       "title": "About Forking",
       "description": "Forking creates your own independent copy. Changes won't affect the original agent."
+    }
+  },
+  "review": {
+    "tier": {
+      "overwhelmingly_positive": "Overwhelmingly Positive",
+      "very_positive": "Very Positive",
+      "mixed": "Mixed",
+      "mostly_negative": "Mostly Negative",
+      "overwhelmingly_negative": "Overwhelmingly Negative",
+      "not_enough": "Not Enough Reviews"
+    },
+    "summary": "{{percentage}}% of {{count}} reviews are positive",
+    "write": {
+      "title": "Write a Review",
+      "editTitle": "Edit Your Review",
+      "recommend": "Recommend",
+      "notRecommend": "Not Recommended",
+      "placeholder": "Tell others what you think about this agent... (optional)",
+      "submit": "Submit Review",
+      "update": "Update Review",
+      "delete": "Delete",
+      "submitting": "Submitting..."
+    },
+    "card": {
+      "recommended": "Recommended",
+      "notRecommended": "Not Recommended",
+      "hasUsed": "Used"
+    },
+    "list": {
+      "hasMore": "Scroll down for more reviews"
+    },
+    "empty": {
+      "title": "No Reviews Yet",
+      "body": "Be the first to share your experience with this agent."
     }
   },
   "publish": {
@@ -193,6 +229,11 @@
       "label": "MCP Servers",
       "hint": "Users will need to configure their own MCP connections after forking.",
       "empty": "No MCP servers linked"
+    },
+    "tags": {
+      "label": "Tags",
+      "hint": "Press Enter or comma to add a tag. Tags help users discover your agent.",
+      "placeholder": "Add tags..."
     }
   },
   "simplePromptEditor": {

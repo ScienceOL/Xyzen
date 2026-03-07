@@ -29,8 +29,10 @@ import { useShallow } from "zustand/react/shallow";
 import {
   AddAgentButton,
   AgentNode,
+  GroupNode,
   RootAgentNode,
   agentToFlowNode,
+  agentsToGroupedFlowNodes,
   DEFAULT_VIEWPORT,
   FitViewButton,
   FOCUS_ZOOM,
@@ -38,6 +40,7 @@ import {
   OfficialAgentsOverlay,
   SaveStatusIndicator,
   STORAGE_KEY_FOCUSED_AGENT,
+  STORAGE_KEY_GROUP_EXPAND,
   STORAGE_KEY_VIEWPORT,
   useLayoutPersistence,
   useNodeHandlers,
@@ -129,6 +132,36 @@ function InnerWorkspace() {
     null,
   );
 
+  // Group expand/collapse state (persisted to localStorage)
+  const [groupExpandState, setGroupExpandState] = useState<
+    Record<string, boolean>
+  >(() => {
+    try {
+      const stored = localStorage.getItem(STORAGE_KEY_GROUP_EXPAND);
+      return stored ? JSON.parse(stored) : {};
+    } catch {
+      return {};
+    }
+  });
+
+  const handleToggleExpand = useCallback((groupId: string) => {
+    setGroupExpandState((prev) => {
+      const next = { ...prev, [groupId]: prev[groupId] === false };
+      try {
+        localStorage.setItem(STORAGE_KEY_GROUP_EXPAND, JSON.stringify(next));
+      } catch {
+        /* ignore */
+      }
+      return next;
+    });
+  }, []);
+
+  // Defer heavy XyzenChat rendering while viewport is animating
+  const [viewportAnimating, setViewportAnimating] = useState(false);
+  const viewportAnimTimerRef = useRef<ReturnType<typeof setTimeout> | null>(
+    null,
+  );
+
   // Refs
   const containerRef = useRef<HTMLDivElement | null>(null);
   const initStateRef = useRef<"pending" | "measuring" | "done">("pending");
@@ -138,6 +171,21 @@ function InnerWorkspace() {
     null,
   );
   const prevAgentIdsRef = useRef<Set<string>>(new Set());
+
+  // Cache for identity-preserving nodesWithHandler — prevents ReactFlow from
+  // re-rendering AgentNode components whose data hasn't actually changed
+  const nodesHandlerCacheRef = useRef(
+    new Map<
+      string,
+      {
+        srcData: unknown;
+        isFocused: boolean;
+        isNewlyCreated: boolean;
+        isRunning: boolean;
+        resultData: AgentFlowNode["data"];
+      }
+    >(),
+  );
 
   // Keep refs in sync
   useEffect(() => {
@@ -170,6 +218,17 @@ function InnerWorkspace() {
     updateAgentAvatar,
     deleteAgent,
   });
+
+  /** Mark viewport as animating; clears after the given duration (ms) + buffer. */
+  const startViewportAnimation = useCallback((durationMs: number) => {
+    if (viewportAnimTimerRef.current)
+      clearTimeout(viewportAnimTimerRef.current);
+    setViewportAnimating(true);
+    viewportAnimTimerRef.current = setTimeout(() => {
+      setViewportAnimating(false);
+      viewportAnimTimerRef.current = null;
+    }, durationMs + 50); // small buffer
+  }, []);
 
   // Calculate viewport center position
   const getViewportCenterPosition = useCallback(() => {
@@ -227,8 +286,13 @@ function InnerWorkspace() {
       node.data.isCeo = isCeo;
       if (isCeo) {
         node.type = "ceo";
+        // Only show CEO's direct children (not second-level children)
         node.data.subordinateAvatars = agents
-          .filter((a) => a.id !== rootAgentId)
+          .filter(
+            (a) =>
+              a.id !== rootAgentId &&
+              (!a.parent_id || a.parent_id === rootAgentId),
+          )
           .map(
             (a) =>
               a.avatar ||
@@ -270,7 +334,12 @@ function InnerWorkspace() {
 
     // Case 1: Initial load - no previous agents tracked
     if (prevAgentIds.size === 0) {
-      const flowNodes = agents.map((agent) => buildFlowNode(agent));
+      const flowNodes = agentsToGroupedFlowNodes(
+        agents,
+        rootAgentId,
+        groupExpandState,
+        buildFlowNode,
+      );
       setNodes(flowNodes);
       prevAgentIdsRef.current = currentAgentIds;
       return;
@@ -337,47 +406,128 @@ function InnerWorkspace() {
     // eslint-disable-next-line react-hooks/exhaustive-deps
   }, [agents]);
 
-  // Update node data when stats change (without recreating nodes)
+  // Rebuild nodes when group expand/collapse state changes
+  useEffect(() => {
+    if (agents.length === 0) return;
+    const flowNodes = agentsToGroupedFlowNodes(
+      agents,
+      rootAgentId,
+      groupExpandState,
+      buildFlowNode,
+    );
+    setNodes(flowNodes);
+    // eslint-disable-next-line react-hooks/exhaustive-deps
+  }, [groupExpandState]);
+
+  // Update node data when stats change (without recreating nodes).
+  // IMPORTANT: preserve identity — only return a new object when values
+  // have actually changed.  Returning the same `node` reference means
+  // nodesWithHandler's identity cache stays valid → AgentNode skips render.
   useEffect(() => {
     if (nodes.length === 0 || agents.length === 0) return;
 
-    setNodes((prev) =>
-      prev.map((node) => {
+    setNodes((prev) => {
+      let changed = 0;
+      const next = prev.map((node) => {
         const agent = agents.find((a) => a.id === node.id);
         if (!agent) return node;
 
+        // Group nodes only need childCount/childAvatars updates
+        if (node.type === "group") {
+          const children = agents.filter((a) => a.parent_id === agent.id);
+          const avatar =
+            agent.avatar ||
+            "https://api.dicebear.com/7.x/avataaars/svg?seed=default";
+          const childAvatars = children.map(
+            (c) =>
+              c.avatar ||
+              "https://api.dicebear.com/7.x/avataaars/svg?seed=default",
+          );
+          // Skip update if nothing changed
+          // eslint-disable-next-line @typescript-eslint/no-explicit-any
+          const d = node.data as any;
+          if (
+            d.name === agent.name &&
+            d.avatar === avatar &&
+            d.childCount === children.length &&
+            d.childAvatars?.length === childAvatars.length &&
+            d.childAvatars?.every(
+              (a: string, i: number) => a === childAvatars[i],
+            )
+          ) {
+            return node;
+          }
+          changed++;
+          return {
+            ...node,
+            data: {
+              ...d,
+              name: agent.name,
+              avatar,
+              childCount: children.length,
+              childAvatars,
+            },
+          } as AgentFlowNode;
+        }
+
         const stats = agentStats[agent.id];
         const sessionId = sessionIdByAgentId[agent.id];
-        const agentDailyActivity = dailyActivity[agent.id]?.daily_counts?.map(
-          (d) => ({ date: d.date, count: d.message_count }),
-        );
-        const agentYesterdaySummary = yesterdaySummary[agent.id]
-          ? {
-              topicCount: yesterdaySummary[agent.id].topic_count ?? 0,
-              messageCount: yesterdaySummary[agent.id].message_count,
-              lastMessagePreview:
-                yesterdaySummary[agent.id].last_message_content,
-            }
-          : undefined;
+        const rawDaily = dailyActivity[agent.id]?.daily_counts;
+        const rawYesterday = yesterdaySummary[agent.id];
         const lastConversationTime = lastConversationTimeByAgent[agent.id];
         const isMarketplacePublished = publishedAgentIds.has(agent.id);
-
-        // Only update data, preserve position
         const isCeo = agent.id === rootAgentId;
+        const avatar =
+          agent.avatar ||
+          "https://api.dicebear.com/7.x/avataaars/svg?seed=default";
+        const role = (agent.description?.split("\n")[0] || "Agent") as string;
+
+        // Shallow-compare the values that actually change — if everything
+        // matches the existing node.data, return the original reference.
+        const d = node.data;
+        const statsMatch =
+          (d.stats?.messageCount ?? -1) === (stats?.message_count ?? -1) &&
+          (d.stats?.topicCount ?? -1) === (stats?.topic_count ?? -1) &&
+          (d.stats?.inputTokens ?? -1) === (stats?.input_tokens ?? -1) &&
+          (d.stats?.outputTokens ?? -1) === (stats?.output_tokens ?? -1);
+        const scalarMatch =
+          d.name === agent.name &&
+          d.role === role &&
+          d.avatar === avatar &&
+          d.sessionId === sessionId &&
+          d.lastConversationTime === lastConversationTime &&
+          d.isMarketplacePublished === isMarketplacePublished &&
+          d.isCeo === isCeo;
+
+        if (statsMatch && scalarMatch) {
+          return node; // identity preserved — no re-render
+        }
+
+        changed++;
+        const agentDailyActivity = rawDaily?.map((dd) => ({
+          date: dd.date,
+          count: dd.message_count,
+        }));
+        const agentYesterdaySummary = rawYesterday
+          ? {
+              topicCount: rawYesterday.topic_count ?? 0,
+              messageCount: rawYesterday.message_count,
+              lastMessagePreview: rawYesterday.last_message_content,
+            }
+          : undefined;
+
         return {
           ...node,
-          type: isCeo ? "ceo" : "agent",
+          type: isCeo ? ("ceo" as const) : ("agent" as const),
           data: {
-            ...node.data,
+            ...d,
             agentId: agent.id,
             sessionId,
             agent,
             name: agent.name,
-            role: (agent.description?.split("\n")[0] || "Agent") as string,
+            role,
             desc: agent.description || "",
-            avatar:
-              agent.avatar ||
-              "https://api.dicebear.com/7.x/avataaars/svg?seed=default",
+            avatar,
             stats: stats
               ? {
                   messageCount: stats.message_count,
@@ -390,21 +540,26 @@ function InnerWorkspace() {
             yesterdaySummary: agentYesterdaySummary,
             lastConversationTime,
             isMarketplacePublished,
-            isRunning: activeAgentIds.has(agent.id),
             isCeo,
             subordinateAvatars: isCeo
               ? agents
-                  .filter((a) => a.id !== rootAgentId)
+                  .filter(
+                    (a) =>
+                      a.id !== rootAgentId &&
+                      (!a.parent_id || a.parent_id === rootAgentId),
+                  )
                   .map(
                     (a) =>
                       a.avatar ||
                       "https://api.dicebear.com/7.x/avataaars/svg?seed=default",
                   )
-              : node.data.subordinateAvatars,
+              : d.subordinateAvatars,
           },
-        };
-      }),
-    );
+        } as AgentFlowNode;
+      });
+
+      return changed > 0 ? next : prev;
+    });
   }, [
     agents,
     rootAgentId,
@@ -414,7 +569,6 @@ function InnerWorkspace() {
     yesterdaySummary,
     lastConversationTimeByAgent,
     publishedAgentIds,
-    activeAgentIds,
     nodes.length,
     setNodes,
   ]);
@@ -522,6 +676,7 @@ function InnerWorkspace() {
         setPrevViewport(getViewport());
       }
       setFocusedAgentId(id);
+      startViewportAnimation(900);
 
       try {
         localStorage.setItem(STORAGE_KEY_FOCUSED_AGENT, id);
@@ -529,6 +684,7 @@ function InnerWorkspace() {
         /* ignore */
       }
 
+      // Compute target viewport position NOW (before any layout changes)
       const node = getNode(id);
       if (!node) return;
 
@@ -540,9 +696,15 @@ function InnerWorkspace() {
       const x = -node.position.x * FOCUS_ZOOM + leftPadding;
       const y = -node.position.y * FOCUS_ZOOM + topPadding;
 
-      setViewport({ x, y, zoom: FOCUS_ZOOM }, { duration: 900 });
+      // Defer the viewport animation to the next frame so React commits
+      // isFocused / deferChat state BEFORE the d3-zoom DOM mutation starts.
+      // Without this, setViewport moves the canvas immediately while React
+      // hasn't committed yet, causing a 1-frame flash.
+      requestAnimationFrame(() => {
+        setViewport({ x, y, zoom: FOCUS_ZOOM }, { duration: 900 });
+      });
     },
-    [getNode, getViewport, setViewport],
+    [getNode, getViewport, setViewport, startViewportAnimation],
   );
 
   const handleCloseFocus = useCallback(() => {
@@ -648,15 +810,59 @@ function InnerWorkspace() {
 
   // Node types
   const nodeTypes = useMemo(
-    () => ({ agent: AgentNode, ceo: RootAgentNode }),
+    () => ({ agent: AgentNode, ceo: RootAgentNode, group: GroupNode }),
     [],
   );
 
-  // Nodes with handlers
+  // Nodes with handlers — identity-preserving to prevent ReactFlow from
+  // re-rendering AgentNode components whose data hasn't actually changed.
+  // When e.g. focusedAgentId changes, only the 2 affected nodes (old + new
+  // focus) get a new data object; all others reuse their cached reference.
   const nodesWithHandler = useMemo(() => {
-    return nodes.map((n) => ({
-      ...n,
-      data: {
+    const cache = nodesHandlerCacheRef.current;
+    const nextCache = new Map<
+      string,
+      {
+        srcData: unknown;
+        isFocused: boolean;
+        isNewlyCreated: boolean;
+        isRunning: boolean;
+        resultData: AgentFlowNode["data"];
+      }
+    >();
+
+    const result = nodes.map((n) => {
+      if (n.type === "group") {
+        return {
+          ...n,
+          data: {
+            ...n.data,
+            onToggleExpand: handleToggleExpand,
+            onFocus: handleFocus,
+          },
+        };
+      }
+
+      const isFocused = n.id === focusedAgentId;
+      const isNewlyCreated = n.id === newlyCreatedAgentId;
+      const isRunning = activeAgentIds.has(n.data.agentId);
+
+      // Reuse cached data when source data ref and derived state are unchanged.
+      // srcData === n.data means setNodes hasn't replaced this node's data.
+      const cached = cache.get(n.id);
+      if (
+        cached &&
+        !n.data.isCeo && // CEO has extra dynamic dep (autoExploreLoading)
+        cached.srcData === n.data &&
+        cached.isFocused === isFocused &&
+        cached.isNewlyCreated === isNewlyCreated &&
+        cached.isRunning === isRunning
+      ) {
+        nextCache.set(n.id, cached);
+        return { ...n, data: cached.resultData };
+      }
+
+      const resultData = {
         ...n.data,
         onFocus: handleFocus,
         onLayoutChange: handleLayoutChange,
@@ -664,13 +870,27 @@ function InnerWorkspace() {
         onDelete: n.data.isCeo ? undefined : handleDeleteAgent,
         onAutoExploreToggle: n.data.isCeo ? handleAutoExploreToggle : undefined,
         autoExploreLoading: n.data.isCeo ? autoExploreLoading : undefined,
-        isFocused: n.id === focusedAgentId,
-        isNewlyCreated: n.id === newlyCreatedAgentId,
-      },
-    }));
+        isFocused,
+        isNewlyCreated,
+        isRunning,
+      };
+
+      nextCache.set(n.id, {
+        srcData: n.data,
+        isFocused,
+        isNewlyCreated,
+        isRunning,
+        resultData,
+      });
+      return { ...n, data: resultData };
+    });
+
+    nodesHandlerCacheRef.current = nextCache;
+    return result;
   }, [
     nodes,
     handleFocus,
+    handleToggleExpand,
     handleLayoutChange,
     handleAvatarChange,
     handleDeleteAgent,
@@ -678,13 +898,20 @@ function InnerWorkspace() {
     autoExploreLoading,
     focusedAgentId,
     newlyCreatedAgentId,
+    activeAgentIds,
   ]);
 
-  // Focused agent
+  // Focused agent — derived from nodesWithHandler to benefit from identity preservation
   const focusedAgent = useMemo(() => {
     if (!focusedAgentId) return null;
-    return nodes.find((n) => n.id === focusedAgentId)?.data;
-  }, [focusedAgentId, nodes]);
+    return nodesWithHandler.find((n) => n.id === focusedAgentId)?.data ?? null;
+  }, [focusedAgentId, nodesWithHandler]);
+
+  // Stable agents list for FocusedView
+  const focusedViewAgents = useMemo(
+    () => nodesWithHandler.map((n) => ({ id: n.id, ...n.data })),
+    [nodesWithHandler],
+  );
 
   return (
     <div
@@ -705,7 +932,7 @@ function InnerWorkspace() {
         maxZoom={4}
         panOnDrag
         zoomOnScroll
-        className="transition-all duration-700"
+        className="isolate"
       >
         <Background gap={40} size={1} color="#ccc" />
       </ReactFlow>
@@ -753,12 +980,13 @@ function InnerWorkspace() {
         {focusedAgent && (
           <FocusedView
             agent={focusedAgent as unknown as AgentData}
-            agents={nodes.map((n) => ({ id: n.id, ...n.data }))}
+            agents={focusedViewAgents}
             onClose={handleCloseFocus}
             onSwitchAgent={(id) => handleFocus(id)}
             onCanvasClick={handleCloseFocus}
             onEditAgent={handleEditAgentFromFocus}
             onDeleteAgent={handleDeleteAgentFromFocus}
+            deferChat={viewportAnimating}
           />
         )}
       </AnimatePresence>

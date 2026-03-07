@@ -2,6 +2,7 @@ import logging
 
 from .agent import Agent, AgentReadWithDetails
 from .agent_like import AgentLike, AgentLikeCreate, AgentLikeRead
+from .agent_review import AgentReview, AgentReviewCreate, AgentReviewRead
 from .beta_survey import BetaSurvey, BetaSurveyCreate, BetaSurveyRead
 from .internal_application import (
     InternalApplication,
@@ -93,6 +94,9 @@ __all__ = [
     "AgentLike",
     "AgentLikeCreate",
     "AgentLikeRead",
+    "AgentReview",
+    "AgentReviewCreate",
+    "AgentReviewRead",
     "BetaSurvey",
     "BetaSurveyCreate",
     "BetaSurveyRead",

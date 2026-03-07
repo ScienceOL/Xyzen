@@ -71,6 +71,9 @@ class SystemAgentManager:
         Returns:
             List of newly created default agents for the user.
         """
+        # Ensure root agent exists FIRST so parent_id defaults work
+        await self.ensure_root_agent(user_id)
+
         # Fetch existing agents for the user to check tags
         existing_agents = await self.agent_repo.get_agents_by_user(user_id)
         existing_tags = set()
@@ -127,9 +130,6 @@ class SystemAgentManager:
             agent = await self.agent_repo.create_agent(agent_data, user_id)
             created_agents.append(agent)
             logger.info(f"Created default {agent_key} agent for user {user_id}: {agent.id}")
-
-        # Ensure the user has a root (CEO) agent
-        await self.ensure_root_agent(user_id)
 
         return created_agents
 

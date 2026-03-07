@@ -1,5 +1,5 @@
-import { HeartIcon } from "@heroicons/react/24/outline";
-import { HeartIcon as HeartSolidIcon } from "@heroicons/react/24/solid";
+import { StarIcon } from "@heroicons/react/24/outline";
+import { StarIcon as StarSolidIcon } from "@heroicons/react/24/solid";
 import { SparklesIcon } from "@heroicons/react/24/solid";
 import { useTranslation } from "react-i18next";
 
@@ -68,7 +68,7 @@ function OfficialBannerCard({
           </p>
           <div className="mt-2.5 flex items-center gap-4 text-sm">
             <div className="flex items-center gap-1.5 text-neutral-500 dark:text-neutral-400">
-              <HeartIcon className="h-4 w-4" />
+              <StarIcon className="h-4 w-4" />
               <span className="font-medium">{listing.likes_count}</span>
             </div>
             <div className="flex items-center gap-1.5 text-neutral-500 dark:text-neutral-400">
@@ -93,12 +93,12 @@ function OfficialBannerCard({
         {/* Like button */}
         <button
           onClick={handleLikeClick}
-          className="flex h-9 w-9 shrink-0 items-center justify-center rounded-lg transition-all hover:bg-red-50 dark:hover:bg-red-950/20"
+          className="flex h-9 w-9 shrink-0 items-center justify-center rounded-lg transition-all hover:bg-amber-50 dark:hover:bg-amber-950/20"
         >
           {listing.has_liked ? (
-            <HeartSolidIcon className="h-5 w-5 text-red-500" />
+            <StarSolidIcon className="h-5 w-5 text-amber-500" />
           ) : (
-            <HeartIcon className="h-5 w-5 text-neutral-400 transition-colors group-hover:text-red-500" />
+            <StarIcon className="h-5 w-5 text-neutral-400 transition-colors group-hover:text-amber-500" />
           )}
         </button>
       </div>
@@ -134,12 +134,11 @@ export default function OfficialPicksSection({
           onMouseEnter={() => onMouseEnterListing(banner.id)}
         />
         {rest.length > 0 && (
-          <div className="grid grid-cols-2 gap-4 md:grid-cols-3 lg:grid-cols-4">
+          <div className="grid grid-cols-1 gap-4 sm:grid-cols-2 lg:grid-cols-3">
             {rest.map((listing) => (
               <AgentListingCard
                 key={listing.id}
                 listing={listing}
-                compact
                 onClick={() => onSelectListing(listing.id)}
                 onMouseEnter={() => onMouseEnterListing(listing.id)}
               />

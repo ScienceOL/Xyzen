@@ -1,6 +1,7 @@
 import { AgentList } from "@/components/agents";
 import ChatStatusBadge from "@/components/base/ChatStatusBadge";
 import { Capsule } from "@/components/capsule";
+import { cn } from "@/lib/utils";
 import {
   DOCK_HORIZONTAL_MARGIN,
   DOCK_SAFE_AREA,
@@ -27,6 +28,8 @@ interface FocusedViewProps {
   // Agent edit/delete handlers
   onEditAgent?: (agentId: string) => void;
   onDeleteAgent?: (agentId: string) => void;
+  /** When true, show a skeleton instead of XyzenChat to avoid jank during viewport animation */
+  deferChat?: boolean;
 }
 
 export function FocusedView({
@@ -37,6 +40,7 @@ export function FocusedView({
   onCanvasClick,
   onEditAgent,
   onDeleteAgent,
+  deferChat,
 }: FocusedViewProps) {
   const switcherRef = useRef<HTMLDivElement | null>(null);
   const chatRef = useRef<HTMLDivElement | null>(null);
@@ -298,7 +302,12 @@ export function FocusedView({
           animate={{ y: 0, opacity: 1 }}
           exit={{ y: 20, opacity: 0 }}
           transition={{ duration: 0.3, delay: 0.1 }}
-          className="bg-white/60 dark:bg-neutral-900/60 backdrop-blur-2xl border border-black/5 dark:border-white/10 shadow-xl rounded-xl overflow-hidden pointer-events-auto max-h-[50vh] flex flex-col"
+          className={cn(
+            "border border-black/5 dark:border-white/10 shadow-xl rounded-xl overflow-hidden pointer-events-auto max-h-[50vh] flex flex-col transition-[background-color,backdrop-filter] duration-300",
+            deferChat
+              ? "bg-white/90 dark:bg-neutral-900/90"
+              : "bg-white/60 dark:bg-neutral-900/60 backdrop-blur-2xl",
+          )}
           ref={switcherRef}
         >
           {/* Header with collapse toggle */}
@@ -580,7 +589,12 @@ export function FocusedView({
         animate={{ x: 0, opacity: 1, scale: 1 }}
         exit={{ x: 50, opacity: 0, scale: 0.95 }}
         transition={{ duration: 0.4, delay: 0.1, ease: "easeOut" }}
-        className="ml-4 spatial-chat-frosted relative z-10 flex flex-1 min-w-0 flex-col overflow-hidden rounded-xl border border-black/5 shadow-xl backdrop-blur-2xl pointer-events-auto dark:border-white/10"
+        className={cn(
+          "ml-4 spatial-chat-frosted relative z-10 flex flex-1 min-w-0 flex-col overflow-hidden rounded-xl border border-black/5 shadow-xl pointer-events-auto dark:border-white/10 transition-[background-color,backdrop-filter] duration-300",
+          deferChat
+            ? "bg-white/90 dark:bg-neutral-900/90"
+            : "bg-white/60 dark:bg-neutral-900/60 backdrop-blur-2xl",
+        )}
         ref={chatRef}
       >
         {/* Topic Tab Bar */}
@@ -592,9 +606,17 @@ export function FocusedView({
           onCloseTopic={closeTab}
           onCreateTopic={createTopic}
         />
-        {/* XyzenChat — min-h-0 lets it shrink within the flex column */}
+        {/* XyzenChat — deferred while viewport is animating to avoid
+            heavy DOM rendering competing with the pan/zoom transition */}
         <div className="flex-1 min-h-0">
-          <XyzenChat />
+          {deferChat ? (
+            <div className="flex h-full flex-col items-center justify-center gap-3">
+              <div className="h-8 w-8 rounded-full bg-indigo-500/20 animate-pulse" />
+              <div className="h-2.5 w-24 rounded-full bg-neutral-200/60 dark:bg-white/[0.06] animate-pulse" />
+            </div>
+          ) : (
+            <XyzenChat />
+          )}
         </div>
       </motion.div>
 

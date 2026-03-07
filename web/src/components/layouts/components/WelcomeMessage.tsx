@@ -138,7 +138,7 @@ const WelcomeMessage: React.FC<WelcomeMessageProps> = ({
         initial={{ y: 20, opacity: 0 }}
         animate={{ y: 0, opacity: 1 }}
         transition={{ delay: 0.4, duration: 0.5 }}
-        className="flex w-full max-w-xs flex-col items-center pt-2"
+        className="flex w-full max-w-xs flex-col items-center space-y-1 pt-2"
         onMouseLeave={() => setHoveredIndex(null)}
       >
         {quickActions.map((action, index) => (

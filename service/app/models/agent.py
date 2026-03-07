@@ -92,6 +92,7 @@ class AgentBase(SQLModel):
         description="Whether the user can edit graph_config",
     )
 
+    parent_id: UUID | None = Field(default=None, index=True, nullable=True)
     auto_explore_enabled: bool = Field(default=False)
 
 
@@ -128,6 +129,7 @@ class AgentCreate(SQLModel):
         description="DEPRECATED: use graph_config.prompt_config.custom_instructions as source of truth.",
         schema_extra={"deprecated": True},
     )
+    parent_id: UUID | None = None
     require_tool_confirmation: bool = Field(default=False)
     provider_id: UUID | None = Field(default=None, index=True)
     knowledge_set_id: UUID | None = Field(default=None)
@@ -147,6 +149,7 @@ class AgentReadWithDetails(AgentRead):
 
 
 class AgentUpdate(SQLModel):
+    parent_id: UUID | None = None
     name: str | None = None
     description: str | None = None
     avatar: str | None = None

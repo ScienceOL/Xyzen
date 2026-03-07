@@ -141,6 +141,7 @@ class GraphMetadata(BaseModel):
 
     display_name: str | None = None
     description: str | None = None
+    readme: str | None = None
     tags: list[str] = Field(default_factory=list)
     agent_version: str | None = None
 

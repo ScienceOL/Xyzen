@@ -296,9 +296,14 @@
     "or": "または直接メール："
   },
   "about": {
+    "tabAbout": "概要",
+    "tabApplication": "内部申請",
     "frontend": "フロントエンド",
     "backend": "バックエンド",
-    "versionMismatch": "バージョンの不一致が検出されました。ページを更新してください。"
+    "version": "バージョン",
+    "refresh": "更新",
+    "versionMismatch": "バージョンの不一致が検出されました。ページを更新してください。",
+    "versionMismatchHint": "ブラウザはv{{frontendVersion}}を実行中です。v{{backendVersion}}に更新するにはページを更新してください。"
   },
   "account": {
     "title": "アカウント",

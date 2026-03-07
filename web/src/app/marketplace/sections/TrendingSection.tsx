@@ -32,8 +32,9 @@ export default function TrendingSection({
     <div>
       <SectionHeader title={t("marketplace.sections.trending")} />
       <MotionCarousel
-        options={{ align: "start", loop: false, dragFree: true }}
+        options={{ align: "start", loop: true, dragFree: true }}
         showDots={listings.length > 3}
+        autoplayInterval={5000}
       >
         {listings.map((listing) => (
           <AgentListingCard

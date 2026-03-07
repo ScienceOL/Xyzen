@@ -12,6 +12,7 @@ type MotionCarouselProps = {
   options?: EmblaOptionsType;
   showDots?: boolean;
   showArrows?: boolean;
+  autoplayInterval?: number;
   className?: string;
   slideClassName?: string;
 };
@@ -68,6 +69,7 @@ function MotionCarousel({
   options,
   showDots = true,
   showArrows = true,
+  autoplayInterval,
   className,
   slideClassName,
 }: MotionCarouselProps) {
@@ -85,6 +87,48 @@ function MotionCarousel({
   } = useEmblaControls(emblaApi);
 
   const slides = React.Children.toArray(children);
+
+  // Autoplay: scroll to next slide on interval, pause on hover/drag
+  React.useEffect(() => {
+    if (!emblaApi || !autoplayInterval) return;
+
+    let timer: ReturnType<typeof setInterval>;
+    let paused = false;
+
+    const play = () => {
+      timer = setInterval(() => {
+        if (paused) return;
+        if (emblaApi.canScrollNext()) {
+          emblaApi.scrollNext();
+        } else {
+          emblaApi.scrollTo(0);
+        }
+      }, autoplayInterval);
+    };
+
+    const pause = () => {
+      paused = true;
+    };
+    const resume = () => {
+      paused = false;
+    };
+
+    play();
+    emblaApi.on("pointerDown", pause);
+    emblaApi.on("pointerUp", resume);
+
+    const root = emblaApi.rootNode();
+    root.addEventListener("mouseenter", pause);
+    root.addEventListener("mouseleave", resume);
+
+    return () => {
+      clearInterval(timer);
+      emblaApi.off("pointerDown", pause);
+      emblaApi.off("pointerUp", resume);
+      root.removeEventListener("mouseenter", pause);
+      root.removeEventListener("mouseleave", resume);
+    };
+  }, [emblaApi, autoplayInterval]);
 
   return (
     <div className={cn("group/carousel relative w-full", className)}>

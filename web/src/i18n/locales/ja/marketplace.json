@@ -62,13 +62,15 @@
     "noDescription": "説明はありません",
     "stats": {
       "likes": "いいね",
+      "stars": "スター",
       "forks": "フォーク",
       "views": "閲覧"
     },
     "tabs": {
       "readme": "README",
       "config": "設定",
-      "requirements": "要件"
+      "requirements": "要件",
+      "reviews": "レビュー"
     },
     "readme": {
       "empty": "このエージェントのREADMEはありません。",
@@ -100,8 +102,8 @@
     "actions": {
       "title": "アクション",
       "fork": "このエージェントを雇用",
-      "liked": "いいね済み",
-      "like": "このエージェントにいいね",
+      "liked": "スター済み",
+      "like": "このエージェントをスター",
       "loginToFork": "ログインして雇用",
       "loginToLike": "ログインしていいね",
       "manage": "エージェントを管理",
@@ -115,6 +117,40 @@
     "aboutForking": {
       "title": "フォークについて",
       "description": "フォークすると独立したコピーが作成されます。変更は元のエージェントに影響しません。"
+    }
+  },
+  "review": {
+    "tier": {
+      "overwhelmingly_positive": "圧倒的に好評",
+      "very_positive": "非常に好評",
+      "mixed": "賛否両論",
+      "mostly_negative": "ほぼ不評",
+      "overwhelmingly_negative": "圧倒的に不評",
+      "not_enough": "レビュー不足"
+    },
+    "summary": "{{count}} 件のレビューのうち {{percentage}}% が好評",
+    "write": {
+      "title": "レビューを書く",
+      "editTitle": "レビューを編集",
+      "recommend": "おすすめ",
+      "notRecommend": "おすすめしない",
+      "placeholder": "このエージェントについての感想を共有してください...（任意）",
+      "submit": "レビューを投稿",
+      "update": "レビューを更新",
+      "delete": "削除",
+      "submitting": "投稿中..."
+    },
+    "card": {
+      "recommended": "おすすめ",
+      "notRecommended": "おすすめしない",
+      "hasUsed": "使用済み"
+    },
+    "list": {
+      "hasMore": "下にスクロールしてさらにレビューを表示"
+    },
+    "empty": {
+      "title": "レビューはまだありません",
+      "body": "このエージェントの体験を最初に共有しましょう。"
     }
   },
   "publish": {
@@ -193,6 +229,11 @@
       "label": "MCPサーバー",
       "hint": "ユーザーはフォーク後に自分のMCP接続を設定する必要があります。",
       "empty": "MCPサーバーはリンクされていません"
+    },
+    "tags": {
+      "label": "タグ",
+      "hint": "Enterまたはカンマでタグを追加。タグはユーザーがエージェントを見つけるのに役立ちます。",
+      "placeholder": "タグを追加..."
     }
   },
   "simplePromptEditor": {

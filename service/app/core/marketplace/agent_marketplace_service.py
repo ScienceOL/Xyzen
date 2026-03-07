@@ -14,6 +14,7 @@ from app.core.skills.storage import (
 from app.core.storage import FileScope
 from app.models.agent import Agent, AgentCreate, AgentScope, ConfigVisibility, ForkMode
 from app.models.agent_marketplace import AgentMarketplace, AgentMarketplaceCreate, AgentMarketplaceUpdate
+from app.models.agent_review import AgentReview
 from app.models.agent_snapshot import AgentSnapshot, AgentSnapshotCreate
 from app.models.file import FileCreate
 from app.models.skill import Skill, SkillCreate, SkillScope, SkillUpdate
@@ -21,6 +22,7 @@ from app.repos import (
     AgentLikeRepository,
     AgentMarketplaceRepository,
     AgentRepository,
+    AgentReviewRepository,
     AgentSnapshotRepository,
     KnowledgeSetRepository,
     SkillRepository,
@@ -44,6 +46,7 @@ class AgentMarketplaceService:
         self.file_repo = FileRepository(db)
         self.mcp_repo = McpRepository(db)
         self.skill_repo = SkillRepository(db)
+        self.review_repo = AgentReviewRepository(db)
 
     async def create_snapshot_from_agent(
         self,
@@ -990,3 +993,73 @@ class AgentMarketplaceService:
             is_liked = True
 
         return (is_liked, likes_count)
+
+    async def submit_review(
+        self,
+        marketplace_id: UUID,
+        user_id: str,
+        is_positive: bool,
+        content: str | None,
+        author_display_name: str | None = None,
+        author_avatar_url: str | None = None,
+    ) -> AgentReview:
+        """
+        Submits or updates a review for a marketplace listing.
+        Handles counter adjustments for new reviews and sentiment changes.
+
+        Returns:
+            The created or updated AgentReview.
+        """
+        review, is_new, old_is_positive = await self.review_repo.create_or_update(
+            user_id=user_id,
+            marketplace_id=marketplace_id,
+            is_positive=is_positive,
+            content=content,
+            author_display_name=author_display_name,
+            author_avatar_url=author_avatar_url,
+        )
+
+        if is_new:
+            # Brand new review — increment the matching counter
+            if is_positive:
+                await self.marketplace_repo.increment_positive_reviews(marketplace_id)
+            else:
+                await self.marketplace_repo.increment_negative_reviews(marketplace_id)
+        elif old_is_positive is not None and old_is_positive != is_positive:
+            # Sentiment flipped — swap counters
+            if is_positive:
+                await self.marketplace_repo.decrement_negative_reviews(marketplace_id)
+                await self.marketplace_repo.increment_positive_reviews(marketplace_id)
+            else:
+                await self.marketplace_repo.decrement_positive_reviews(marketplace_id)
+                await self.marketplace_repo.increment_negative_reviews(marketplace_id)
+        # If only text changed (same sentiment), no counter adjustment needed
+
+        return review
+
+    async def delete_review(
+        self,
+        marketplace_id: UUID,
+        user_id: str,
+    ) -> AgentReview | None:
+        """
+        Deletes a user's review and decrements the appropriate counter.
+
+        Returns:
+            The deleted AgentReview, or None if not found.
+        """
+        review = await self.review_repo.delete(user_id, marketplace_id)
+        if review:
+            if review.is_positive:
+                await self.marketplace_repo.decrement_positive_reviews(marketplace_id)
+            else:
+                await self.marketplace_repo.decrement_negative_reviews(marketplace_id)
+        return review
+
+    async def get_user_review(
+        self,
+        marketplace_id: UUID,
+        user_id: str,
+    ) -> AgentReview | None:
+        """Gets the current user's review for a listing."""
+        return await self.review_repo.get_by_user_and_listing(user_id, marketplace_id)

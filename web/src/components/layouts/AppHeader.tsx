@@ -132,12 +132,6 @@ export function AppHeader({
                   className="relative rounded-md border border-amber-100 bg-linear-to-br from-amber-50/80 to-white px-2 py-1 text-sm font-medium text-amber-700 transition-colors hover:from-amber-100/80 hover:to-amber-50 sm:px-2.5 sm:py-1.5 dark:border-amber-500/20 dark:from-amber-950/20 dark:to-neutral-900/20 dark:text-amber-400 dark:hover:from-amber-900/30 dark:hover:to-amber-950/30"
                   title="每日签到"
                 >
-                  {checkIn.showDot && (
-                    <span className="absolute -top-1 -right-1 flex h-2.5 w-2.5">
-                      <span className="absolute inline-flex h-full w-full animate-ping rounded-full bg-red-400 opacity-75" />
-                      <span className="relative inline-flex h-2.5 w-2.5 rounded-full bg-red-500" />
-                    </span>
-                  )}
                   <div className="flex items-center gap-1.5">
                     <CalendarDaysIcon className="h-4 w-4" />
                     <span className="sr-only">签到</span>
