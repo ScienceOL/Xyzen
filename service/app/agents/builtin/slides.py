@@ -422,9 +422,32 @@ SLIDES_CONFIG: GraphConfig = parse_graph_config(
         },
         "metadata": {
             "display_name": "Slides Assistant",
-            "description": "Slide generation assistant with rich styling presets",
+            "description": "A professional presentation designer that transforms your content into beautiful slide images "
+            "and merges them into a PPT, with 9 built-in style presets and full layout customization.",
             "tags": [],
             "agent_version": "2.0.0",
+            "readme": (
+                "## Slides Assistant\n\n"
+                "A professional presentation designer that helps you create beautiful slide decks from scratch.\n\n"
+                "### Workflow\n\n"
+                "1. **Gather Information** — Confirm content source, style, audience, slide count, and language.\n"
+                "2. **Generate Outline** — Produces a structured outline with style instructions for each slide.\n"
+                "3. **Generate Images** — Creates slide images one by one with progress reporting.\n"
+                "4. **Generate PPT** — Merges all slide images into a downloadable PowerPoint file.\n\n"
+                "### Style Presets\n\n"
+                "| Preset | Best For |\n"
+                "|--------|----------|\n"
+                "| Blueprint | Architecture, systems, technical analysis |\n"
+                "| Sketch Notes | Tutorials, learning, beginner guides |\n"
+                "| Corporate | Investor, business presentations |\n"
+                "| Minimal | Executive, concise presentations |\n"
+                "| Bold Editorial | Launch events, marketing |\n"
+                "| Dark Atmospheric | Entertainment, gaming |\n"
+                "| Notion | SaaS, product, data presentations |\n"
+                "| Pixel Art | Gaming, developer culture |\n"
+                "| Vintage | Historical, nostalgic themes |\n\n"
+                "You can also create fully custom styles by combining texture, mood, typography, and density dimensions.\n"
+            ),
         },
         "deps": None,
         "ui": {

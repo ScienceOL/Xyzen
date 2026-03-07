@@ -54,6 +54,7 @@ class PublishRequest(BaseModel):
     fork_mode: ForkMode = ForkMode.EDITABLE
     knowledge_set_id: UUID | None = None
     skill_ids: list[UUID] | None = None
+    tags: list[str] | None = None
 
 
 class PublishResponse(BaseModel):
@@ -196,6 +197,15 @@ async def publish_agent(
                 status_code=400,
                 detail="Forked agents cannot be published to the marketplace",
             )
+
+        # Update agent tags if provided in the request
+        if request.tags is not None:
+            from app.models.agent import AgentUpdate
+            from app.repos import AgentRepository
+
+            agent_repo = AgentRepository(db)
+            await agent_repo.update_agent(agent.id, AgentUpdate(tags=request.tags))
+            await db.refresh(agent)
 
         # Publish the agent
         marketplace_service = AgentMarketplaceService(db)

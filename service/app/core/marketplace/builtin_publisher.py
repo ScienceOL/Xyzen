@@ -77,6 +77,7 @@ class BuiltinMarketplacePublisher:
         graph_config_dict = config.model_dump()
         display_name = metadata.get("display_name", key)
         description = metadata.get("description", "")
+        readme = self._get_readme(config)
         tags = ["official", f"builtin:{key}"]
         if metadata.get("pattern"):
             tags.append(metadata["pattern"])
@@ -103,6 +104,7 @@ class BuiltinMarketplacePublisher:
             user_id=None,
             name=display_name,
             description=description,
+            readme=readme,
             tags=tags,
             scope=MarketplaceScope.OFFICIAL,
             builtin_key=key,
@@ -149,18 +151,22 @@ class BuiltinMarketplacePublisher:
         else:
             existing_config_json = ""
 
-        if current_config_json == existing_config_json:
+        # Also check if description or readme changed (metadata-only updates)
+        description = metadata.get("description", "")
+        readme = self._get_readme(config)
+        metadata_changed = listing.description != description or listing.readme != readme
+
+        if current_config_json == existing_config_json and not metadata_changed:
             logger.debug(f"Builtin '{key}' marketplace listing is up-to-date")
             return listing
 
-        # Config changed — update agent and publish new snapshot
+        # Config or metadata changed — update agent and publish new snapshot
         logger.info(f"Builtin '{key}' config changed, updating marketplace listing")
 
         from app.models.agent import AgentUpdate
 
         graph_config_dict = config.model_dump()
         display_name = metadata.get("display_name", key)
-        description = metadata.get("description", "")
         tags = ["official", f"builtin:{key}"]
         if metadata.get("pattern"):
             tags.append(metadata["pattern"])
@@ -190,7 +196,14 @@ class BuiltinMarketplacePublisher:
             active_snapshot_id=snapshot.id,
             name=display_name,
             description=description,
+            readme=readme,
             tags=tags,
         )
         updated = await self.marketplace_repo.update_listing(listing.id, listing_update)
         return updated or listing
+
+    def _get_readme(self, config: GraphConfig) -> str | None:
+        """Extract readme from a builtin agent's metadata."""
+        if config.metadata and config.metadata.readme:
+            return config.metadata.readme
+        return None

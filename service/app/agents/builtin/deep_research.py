@@ -185,9 +185,24 @@ def create_deep_research_config(
             },
             "metadata": {
                 "display_name": "Deep Research",
-                "description": "Multi-phase deep research workflow",
+                "description": "An advanced multi-phase research agent that breaks complex questions into focused sub-tasks, "
+                "conducts parallel web searches, and synthesizes findings into a comprehensive report.",
                 "tags": ["research", "multi-phase", "components"],
                 "agent_version": "3.0.0",
+                "readme": (
+                    "## Deep Research\n\n"
+                    "An advanced multi-phase research agent that delivers thorough, well-cited answers to complex questions.\n\n"
+                    "### How It Works\n\n"
+                    "1. **Clarification** — Analyzes your query and asks follow-up questions if needed to understand the scope.\n"
+                    "2. **Research Brief** — Transforms your request into a structured research plan with clear objectives.\n"
+                    "3. **Parallel Research** — A supervisor dispatches multiple sub-researchers to investigate different angles simultaneously.\n"
+                    "4. **Final Report** — Synthesizes all findings into a comprehensive, well-organized report.\n\n"
+                    "### Best For\n\n"
+                    "- In-depth topic exploration requiring multiple sources\n"
+                    "- Comparative analysis across different perspectives\n"
+                    "- Literature reviews and market research\n"
+                    "- Any question that benefits from structured, multi-angle investigation\n"
+                ),
             },
             "ui": {
                 "icon": "microscope",
