@@ -2,6 +2,12 @@
 
 All notable changes to Xyzen will be documented in this file.
 
+## [1.6.27](https://github.com/ScienceOL/Xyzen/compare/v1.6.26...v1.6.27) (2026-03-07)
+
+### 🐛 Bug Fixes
+
+* eliminate spatial workspace flickering on focus transitions ([cd7f4a5](https://github.com/ScienceOL/Xyzen/commit/cd7f4a525890caad781932156921fb8c2376a4cc))
+
 ## [1.6.26](https://github.com/ScienceOL/Xyzen/compare/v1.6.25...v1.6.26) (2026-03-06)
 
 ### 🐛 Bug Fixes

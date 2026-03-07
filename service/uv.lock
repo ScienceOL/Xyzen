@@ -3576,7 +3576,7 @@ wheels = [
 
 [[package]]
 name = "service"
-version = "1.6.26"
+version = "1.6.27"
 source = { virtual = "." }
 dependencies = [
     { name = "aioboto3" },
