@@ -213,7 +213,7 @@ export function SandboxButton({
           {/* Target selection */}
           <div
             className={cn(
-              "space-y-2 transition-opacity",
+              "custom-scrollbar max-h-[60vh] space-y-2 overflow-y-auto transition-opacity",
               !sandboxEnabled && "opacity-50 pointer-events-none",
             )}
           >
