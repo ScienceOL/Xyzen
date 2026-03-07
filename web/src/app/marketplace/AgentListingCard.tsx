@@ -57,10 +57,10 @@ function AgentListingCard({
                 <img
                   src={listing.avatar}
                   alt={listing.name}
-                  className="h-10 w-10 rounded-sm object-cover ring-2 ring-neutral-200 dark:ring-neutral-800"
+                  className="h-10 w-10 shrink-0 rounded-sm object-cover ring-2 ring-neutral-200 dark:ring-neutral-800"
                 />
               ) : (
-                <div className="flex h-10 w-10 items-center justify-center rounded-sm bg-linear-to-br from-purple-500 via-pink-500 to-indigo-500 text-base font-bold text-white shadow-lg">
+                <div className="flex h-10 w-10 shrink-0 items-center justify-center rounded-sm bg-linear-to-br from-purple-500 via-pink-500 to-indigo-500 text-base font-bold text-white shadow-lg">
                   {listing.name.charAt(0).toUpperCase()}
                 </div>
               )}
@@ -168,10 +168,10 @@ function AgentListingCard({
               <img
                 src={listing.avatar}
                 alt={listing.name}
-                className="h-14 w-14 rounded-sm object-cover ring-2 ring-neutral-200 dark:ring-neutral-800"
+                className="h-14 w-14 shrink-0 rounded-sm object-cover ring-2 ring-neutral-200 dark:ring-neutral-800"
               />
             ) : (
-              <div className="flex h-14 w-14 items-center justify-center rounded-sm bg-linear-to-br from-purple-500 via-pink-500 to-indigo-500 text-xl font-bold text-white shadow-lg">
+              <div className="flex h-14 w-14 shrink-0 items-center justify-center rounded-sm bg-linear-to-br from-purple-500 via-pink-500 to-indigo-500 text-xl font-bold text-white shadow-lg">
                 {listing.name.charAt(0).toUpperCase()}
               </div>
             )}

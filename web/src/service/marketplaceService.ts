@@ -91,6 +91,7 @@ export interface PublishRequest {
   fork_mode?: ForkMode;
   knowledge_set_id?: string | null;
   skill_ids?: string[];
+  tags?: string[];
 }
 
 export interface PublishResponse {

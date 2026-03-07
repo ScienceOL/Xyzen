@@ -229,6 +229,11 @@
       "label": "MCP Servers",
       "hint": "Users will need to configure their own MCP connections after forking.",
       "empty": "No MCP servers linked"
+    },
+    "tags": {
+      "label": "Tags",
+      "hint": "Press Enter or comma to add a tag. Tags help users discover your agent.",
+      "placeholder": "Add tags..."
     }
   },
   "simplePromptEditor": {

@@ -229,6 +229,11 @@
       "label": "MCP 服务",
       "hint": "用户在复刻后需要配置自己的 MCP 连接。",
       "empty": "暂无关联的 MCP 服务"
+    },
+    "tags": {
+      "label": "标签",
+      "hint": "按回车或逗号添加标签，标签可以帮助用户发现你的助手。",
+      "placeholder": "添加标签..."
     }
   },
   "simplePromptEditor": {
