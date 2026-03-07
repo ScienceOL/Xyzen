@@ -2,6 +2,12 @@
 
 All notable changes to Xyzen will be documented in this file.
 
+## [1.6.28](https://github.com/ScienceOL/Xyzen/compare/v1.6.27...v1.6.28) (2026-03-07)
+
+### 🐛 Bug Fixes
+
+* admin applications enhancements and subscription double-credit bug ([70ffa12](https://github.com/ScienceOL/Xyzen/commit/70ffa12cc6759d721987714168062cdc24a6312a))
+
 ## [1.6.27](https://github.com/ScienceOL/Xyzen/compare/v1.6.26...v1.6.27) (2026-03-07)
 
 ### 🐛 Bug Fixes
