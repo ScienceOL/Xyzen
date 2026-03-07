@@ -224,7 +224,7 @@
       "drawImage": "Paint a watercolor scene",
       "drawImageMessage": "Draw me a seaside sunset in watercolor style, with warm tones. Save it to the knowledge base when you're done, and let me know how I can keep tweaking it — like adding people playing on the beach.",
       "launchSandbox": "Create a shareable page",
-      "launchSandboxMessage": "Build me a fun interactive web page with some cool animations — keep it simple. Give me a shareable link when it's ready, I want to send it to friends.",
+      "launchSandboxMessage": "Build me a fun interactive web page with some cool animations — keep it simple. Once it's ready, use an endpoint exposure tool to generate a public URL so I can share it with friends.",
       "scheduleTask": "Set a daily reminder",
       "scheduleTaskMessage": "Set up a daily reminder at 9 AM that sends me the weather and my to-do list. Oh, and remind me to turn on notification permissions so I actually get the alerts."
     }
