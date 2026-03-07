@@ -317,8 +317,12 @@
   /* 圆形头像 */
   cursor: pointer;
 
-  /* 基础过渡动画 */
-  transition: all 200ms ease-out 0s;
+  /* 基础过渡动画 — only transition box-shadow for the glow ring.
+     "transition: all" was causing backdrop-blur compositing flicker because
+     it would transition *every* property (including box-shadow) during
+     isFocused state changes on AgentNode, creating visible glow fade
+     through FocusedView's frosted glass. */
+  transition: box-shadow 200ms ease-out 0s;
 }
 
 /* 定义扫光的伪元素 */
@@ -340,7 +344,7 @@
   transform: skewX(-45deg) translateX(-400%);
 
   /* 动画过渡配置 */
-  transition: all 200ms ease-out 0s;
+  transition: transform 200ms ease-out 0s;
 }
 
 /* 鼠标悬停时的状态 */

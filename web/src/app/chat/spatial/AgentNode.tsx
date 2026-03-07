@@ -2,6 +2,7 @@ import { formatTime } from "@/lib/formatDate";
 import { cn } from "@/lib/utils";
 import { ShoppingBagIcon } from "@heroicons/react/24/outline";
 import { motion } from "framer-motion";
+
 import type { AgentFlowNodeProps } from "./types";
 
 import {
@@ -80,7 +81,7 @@ export function AgentNode({ id, data, selected }: AgentFlowNodeProps) {
         {/* Card Background */}
         <div
           className={cn(
-            "absolute inset-0 rounded-3xl bg-[#fdfcf8] dark:bg-neutral-900/80 backdrop-blur-xl transition-all border border-white/50 dark:border-white/10 -z-10",
+            "absolute inset-0 rounded-3xl bg-[#fdfcf8] dark:bg-neutral-900/80 backdrop-blur-xl transition-colors border border-white/50 dark:border-white/10 -z-10",
             selected
               ? "ring-2 ring-[#5a6e8c]/20 dark:ring-0 dark:border-indigo-400/50 dark:shadow-[0_0_15px_rgba(99,102,241,0.5),0_0_30px_rgba(168,85,247,0.3)] shadow-2xl"
               : "hover:shadow-2xl",
