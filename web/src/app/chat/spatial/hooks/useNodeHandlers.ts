@@ -41,11 +41,14 @@ export function useNodeHandlers({
       };
 
       setNodes((prev) => {
-        const nodeRects = prev.map((n) => ({
-          id: n.id,
-          position: { ...n.position },
-          size: getNodeSize(n.id, n.id === id ? layout : undefined),
-        }));
+        // Only run overlap resolution on top-level nodes (exclude group children)
+        const nodeRects = prev
+          .filter((n) => !n.parentId)
+          .map((n) => ({
+            id: n.id,
+            position: { ...n.position },
+            size: getNodeSize(n.id, n.id === id ? layout : undefined),
+          }));
 
         const changes = resolveAllOverlaps(nodeRects, id);
 
@@ -96,8 +99,9 @@ export function useNodeHandlers({
       setNodes((prev) => {
         const draggedSize = getNodeSize(draggedNode.id);
 
+        // Only check overlap against top-level nodes (exclude group children)
         const obstacles = prev
-          .filter((n) => n.id !== draggedNode.id)
+          .filter((n) => n.id !== draggedNode.id && !n.parentId)
           .map((n) => ({
             position: { ...n.position },
             size: getNodeSize(n.id),

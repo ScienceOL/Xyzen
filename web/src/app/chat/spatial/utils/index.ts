@@ -1,4 +1,9 @@
-export { agentToFlowNode, calculateNodeSize } from "./nodeUtils";
+export {
+  agentToFlowNode,
+  agentsToGroupedFlowNodes,
+  calculateGroupSize,
+  calculateNodeSize,
+} from "./nodeUtils";
 export {
   checkOverlap,
   resolveAllOverlaps,

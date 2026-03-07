@@ -27,6 +27,8 @@ interface FocusedViewProps {
   // Agent edit/delete handlers
   onEditAgent?: (agentId: string) => void;
   onDeleteAgent?: (agentId: string) => void;
+  /** When true, show a skeleton instead of XyzenChat to avoid jank during viewport animation */
+  deferChat?: boolean;
 }
 
 export function FocusedView({
@@ -37,6 +39,7 @@ export function FocusedView({
   onCanvasClick,
   onEditAgent,
   onDeleteAgent,
+  deferChat,
 }: FocusedViewProps) {
   const switcherRef = useRef<HTMLDivElement | null>(null);
   const chatRef = useRef<HTMLDivElement | null>(null);
@@ -592,9 +595,17 @@ export function FocusedView({
           onCloseTopic={closeTab}
           onCreateTopic={createTopic}
         />
-        {/* XyzenChat — min-h-0 lets it shrink within the flex column */}
+        {/* XyzenChat — deferred while viewport is animating to avoid
+            heavy DOM rendering competing with the pan/zoom transition */}
         <div className="flex-1 min-h-0">
-          <XyzenChat />
+          {deferChat ? (
+            <div className="flex h-full flex-col items-center justify-center gap-3">
+              <div className="h-8 w-8 rounded-full bg-indigo-500/20 animate-pulse" />
+              <div className="h-2.5 w-24 rounded-full bg-neutral-200/60 dark:bg-white/[0.06] animate-pulse" />
+            </div>
+          ) : (
+            <XyzenChat />
+          )}
         </div>
       </motion.div>
 

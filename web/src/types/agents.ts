@@ -110,6 +110,9 @@ export interface Agent {
 
   // Auto-explore toggle (root agent only)
   auto_explore_enabled?: boolean;
+
+  // Group hierarchy — set by backend; null for root agents
+  parent_id?: string | null;
 }
 
 /**

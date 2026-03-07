@@ -24,6 +24,11 @@ export interface AgentSlice {
   /** Look up any agent by ID (including root agent). */
   resolveAgent: (agentId: string | null) => AgentWithLayout | null;
 
+  /** Get all agents whose parent_id matches the given parentId. */
+  getChildAgents: (parentId: string) => AgentWithLayout[];
+  /** Get the set of agent IDs that are parents (have at least one child). */
+  getParentAgentIds: () => Set<string>;
+
   // Map from agentId -> sessionId for layout persistence
   // Layout is stored in Session, not Agent
   sessionIdByAgentId: Record<string, string>;
@@ -107,6 +112,18 @@ export const createAgentSlice: StateCreator<
   resolveAgent: (agentId) => {
     if (!agentId) return null;
     return get().agents.find((a) => a.id === agentId) ?? null;
+  },
+
+  getChildAgents: (parentId) => {
+    return get().agents.filter((a) => a.parent_id === parentId);
+  },
+
+  getParentAgentIds: () => {
+    const parentIds = new Set<string>();
+    for (const agent of get().agents) {
+      if (agent.parent_id) parentIds.add(agent.parent_id);
+    }
+    return parentIds;
   },
 
   // Map from agentId -> sessionId

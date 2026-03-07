@@ -19,9 +19,15 @@ interface AddAgentModalProps {
   isOpen: boolean;
   onClose: () => void;
   onCreated?: (agentId: string) => void;
+  parentId?: string;
 }
 
-function AddAgentModal({ isOpen, onClose, onCreated }: AddAgentModalProps) {
+function AddAgentModal({
+  isOpen,
+  onClose,
+  onCreated,
+  parentId,
+}: AddAgentModalProps) {
   const { t } = useTranslation();
   const { createAgent, isCreatingAgent, backendUrl, agents } = useXyzen(
     useShallow((s) => ({
@@ -83,6 +89,7 @@ function AddAgentModal({ isOpen, onClose, onCreated }: AddAgentModalProps) {
       const newAgentId = await createAgent({
         ...agent,
         avatar,
+        parent_id: parentId ?? undefined,
         mcp_server_ids: [],
         user_id: "temp",
         mcp_servers: [],

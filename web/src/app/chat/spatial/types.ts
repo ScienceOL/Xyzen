@@ -69,6 +69,8 @@ export interface AgentData {
   isCeo?: boolean;
   /** Avatars of subordinate agents (CEO only) */
   subordinateAvatars?: string[];
+  /** Parent agent ID for group hierarchy */
+  parentId?: string | null;
 }
 
 /** Runtime-only fields injected by the workspace. */
@@ -88,5 +90,21 @@ export type AgentNodeData = AgentData & AgentNodeRuntimeData;
 // XYFlow requires node.data to be a Record
 export type FlowAgentNodeData = AgentNodeData & Record<string, unknown>;
 
-export type AgentFlowNode = Node<FlowAgentNodeData, "agent" | "ceo">;
+export type AgentFlowNode = Node<FlowAgentNodeData, "agent" | "ceo" | "group">;
 export type AgentFlowNodeProps = NodeProps<AgentFlowNode>;
+
+export interface GroupNodeData {
+  agent: Agent;
+  agentId: string;
+  name: string;
+  avatar: string;
+  isExpanded: boolean;
+  childCount: number;
+  childAvatars: string[];
+  onToggleExpand: (groupId: string) => void;
+  onFocus: (id: string) => void;
+}
+
+export type FlowGroupNodeData = GroupNodeData & Record<string, unknown>;
+export type GroupFlowNode = Node<FlowGroupNodeData, "group">;
+export type GroupFlowNodeProps = NodeProps<GroupFlowNode>;

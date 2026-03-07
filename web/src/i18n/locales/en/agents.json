@@ -214,6 +214,11 @@
       "noPathToEnd": "No edge reaches END — the graph may not terminate"
     }
   },
+  "group": {
+    "agents": "{{count}} agents",
+    "expand": "Expand",
+    "collapse": "Collapse"
+  },
   "spatialNode": {
     "yesterdaySummary": "Yesterday: {{topicCount}} topics, {{messageCount}} messages",
     "yesterdayNoActivity": "No activity yesterday"

@@ -29,8 +29,10 @@ import { useShallow } from "zustand/react/shallow";
 import {
   AddAgentButton,
   AgentNode,
+  GroupNode,
   RootAgentNode,
   agentToFlowNode,
+  agentsToGroupedFlowNodes,
   DEFAULT_VIEWPORT,
   FitViewButton,
   FOCUS_ZOOM,
@@ -38,6 +40,7 @@ import {
   OfficialAgentsOverlay,
   SaveStatusIndicator,
   STORAGE_KEY_FOCUSED_AGENT,
+  STORAGE_KEY_GROUP_EXPAND,
   STORAGE_KEY_VIEWPORT,
   useLayoutPersistence,
   useNodeHandlers,
@@ -129,6 +132,36 @@ function InnerWorkspace() {
     null,
   );
 
+  // Group expand/collapse state (persisted to localStorage)
+  const [groupExpandState, setGroupExpandState] = useState<
+    Record<string, boolean>
+  >(() => {
+    try {
+      const stored = localStorage.getItem(STORAGE_KEY_GROUP_EXPAND);
+      return stored ? JSON.parse(stored) : {};
+    } catch {
+      return {};
+    }
+  });
+
+  const handleToggleExpand = useCallback((groupId: string) => {
+    setGroupExpandState((prev) => {
+      const next = { ...prev, [groupId]: prev[groupId] === false };
+      try {
+        localStorage.setItem(STORAGE_KEY_GROUP_EXPAND, JSON.stringify(next));
+      } catch {
+        /* ignore */
+      }
+      return next;
+    });
+  }, []);
+
+  // Defer heavy XyzenChat rendering while viewport is animating
+  const [viewportAnimating, setViewportAnimating] = useState(false);
+  const viewportAnimTimerRef = useRef<ReturnType<typeof setTimeout> | null>(
+    null,
+  );
+
   // Refs
   const containerRef = useRef<HTMLDivElement | null>(null);
   const initStateRef = useRef<"pending" | "measuring" | "done">("pending");
@@ -170,6 +203,17 @@ function InnerWorkspace() {
     updateAgentAvatar,
     deleteAgent,
   });
+
+  /** Mark viewport as animating; clears after the given duration (ms) + buffer. */
+  const startViewportAnimation = useCallback((durationMs: number) => {
+    if (viewportAnimTimerRef.current)
+      clearTimeout(viewportAnimTimerRef.current);
+    setViewportAnimating(true);
+    viewportAnimTimerRef.current = setTimeout(() => {
+      setViewportAnimating(false);
+      viewportAnimTimerRef.current = null;
+    }, durationMs + 50); // small buffer
+  }, []);
 
   // Calculate viewport center position
   const getViewportCenterPosition = useCallback(() => {
@@ -227,8 +271,13 @@ function InnerWorkspace() {
       node.data.isCeo = isCeo;
       if (isCeo) {
         node.type = "ceo";
+        // Only show CEO's direct children (not second-level children)
         node.data.subordinateAvatars = agents
-          .filter((a) => a.id !== rootAgentId)
+          .filter(
+            (a) =>
+              a.id !== rootAgentId &&
+              (!a.parent_id || a.parent_id === rootAgentId),
+          )
           .map(
             (a) =>
               a.avatar ||
@@ -270,7 +319,12 @@ function InnerWorkspace() {
 
     // Case 1: Initial load - no previous agents tracked
     if (prevAgentIds.size === 0) {
-      const flowNodes = agents.map((agent) => buildFlowNode(agent));
+      const flowNodes = agentsToGroupedFlowNodes(
+        agents,
+        rootAgentId,
+        groupExpandState,
+        buildFlowNode,
+      );
       setNodes(flowNodes);
       prevAgentIdsRef.current = currentAgentIds;
       return;
@@ -337,6 +391,19 @@ function InnerWorkspace() {
     // eslint-disable-next-line react-hooks/exhaustive-deps
   }, [agents]);
 
+  // Rebuild nodes when group expand/collapse state changes
+  useEffect(() => {
+    if (agents.length === 0) return;
+    const flowNodes = agentsToGroupedFlowNodes(
+      agents,
+      rootAgentId,
+      groupExpandState,
+      buildFlowNode,
+    );
+    setNodes(flowNodes);
+    // eslint-disable-next-line react-hooks/exhaustive-deps
+  }, [groupExpandState]);
+
   // Update node data when stats change (without recreating nodes)
   useEffect(() => {
     if (nodes.length === 0 || agents.length === 0) return;
@@ -345,6 +412,27 @@ function InnerWorkspace() {
       prev.map((node) => {
         const agent = agents.find((a) => a.id === node.id);
         if (!agent) return node;
+
+        // Group nodes only need childCount/childAvatars updates, not agent stats
+        if (node.type === "group") {
+          const children = agents.filter((a) => a.parent_id === agent.id);
+          return {
+            ...node,
+            data: {
+              ...node.data,
+              name: agent.name,
+              avatar:
+                agent.avatar ||
+                "https://api.dicebear.com/7.x/avataaars/svg?seed=default",
+              childCount: children.length,
+              childAvatars: children.map(
+                (c) =>
+                  c.avatar ||
+                  "https://api.dicebear.com/7.x/avataaars/svg?seed=default",
+              ),
+            },
+          };
+        }
 
         const stats = agentStats[agent.id];
         const sessionId = sessionIdByAgentId[agent.id];
@@ -394,7 +482,11 @@ function InnerWorkspace() {
             isCeo,
             subordinateAvatars: isCeo
               ? agents
-                  .filter((a) => a.id !== rootAgentId)
+                  .filter(
+                    (a) =>
+                      a.id !== rootAgentId &&
+                      (!a.parent_id || a.parent_id === rootAgentId),
+                  )
                   .map(
                     (a) =>
                       a.avatar ||
@@ -522,6 +614,7 @@ function InnerWorkspace() {
         setPrevViewport(getViewport());
       }
       setFocusedAgentId(id);
+      startViewportAnimation(900);
 
       try {
         localStorage.setItem(STORAGE_KEY_FOCUSED_AGENT, id);
@@ -542,7 +635,7 @@ function InnerWorkspace() {
 
       setViewport({ x, y, zoom: FOCUS_ZOOM }, { duration: 900 });
     },
-    [getNode, getViewport, setViewport],
+    [getNode, getViewport, setViewport, startViewportAnimation],
   );
 
   const handleCloseFocus = useCallback(() => {
@@ -648,29 +741,44 @@ function InnerWorkspace() {
 
   // Node types
   const nodeTypes = useMemo(
-    () => ({ agent: AgentNode, ceo: RootAgentNode }),
+    () => ({ agent: AgentNode, ceo: RootAgentNode, group: GroupNode }),
     [],
   );
 
   // Nodes with handlers
   const nodesWithHandler = useMemo(() => {
-    return nodes.map((n) => ({
-      ...n,
-      data: {
-        ...n.data,
-        onFocus: handleFocus,
-        onLayoutChange: handleLayoutChange,
-        onAvatarChange: handleAvatarChange,
-        onDelete: n.data.isCeo ? undefined : handleDeleteAgent,
-        onAutoExploreToggle: n.data.isCeo ? handleAutoExploreToggle : undefined,
-        autoExploreLoading: n.data.isCeo ? autoExploreLoading : undefined,
-        isFocused: n.id === focusedAgentId,
-        isNewlyCreated: n.id === newlyCreatedAgentId,
-      },
-    }));
+    return nodes.map((n) => {
+      if (n.type === "group") {
+        return {
+          ...n,
+          data: {
+            ...n.data,
+            onToggleExpand: handleToggleExpand,
+            onFocus: handleFocus,
+          },
+        };
+      }
+      return {
+        ...n,
+        data: {
+          ...n.data,
+          onFocus: handleFocus,
+          onLayoutChange: handleLayoutChange,
+          onAvatarChange: handleAvatarChange,
+          onDelete: n.data.isCeo ? undefined : handleDeleteAgent,
+          onAutoExploreToggle: n.data.isCeo
+            ? handleAutoExploreToggle
+            : undefined,
+          autoExploreLoading: n.data.isCeo ? autoExploreLoading : undefined,
+          isFocused: n.id === focusedAgentId,
+          isNewlyCreated: n.id === newlyCreatedAgentId,
+        },
+      };
+    });
   }, [
     nodes,
     handleFocus,
+    handleToggleExpand,
     handleLayoutChange,
     handleAvatarChange,
     handleDeleteAgent,
@@ -685,6 +793,12 @@ function InnerWorkspace() {
     if (!focusedAgentId) return null;
     return nodes.find((n) => n.id === focusedAgentId)?.data;
   }, [focusedAgentId, nodes]);
+
+  // Stable agents list for FocusedView — avoids creating new objects on every render
+  const focusedViewAgents = useMemo(
+    () => nodes.map((n) => ({ id: n.id, ...n.data })),
+    [nodes],
+  );
 
   return (
     <div
@@ -753,12 +867,13 @@ function InnerWorkspace() {
         {focusedAgent && (
           <FocusedView
             agent={focusedAgent as unknown as AgentData}
-            agents={nodes.map((n) => ({ id: n.id, ...n.data }))}
+            agents={focusedViewAgents}
             onClose={handleCloseFocus}
             onSwitchAgent={(id) => handleFocus(id)}
             onCanvasClick={handleCloseFocus}
             onEditAgent={handleEditAgentFromFocus}
             onDeleteAgent={handleDeleteAgentFromFocus}
+            deferChat={viewportAnimating}
           />
         )}
       </AnimatePresence>

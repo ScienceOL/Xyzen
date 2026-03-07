@@ -214,6 +214,11 @@
       "noPathToEnd": "没有边到达 END — 图可能无法终止"
     }
   },
+  "group": {
+    "agents": "{{count}} 个助手",
+    "expand": "展开",
+    "collapse": "折叠"
+  },
   "spatialNode": {
     "yesterdaySummary": "昨日聊了 {{topicCount}} 个话题，发了 {{messageCount}} 条消息",
     "yesterdayNoActivity": "你昨天没有和我聊天哟 😢"
