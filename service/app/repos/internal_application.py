@@ -44,17 +44,43 @@ class InternalApplicationRepository:
         result = await self.db.exec(statement)
         return list(result.all())
 
-    async def get_all(self, limit: int = 50, offset: int = 0) -> tuple[list[InternalApplication], int]:
-        """Get all internal applications, newest first, with total count."""
-        count_stmt = select(func.count()).select_from(InternalApplication)
+    async def get_all(
+        self,
+        limit: int = 50,
+        offset: int = 0,
+        search: str | None = None,
+        company: str | None = None,
+    ) -> tuple[list[InternalApplication], int]:
+        """Get all internal applications, newest first, with total count.
+
+        Args:
+            search: ilike match on real_name, username, or company_name
+            company: exact match on company_name
+        """
+        base = select(InternalApplication)
+        if company:
+            base = base.where(col(InternalApplication.company_name) == company)
+        if search:
+            pattern = f"%{search}%"
+            base = base.where(
+                col(InternalApplication.real_name).ilike(pattern)
+                | col(InternalApplication.username).ilike(pattern)
+                | col(InternalApplication.company_name).ilike(pattern)
+            )
+
+        count_stmt = select(func.count()).select_from(base.subquery())
         count_result = await self.db.exec(count_stmt)
         total = count_result.one()
 
-        statement = (
-            select(InternalApplication).order_by(col(InternalApplication.created_at).desc()).limit(limit).offset(offset)
-        )
+        statement = base.order_by(col(InternalApplication.created_at).desc()).limit(limit).offset(offset)
         result = await self.db.exec(statement)
         return list(result.all()), total
+
+    async def get_distinct_companies(self) -> list[str]:
+        """Get distinct company names from all applications."""
+        statement = select(InternalApplication.company_name).distinct().order_by(col(InternalApplication.company_name))
+        result = await self.db.exec(statement)
+        return list(result.all())
 
     async def get_by_id(self, app_id: UUID) -> InternalApplication | None:
         """Get a single internal application by ID."""

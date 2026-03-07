@@ -32,6 +32,8 @@ class InternalApplication(InternalApplicationBase, table=True):
     serial_number: str = Field(unique=True, description="Unique serial number (XYZEN-YYYYMMDD-XXXXXXXX)")
     certificate_token: str = Field(description="JWT certificate token")
     redemption_code_id: UUID | None = Field(default=None, description="Linked redemption code ID (set on approval)")
+    username: str | None = Field(default=None, description="Casdoor username")
+    total_credits_granted: int = Field(default=0, description="Total credits granted across all application items")
     created_at: datetime = Field(
         default_factory=lambda: datetime.now(timezone.utc),
         sa_column=Column(TIMESTAMP(timezone=True), nullable=False),

@@ -53,6 +53,7 @@ export interface RedemptionCodeInfo {
 export interface AdminApplicationEntry {
   id: string;
   user_id: string;
+  username: string | null;
   company_name: string;
   company_email: string;
   real_name: string;
@@ -63,6 +64,7 @@ export interface AdminApplicationEntry {
   redemption_code_id: string | null;
   created_at: string;
   updated_at: string;
+  total_credits_granted: number;
   redemption_code: RedemptionCodeInfo | null;
   redeemed_at: string | null;
 }
@@ -99,9 +101,22 @@ class ApplicationService {
     adminSecret: string,
     limit = 50,
     offset = 0,
+    search?: string,
+    company?: string,
   ): Promise<{ applications: AdminApplicationEntry[]; total: number }> {
     return http.get("/xyzen/api/v1/admin/applications", {
-      params: { limit, offset },
+      params: {
+        limit,
+        offset,
+        ...(search ? { search } : {}),
+        ...(company ? { company } : {}),
+      },
+      headers: { "X-Admin-Secret": adminSecret },
+    });
+  }
+
+  async adminGetCompanies(adminSecret: string): Promise<string[]> {
+    return http.get("/xyzen/api/v1/admin/applications/companies", {
       headers: { "X-Admin-Secret": adminSecret },
     });
   }

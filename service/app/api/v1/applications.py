@@ -8,7 +8,7 @@ from sqlmodel.ext.asyncio.session import AsyncSession
 from app.common.code.error_code import ErrCodeError, handle_auth_error
 from app.core.application import ApplicationService
 from app.infra.database import get_session as get_db_session
-from app.middleware.auth import get_current_user, get_current_user_optional
+from app.middleware.auth import UserInfo, get_current_user, get_current_user_info, get_current_user_optional
 from app.models.beta_survey import BetaSurveyCreate, BetaSurveyRead
 from app.models.internal_application import InternalApplicationCreate, InternalApplicationRead
 
@@ -70,13 +70,13 @@ async def get_my_survey(
 @router.post("/internal", response_model=InternalApplicationRead)
 async def submit_application(
     data: InternalApplicationCreate,
-    current_user: str = Depends(get_current_user),
+    current_user: UserInfo = Depends(get_current_user_info),
     db: AsyncSession = Depends(get_db_session),
 ):
     """Submit an internal application. Requires authentication."""
     try:
         service = ApplicationService(db)
-        application = await service.submit_application(data, current_user)
+        application = await service.submit_application(data, current_user.id, username=current_user.username)
         await db.commit()
         return application
 
@@ -85,7 +85,7 @@ async def submit_application(
         raise handle_auth_error(e)
     except Exception as e:
         await db.rollback()
-        logger.error(f"Error submitting application for user {current_user}: {e}", exc_info=True)
+        logger.error(f"Error submitting application for user {current_user.id}: {e}", exc_info=True)
         raise HTTPException(
             status_code=status.HTTP_500_INTERNAL_SERVER_ERROR,
             detail=GENERIC_ERROR_MESSAGES["application_submit"],

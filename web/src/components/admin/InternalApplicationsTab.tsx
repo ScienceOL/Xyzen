@@ -1,4 +1,4 @@
-import { useCallback, useEffect, useState } from "react";
+import { useCallback, useEffect, useRef, useState } from "react";
 import { Button } from "@/components/ui/button";
 import { Input } from "@/components/ui/input";
 import {
@@ -10,6 +10,7 @@ import { subscriptionService } from "@/service/subscriptionService";
 import {
   CheckCircleIcon,
   ClipboardDocumentIcon,
+  MagnifyingGlassIcon,
   XCircleIcon,
 } from "@heroicons/react/24/outline";
 
@@ -343,6 +344,11 @@ function ApplicationCard({
             <span className="text-[13px] font-semibold text-neutral-900 dark:text-white">
               {app.real_name}
             </span>
+            {app.username && (
+              <span className="rounded-md bg-neutral-100/80 px-1.5 py-0.5 text-xs font-medium text-neutral-500 dark:bg-white/[0.06] dark:text-neutral-400">
+                @{app.username}
+              </span>
+            )}
             <StatusBadge status={app.status} />
             <span className="text-xs text-neutral-400 dark:text-neutral-500">
               {app.serial_number}
@@ -351,6 +357,11 @@ function ApplicationCard({
           <div className="mt-1 flex items-center gap-3 text-xs text-neutral-500 dark:text-neutral-400">
             <span>{app.company_name}</span>
             <span>{app.company_email}</span>
+            {app.total_credits_granted > 0 && (
+              <span className="font-medium text-indigo-600 dark:text-indigo-400">
+                {app.total_credits_granted.toLocaleString()} credits
+              </span>
+            )}
           </div>
         </div>
         <span className="shrink-0 text-xs text-neutral-400 dark:text-neutral-500">
@@ -475,7 +486,37 @@ export function InternalApplicationsTab({
   const [isLoading, setIsLoading] = useState(true);
   const [error, setError] = useState<string | null>(null);
   const [offset, setOffset] = useState(0);
+  const [search, setSearch] = useState("");
+  const [debouncedSearch, setDebouncedSearch] = useState("");
+  const [company, setCompany] = useState("");
+  const [companies, setCompanies] = useState<string[]>([]);
   const limit = 20;
+  const debounceRef = useRef<ReturnType<typeof setTimeout>>(null);
+
+  // Fetch companies for the filter dropdown
+  useEffect(() => {
+    applicationService
+      .adminGetCompanies(adminSecret)
+      .then(setCompanies)
+      .catch(() => {});
+  }, [adminSecret]);
+
+  // Debounce search input
+  useEffect(() => {
+    if (debounceRef.current) clearTimeout(debounceRef.current);
+    debounceRef.current = setTimeout(() => {
+      setDebouncedSearch(search);
+      setOffset(0);
+    }, 300);
+    return () => {
+      if (debounceRef.current) clearTimeout(debounceRef.current);
+    };
+  }, [search]);
+
+  // Reset offset when company filter changes
+  useEffect(() => {
+    setOffset(0);
+  }, [company]);
 
   const fetchApplications = useCallback(async () => {
     setIsLoading(true);
@@ -485,6 +526,8 @@ export function InternalApplicationsTab({
         adminSecret,
         limit,
         offset,
+        debouncedSearch || undefined,
+        company || undefined,
       );
       setApplications(data.applications);
       setTotal(data.total);
@@ -495,7 +538,7 @@ export function InternalApplicationsTab({
     } finally {
       setIsLoading(false);
     }
-  }, [adminSecret, offset]);
+  }, [adminSecret, offset, debouncedSearch, company]);
 
   useEffect(() => {
     fetchApplications();
@@ -520,6 +563,32 @@ export function InternalApplicationsTab({
         <span className="text-xs text-neutral-400 dark:text-neutral-500">
           {total} total
         </span>
+      </div>
+
+      {/* Search & Filter */}
+      <div className="flex items-center gap-3">
+        <div className="relative flex-1">
+          <MagnifyingGlassIcon className="pointer-events-none absolute left-2.5 top-1/2 h-4 w-4 -translate-y-1/2 text-neutral-400" />
+          <Input
+            type="text"
+            placeholder="Search by name, username, or company..."
+            value={search}
+            onChange={(e) => setSearch(e.target.value)}
+            className="pl-8"
+          />
+        </div>
+        <select
+          value={company}
+          onChange={(e) => setCompany(e.target.value)}
+          className="flex h-10 rounded-md border border-neutral-200 bg-white px-3 py-2 text-sm dark:border-neutral-800 dark:bg-neutral-950 dark:text-neutral-50"
+        >
+          <option value="">All Companies</option>
+          {companies.map((c) => (
+            <option key={c} value={c}>
+              {c}
+            </option>
+          ))}
+        </select>
       </div>
 
       {/* Error */}

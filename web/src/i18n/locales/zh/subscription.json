@@ -80,7 +80,8 @@
     "renew": "续期",
     "duration": "30 天全部模型",
     "active": "生效中",
-    "remaining": "剩余 {{days}} 天"
+    "remaining": "剩余 {{days}} 天",
+    "note": "仅开放模型使用权限，实际使用按积分结算"
   },
 
   "sub": {

@@ -45,6 +45,7 @@ class RedemptionCodeInfo(BaseModel):
 class AdminApplicationResponse(BaseModel):
     id: str
     user_id: str
+    username: str | None
     company_name: str
     company_email: str
     real_name: str
@@ -55,6 +56,7 @@ class AdminApplicationResponse(BaseModel):
     redemption_code_id: str | None
     created_at: str
     updated_at: str
+    total_credits_granted: int
     redemption_code: RedemptionCodeInfo | None = None
     redeemed_at: str | None = None
 
@@ -109,6 +111,7 @@ async def _build_application_response(
     return AdminApplicationResponse(
         id=str(app.id),
         user_id=app.user_id,
+        username=app.username,
         company_name=app.company_name,
         company_email=app.company_email,
         real_name=app.real_name,
@@ -119,6 +122,7 @@ async def _build_application_response(
         redemption_code_id=str(app.redemption_code_id) if app.redemption_code_id else None,
         created_at=app.created_at.isoformat(),
         updated_at=app.updated_at.isoformat(),
+        total_credits_granted=app.total_credits_granted,
         redemption_code=redemption_code_info,
         redeemed_at=redeemed_at,
     )
@@ -127,18 +131,31 @@ async def _build_application_response(
 # ==================== Endpoints ====================
 
 
+@router.get("/companies", response_model=list[str])
+async def list_companies(
+    admin_secret: str = Header(..., alias="X-Admin-Secret"),
+    db: AsyncSession = Depends(get_db_session),
+):
+    """Get distinct company names for filter dropdown."""
+    _verify_admin(admin_secret)
+    repo = InternalApplicationRepository(db)
+    return await repo.get_distinct_companies()
+
+
 @router.get("", response_model=AdminApplicationsListResponse)
 async def list_applications(
     admin_secret: str = Header(..., alias="X-Admin-Secret"),
     limit: int = Query(50, ge=1, le=200),
     offset: int = Query(0, ge=0),
+    search: str | None = Query(None),
+    company: str | None = Query(None),
     db: AsyncSession = Depends(get_db_session),
 ):
     """List all internal applications with optional redemption code details."""
     _verify_admin(admin_secret)
 
     repo = InternalApplicationRepository(db)
-    applications, total = await repo.get_all(limit=limit, offset=offset)
+    applications, total = await repo.get_all(limit=limit, offset=offset, search=search, company=company)
 
     responses = [await _build_application_response(app, db) for app in applications]
 

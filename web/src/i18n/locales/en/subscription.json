@@ -80,7 +80,8 @@
     "renew": "Renew",
     "duration": "30 days all models",
     "active": "Active",
-    "remaining": "{{days}} days left"
+    "remaining": "{{days}} days left",
+    "note": "Unlocks model access only — usage is billed in credits"
   },
 
   "sub": {

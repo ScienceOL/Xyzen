@@ -39,7 +39,7 @@ import {
   TicketIcon,
   ChevronDownIcon,
 } from "@heroicons/react/24/outline";
-import { motion } from "framer-motion";
+import { motion } from "motion/react";
 import { Crown, Gem, Shield } from "lucide-react";
 import { useState, useCallback, useMemo } from "react";
 import { useTranslation } from "react-i18next";
@@ -1259,6 +1259,9 @@ function FullAccessCard({
                     days: daysRemaining,
                   })
                 : t("subscription.fullAccess.subtitle")}
+            </div>
+            <div className="text-[11px] text-neutral-400 dark:text-neutral-500">
+              {t("subscription.fullAccess.note")}
             </div>
           </div>
         </div>

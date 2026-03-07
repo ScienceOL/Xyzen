@@ -80,7 +80,8 @@
     "renew": "更新",
     "duration": "30日間全モデル",
     "active": "有効中",
-    "remaining": "残り {{days}} 日"
+    "remaining": "残り {{days}} 日",
+    "note": "モデルの利用権限のみ開放、使用料はクレジットで精算"
   },
 
   "sub": {

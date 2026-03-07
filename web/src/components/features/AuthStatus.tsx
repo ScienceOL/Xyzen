@@ -198,7 +198,7 @@ export function AuthStatus({ onTokenInput, className = "" }: AuthStatusProps) {
                             if (!auth.token) return;
                             const encoded = encodeURIComponent(auth.token);
                             window.open(
-                              `https://chat.sciol.ac.cn/?access_token=${encoded}`,
+                              `${window.location.origin}/?access_token=${encoded}`,
                               "_blank",
                               "noopener,noreferrer",
                             );

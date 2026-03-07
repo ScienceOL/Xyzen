@@ -15,8 +15,10 @@ import {
   Check,
   Code2,
   Cpu,
+  Image,
   MessageSquare,
   Sparkles,
+  Video,
   Zap,
 } from "lucide-react";
 import { motion } from "motion/react";
@@ -112,7 +114,7 @@ const TIERS: TierInfo[] = [
     models: [
       // { name: "Gemini 2.5 Flash-Lite", provider: "google" },
       // { name: "Qwen3 30B A3B", provider: "qwen" },
-      { name: "Grok 4.1 Fast", provider: "xai" },
+      // { name: "Grok 4.1 Fast", provider: "xai" },
       { name: "DeepSeek V3.2", provider: "deepseek", betaSpecial: true },
     ],
   },
@@ -130,7 +132,7 @@ const TIERS: TierInfo[] = [
     buttonStyle: "bg-blue-600 hover:bg-blue-500",
     featureKeys: ["dailyChat", "emailWriting", "knowledgeQA"],
     models: [
-      { name: "Claude Haiku 4.5", provider: "anthropic" },
+      // { name: "Claude Haiku 4.5", provider: "anthropic" },
       // { name: "DeepSeek V3.2", provider: "deepseek" },
       { name: "Gemini 3 Flash", provider: "google", primary: true },
     ],
@@ -150,9 +152,9 @@ const TIERS: TierInfo[] = [
     recommended: true,
     featureKeys: ["pdfAnalysis", "codeWriting", "taskPlanning"],
     models: [
-      { name: "Claude Sonnet 4.5", provider: "anthropic" },
+      // { name: "Claude Sonnet 4.5", provider: "anthropic" },
       { name: "Gemini 3.1 Pro", provider: "google", primary: true },
-      { name: "GPT-5.3", provider: "openai" },
+      // { name: "GPT-5.3", provider: "openai" },
       // { name: "Grok 4.1", provider: "xai" },
       // { name: "Qwen3 Max", provider: "qwen" },
     ],
@@ -175,7 +177,7 @@ const TIERS: TierInfo[] = [
     featureKeys: ["deepReasoning", "academicAnalysis", "mathSolving"],
     models: [
       { name: "Claude Opus 4.6 1M", provider: "anthropic", primary: true },
-      { name: "GPT-5.2 Pro", provider: "openai" },
+      // { name: "GPT-5.2 Pro", provider: "openai" },
       // { name: "Grok 4.1 Thinking", provider: "xai" },
     ],
   },
@@ -377,10 +379,7 @@ export function TierInfoModal({ open, onOpenChange }: TierInfoModalProps) {
                           {model.primary && (
                             <span className="ml-auto shrink-0 inline-flex items-center gap-0.5 px-1.5 py-0.5 text-[9px] font-bold uppercase tracking-wider rounded-full bg-gradient-to-r from-amber-400/20 to-yellow-400/20 text-amber-600 dark:from-amber-400/25 dark:to-yellow-400/25 dark:text-amber-300 ring-1 ring-amber-500/25">
                               <Sparkles className="w-2.5 h-2.5" />
-                              {t(
-                                "app.tierSelector.infoModal.primary",
-                                "Primary",
-                              )}
+                              {t("app.tierSelector.infoModal.inUse", "In Use")}
                             </span>
                           )}
                           {model.betaSpecial && (
@@ -395,11 +394,72 @@ export function TierInfoModal({ open, onOpenChange }: TierInfoModalProps) {
                 </motion.div>
               ))}
             </div>
+
+            {/* Creative Models */}
+            <motion.div
+              initial={{ opacity: 0, y: 12 }}
+              animate={{ opacity: 1, y: 0 }}
+              transition={{ delay: 0.5, duration: 0.4 }}
+              className="mt-6 rounded-2xl border border-zinc-200 dark:border-white/10 bg-white/50 dark:bg-white/5 p-5"
+            >
+              <p className="text-[10px] uppercase tracking-wider text-zinc-400 dark:text-white/40 font-semibold mb-4">
+                {t(
+                  "app.tierSelector.infoModal.creativeModels",
+                  "Creative Models",
+                )}
+              </p>
+              <div className="grid grid-cols-1 md:grid-cols-2 gap-3">
+                {/* Image Generation */}
+                <div className="flex items-center gap-3 px-4 py-3 rounded-lg bg-zinc-50 dark:bg-white/5 border border-zinc-100 dark:border-white/5">
+                  <div className="flex items-center justify-center w-8 h-8 rounded-lg bg-pink-50 dark:bg-pink-950/30">
+                    <Image className="w-4 h-4 text-pink-500 dark:text-pink-400" />
+                  </div>
+                  <div className="flex-1 min-w-0">
+                    <div className="flex items-center gap-2">
+                      <span className="text-xs font-medium text-zinc-700 dark:text-white/90">
+                        Nano Banana Pro
+                      </span>
+                      <span className="shrink-0 px-1.5 py-0.5 text-[9px] font-bold uppercase tracking-wider rounded-full bg-pink-500/10 text-pink-600 dark:bg-pink-400/15 dark:text-pink-300 ring-1 ring-pink-500/20">
+                        {t("app.tierSelector.infoModal.imageGen", "Image")}
+                      </span>
+                    </div>
+                    <div className="flex items-center gap-1.5 mt-0.5">
+                      <GeminiIcon className="w-3 h-3 text-blue-500" />
+                      <span className="text-[11px] text-zinc-400 dark:text-white/40">
+                        Google
+                      </span>
+                    </div>
+                  </div>
+                </div>
+                {/* Video Generation */}
+                <div className="flex items-center gap-3 px-4 py-3 rounded-lg bg-zinc-50 dark:bg-white/5 border border-zinc-100 dark:border-white/5">
+                  <div className="flex items-center justify-center w-8 h-8 rounded-lg bg-violet-50 dark:bg-violet-950/30">
+                    <Video className="w-4 h-4 text-violet-500 dark:text-violet-400" />
+                  </div>
+                  <div className="flex-1 min-w-0">
+                    <div className="flex items-center gap-2">
+                      <span className="text-xs font-medium text-zinc-700 dark:text-white/90">
+                        Veo 3.1
+                      </span>
+                      <span className="shrink-0 px-1.5 py-0.5 text-[9px] font-bold uppercase tracking-wider rounded-full bg-violet-500/10 text-violet-600 dark:bg-violet-400/15 dark:text-violet-300 ring-1 ring-violet-500/20">
+                        {t("app.tierSelector.infoModal.videoGen", "Video")}
+                      </span>
+                    </div>
+                    <div className="flex items-center gap-1.5 mt-0.5">
+                      <GeminiIcon className="w-3 h-3 text-blue-500" />
+                      <span className="text-[11px] text-zinc-400 dark:text-white/40">
+                        Google
+                      </span>
+                    </div>
+                  </div>
+                </div>
+              </div>
+            </motion.div>
           </div>
-          {/* Footer */}
-          <div className="px-8 py-4 bg-zinc-50 dark:bg-black/20 border-t border-zinc-200 dark:border-white/10 text-center text-xs text-zinc-400 dark:text-white/40">
+          {/* Footer - disclaimer hidden */}
+          {/* <div className="px-8 py-4 bg-zinc-50 dark:bg-black/20 border-t border-zinc-200 dark:border-white/10 text-center text-xs text-zinc-400 dark:text-white/40">
             {t("app.tierSelector.infoModal.disclaimer")}
-          </div>
+          </div> */}
         </div>
       </DialogContent>
     </Dialog>

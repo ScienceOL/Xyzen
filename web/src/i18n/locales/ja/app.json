@@ -338,6 +338,9 @@
       "imageGen": "画像生成",
       "betaSpecial": "ベータ特典",
       "primary": "優先",
+      "inUse": "使用中",
+      "creativeModels": "クリエイティブモデル",
+      "videoGen": "動画",
       "disclaimer": "* このリストはモデル能力の参考用であり、実際に使用されるモデルを保証するものではありません。"
     },
     "speedLabels": {

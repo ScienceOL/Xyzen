@@ -194,10 +194,10 @@ class SubscriptionService:
             return False
         if sub.last_credits_claimed_at is None:
             return True
-        # Can claim once per calendar month (UTC)
+        # Must wait at least 30 days between claims
         now = datetime.now(timezone.utc)
         last = sub.last_credits_claimed_at
-        return (now.year, now.month) != (last.year, last.month)
+        return (now - last).days >= self.SUBSCRIPTION_DURATION_DAYS
 
     async def claim_credits(self, user_id: str) -> int:
         """Claim monthly credits for the user. Returns amount credited. Raises HTTPException on failure."""

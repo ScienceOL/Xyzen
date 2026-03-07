@@ -340,6 +340,9 @@
       "imageGen": "Image Generation",
       "betaSpecial": "Beta Special",
       "primary": "Primary",
+      "inUse": "In Use",
+      "creativeModels": "Creative Models",
+      "videoGen": "Video",
       "disclaimer": "* Models listed are for capability reference only and do not guarantee the actual model used."
     },
     "speedLabels": {

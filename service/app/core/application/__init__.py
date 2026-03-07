@@ -35,13 +35,14 @@ class ApplicationService:
 
         return await self.survey_repo.create(data)
 
-    async def submit_application(self, data: InternalApplicationCreate, user_id: str):
+    async def submit_application(self, data: InternalApplicationCreate, user_id: str, *, username: str | None = None):
         """Submit an internal application with serial number and JWT certificate."""
         now = datetime.now(timezone.utc)
         serial_number = f"XYZEN-{now.strftime('%Y%m%d')}-{uuid4().hex[:8].upper()}"
 
         application = InternalApplication(
             user_id=user_id,
+            username=username,
             company_name=data.company_name,
             company_email=data.company_email,
             real_name=data.real_name,

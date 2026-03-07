@@ -338,6 +338,9 @@
       "imageGen": "图像生成",
       "betaSpecial": "内测特惠",
       "primary": "首选",
+      "inUse": "使用",
+      "creativeModels": "创意模型",
+      "videoGen": "视频",
       "disclaimer": "* 此列表仅作为模型能力参考，不代表实际调用的具体模型。"
     },
     "speedLabels": {
