@@ -929,12 +929,6 @@ export function BottomDock({
                   className="relative flex items-center justify-center h-8 w-8 rounded-lg text-amber-600 transition-colors hover:text-amber-700 dark:text-amber-400 dark:hover:text-amber-300"
                   title={t("app.toolbar.checkIn")}
                 >
-                  {checkIn.showDot && (
-                    <span className="absolute -top-0.5 -right-0.5 flex h-2 w-2">
-                      <span className="absolute inline-flex h-full w-full animate-ping rounded-full bg-red-400 opacity-75" />
-                      <span className="relative inline-flex h-2 w-2 rounded-full bg-red-500" />
-                    </span>
-                  )}
                   <CalendarDaysIcon className="h-5 w-5" />
                 </motion.button>
               )}

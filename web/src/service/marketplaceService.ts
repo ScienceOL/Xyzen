@@ -17,6 +17,8 @@ export interface MarketplaceListing {
   likes_count: number;
   forks_count: number;
   views_count: number;
+  positive_review_count: number;
+  negative_review_count: number;
   is_published: boolean;
   fork_mode: ForkMode;
   scope: MarketplaceScope;
@@ -137,6 +139,31 @@ export interface RequirementsResponse {
   }>;
   provider_needed: boolean;
   graph_config?: Record<string, unknown> | null; // For agent type detection
+}
+
+export interface AgentReview {
+  id: string;
+  user_id: string;
+  marketplace_id: string;
+  is_positive: boolean;
+  content: string | null;
+  author_display_name: string | null;
+  author_avatar_url: string | null;
+  has_forked: boolean;
+  created_at: string;
+  updated_at: string;
+}
+
+export interface ReviewListResponse {
+  reviews: AgentReview[];
+  total: number;
+  has_more: boolean;
+  user_review: AgentReview | null;
+}
+
+export interface SubmitReviewRequest {
+  is_positive: boolean;
+  content?: string | null;
 }
 
 export interface SearchParams {
@@ -279,6 +306,30 @@ class MarketplaceService {
     return http.get("/xyzen/api/v1/marketplace/recently-published", {
       params: { limit },
     });
+  }
+
+  async submitReview(
+    marketplaceId: string,
+    request: SubmitReviewRequest,
+  ): Promise<AgentReview> {
+    return http.post(
+      `/xyzen/api/v1/marketplace/${marketplaceId}/reviews`,
+      request,
+    );
+  }
+
+  async listReviews(
+    marketplaceId: string,
+    limit = 20,
+    offset = 0,
+  ): Promise<ReviewListResponse> {
+    return http.get(`/xyzen/api/v1/marketplace/${marketplaceId}/reviews`, {
+      params: { limit, offset },
+    });
+  }
+
+  async deleteReview(marketplaceId: string): Promise<{ deleted: boolean }> {
+    return http.delete(`/xyzen/api/v1/marketplace/${marketplaceId}/reviews`);
   }
 }
 

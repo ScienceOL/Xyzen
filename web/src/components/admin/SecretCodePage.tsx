@@ -12,6 +12,7 @@ import { useEffect, useState } from "react";
 import { AdminAuthForm } from "./AdminAuthForm";
 import { AgentMarketplaceTab } from "./AgentMarketplaceTab";
 import { ConsumptionAnalyticsTab } from "./ConsumptionAnalyticsTab";
+import { InternalApplicationsTab } from "./InternalApplicationsTab";
 import { RedemptionCodesTab } from "./RedemptionCodesTab";
 import { RevenueAnalyticsTab } from "./RevenueAnalyticsTab";
 import { SubscriptionManagementTab } from "./SubscriptionManagementTab";
@@ -124,6 +125,7 @@ export function SecretCodePage() {
               <TabsTrigger value="revenue">平台收入</TabsTrigger>
               <TabsTrigger value="subscriptions">订阅管理</TabsTrigger>
               <TabsTrigger value="marketplace">Agent市场</TabsTrigger>
+              <TabsTrigger value="applications">内部申请</TabsTrigger>
               <TabsTrigger value="codes">兑换码</TabsTrigger>
             </TabsList>
           </div>
@@ -156,6 +158,12 @@ export function SecretCodePage() {
             <TabsContent value="marketplace">
               <div className="bg-white dark:bg-neutral-900 rounded-lg shadow-sm p-4 sm:p-6 mt-4 overflow-hidden">
                 <AgentMarketplaceTab adminSecret={adminSecret!} />
+              </div>
+            </TabsContent>
+
+            <TabsContent value="applications">
+              <div className="bg-white dark:bg-neutral-900 rounded-lg shadow-sm p-4 sm:p-6 mt-4 overflow-hidden">
+                <InternalApplicationsTab adminSecret={adminSecret!} />
               </div>
             </TabsContent>
 

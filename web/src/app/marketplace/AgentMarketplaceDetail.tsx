@@ -12,19 +12,22 @@ import Markdown from "@/lib/Markdown";
 import { AgentSnapshot } from "@/service/marketplaceService";
 import { useXyzen } from "@/store";
 import { useIsMarketplaceOwner } from "@/utils/marketplace";
+import ReviewList from "./components/ReviewList";
+import ReviewSummaryBadge from "./components/ReviewSummaryBadge";
 import {
   ArrowLeftIcon,
+  ChatBubbleLeftRightIcon,
   CheckCircleIcon,
   Cog6ToothIcon,
   CubeIcon,
   DocumentTextIcon,
   EyeIcon,
-  HeartIcon,
   InformationCircleIcon,
   LockClosedIcon,
   PencilIcon,
+  StarIcon,
 } from "@heroicons/react/24/outline";
-import { HeartIcon as HeartSolidIcon } from "@heroicons/react/24/solid";
+import { StarIcon as StarSolidIcon } from "@heroicons/react/24/solid";
 import { CheckBadgeIcon } from "@heroicons/react/24/solid";
 import { useState } from "react";
 import { useTranslation } from "react-i18next";
@@ -85,7 +88,7 @@ export default function AgentMarketplaceDetail({
   const { t } = useTranslation();
   const [showForkModal, setShowForkModal] = useState(false);
   const [activeTab, setActiveTab] = useState<
-    "readme" | "config" | "requirements"
+    "readme" | "config" | "requirements" | "reviews"
   >("readme");
 
   // Get fetchAgents from store to refresh after fork
@@ -201,8 +204,8 @@ export default function AgentMarketplaceDetail({
   }
 
   return (
-    <div className="h-full w-full overflow-auto bg-linear-to-b from-neutral-50 to-white dark:from-neutral-950 dark:to-black">
-      <div className="mx-auto max-w-6xl px-4 py-8">
+    <div className="custom-scrollbar h-full w-full overflow-auto bg-linear-to-b from-neutral-50 to-white dark:from-neutral-950 dark:to-black">
+      <div className="mx-auto max-w-6xl px-4 py-8 pb-20">
         {/* Header with back button */}
         <div className="mb-8">
           <button
@@ -301,15 +304,15 @@ export default function AgentMarketplaceDetail({
               <div className="relative border-t border-neutral-200 bg-white/50 px-6 py-4 backdrop-blur-sm sm:p-6 dark:border-neutral-800 dark:bg-neutral-900/50">
                 <div className="flex items-center gap-6 text-sm sm:gap-8">
                   <div className="flex items-center gap-2 text-neutral-600 dark:text-neutral-400">
-                    <div className="flex h-8 w-8 items-center justify-center rounded-lg bg-red-50 sm:h-10 sm:w-10 dark:bg-red-950/30">
-                      <HeartIcon className="h-4 w-4 text-red-500 sm:h-5 sm:w-5" />
+                    <div className="flex h-8 w-8 items-center justify-center rounded-lg bg-amber-50 sm:h-10 sm:w-10 dark:bg-amber-950/30">
+                      <StarIcon className="h-4 w-4 text-amber-500 sm:h-5 sm:w-5" />
                     </div>
                     <div>
                       <div className="text-base font-bold text-neutral-900 sm:text-lg dark:text-neutral-100">
                         {listing.likes_count}
                       </div>
                       <div className="text-xs">
-                        {t("marketplace.detail.stats.likes")}
+                        {t("marketplace.detail.stats.stars")}
                       </div>
                     </div>
                   </div>
@@ -351,6 +354,13 @@ export default function AgentMarketplaceDetail({
                       </div>
                     </div>
                   </div>
+                  {/* Rating Badge */}
+                  <div className="ml-auto">
+                    <ReviewSummaryBadge
+                      positiveCount={listing.positive_review_count}
+                      negativeCount={listing.negative_review_count}
+                    />
+                  </div>
                 </div>
               </div>
             </div>
@@ -391,6 +401,17 @@ export default function AgentMarketplaceDetail({
                 >
                   <CubeIcon className="h-4 w-4" />
                   {t("marketplace.detail.tabs.requirements")}
+                </button>
+                <button
+                  onClick={() => setActiveTab("reviews")}
+                  className={`flex whitespace-nowrap items-center gap-2 border-b-2 px-4 py-4 text-sm font-medium transition-colors sm:px-6 ${
+                    activeTab === "reviews"
+                      ? "border-indigo-500 text-indigo-600 dark:text-indigo-400"
+                      : "border-transparent text-neutral-500 hover:text-neutral-700 dark:text-neutral-400 dark:hover:text-neutral-200"
+                  }`}
+                >
+                  <ChatBubbleLeftRightIcon className="h-4 w-4" />
+                  {t("marketplace.detail.tabs.reviews")}
                 </button>
               </div>
 
@@ -648,6 +669,11 @@ export default function AgentMarketplaceDetail({
                     )}
                   </div>
                 )}
+
+                {/* Reviews Tab */}
+                {activeTab === "reviews" && (
+                  <ReviewList marketplaceId={marketplaceId} />
+                )}
               </div>
             </div>
           </div>
@@ -688,15 +714,15 @@ export default function AgentMarketplaceDetail({
                     disabled={toggleLike.isPending}
                     className={`w-full rounded-sm border-2 px-4 py-3 text-sm font-semibold transition-all hover:scale-[1.02] disabled:opacity-50 ${
                       listing.has_liked
-                        ? "border-red-300 bg-red-50 text-red-700 hover:bg-red-100 dark:border-red-800 dark:bg-red-950/30 dark:text-red-400 dark:hover:bg-red-950/50"
-                        : "border-neutral-300 bg-white text-neutral-700 hover:border-red-300 hover:bg-red-50 dark:border-neutral-700 dark:bg-neutral-900 dark:text-neutral-300 dark:hover:border-red-800 dark:hover:bg-red-950/30"
+                        ? "border-amber-300 bg-amber-50 text-amber-700 hover:bg-amber-100 dark:border-amber-800 dark:bg-amber-950/30 dark:text-amber-400 dark:hover:bg-amber-950/50"
+                        : "border-neutral-300 bg-white text-neutral-700 hover:border-amber-300 hover:bg-amber-50 dark:border-neutral-700 dark:bg-neutral-900 dark:text-neutral-300 dark:hover:border-amber-800 dark:hover:bg-amber-950/30"
                     }`}
                   >
                     <div className="flex items-center justify-center gap-2">
                       {listing.has_liked ? (
-                        <HeartSolidIcon className="h-5 w-5 text-red-500" />
+                        <StarSolidIcon className="h-5 w-5 text-amber-500" />
                       ) : (
-                        <HeartIcon className="h-5 w-5" />
+                        <StarIcon className="h-5 w-5" />
                       )}
                       <span>
                         {listing.has_liked

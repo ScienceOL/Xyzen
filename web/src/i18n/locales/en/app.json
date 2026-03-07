@@ -584,7 +584,8 @@
     "settings": "Settings",
     "redeem": "Redeem",
     "region": "Region",
-    "about": "About"
+    "about": "About",
+    "creatorEarnings": "{{amount}} points earned"
   },
   "wallet": {
     "freeBalance": "Free",

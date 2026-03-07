@@ -62,13 +62,15 @@
     "noDescription": "暂无描述",
     "stats": {
       "likes": "点赞",
+      "stars": "收藏",
       "forks": "复刻",
       "views": "浏览"
     },
     "tabs": {
       "readme": "说明文档",
       "config": "配置信息",
-      "requirements": "运行要求"
+      "requirements": "运行要求",
+      "reviews": "评测"
     },
     "readme": {
       "empty": "该助手暂无说明文档。",
@@ -100,8 +102,8 @@
     "actions": {
       "title": "操作",
       "fork": "雇佣此助手",
-      "liked": "已点赞",
-      "like": "点赞",
+      "liked": "已收藏",
+      "like": "收藏",
       "loginToFork": "登录以雇佣",
       "loginToLike": "登录以点赞",
       "manage": "管理助手",
@@ -115,6 +117,40 @@
     "aboutForking": {
       "title": "关于复刻",
       "description": "复刻会创建一个独立的副本。你的修改不会影响原始助手。"
+    }
+  },
+  "review": {
+    "tier": {
+      "overwhelmingly_positive": "好评如潮",
+      "very_positive": "特别好评",
+      "mixed": "褒贬不一",
+      "mostly_negative": "多半差评",
+      "overwhelmingly_negative": "差评如潮",
+      "not_enough": "评价不足"
+    },
+    "summary": "{{count}} 篇评测中有 {{percentage}}% 为好评",
+    "write": {
+      "title": "撰写评测",
+      "editTitle": "编辑评测",
+      "recommend": "推荐",
+      "notRecommend": "不推荐",
+      "placeholder": "告诉其他人你对这个助手的看法...（可选）",
+      "submit": "提交评测",
+      "update": "更新评测",
+      "delete": "删除",
+      "submitting": "提交中..."
+    },
+    "card": {
+      "recommended": "推荐",
+      "notRecommended": "不推荐",
+      "hasUsed": "已使用"
+    },
+    "list": {
+      "hasMore": "向下滚动查看更多评测"
+    },
+    "empty": {
+      "title": "暂无评测",
+      "body": "成为第一个分享使用体验的人。"
     }
   },
   "publish": {

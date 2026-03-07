@@ -1,9 +1,10 @@
-import { HeartIcon, LockClosedIcon } from "@heroicons/react/24/outline";
-import { HeartIcon as HeartSolidIcon } from "@heroicons/react/24/solid";
+import { LockClosedIcon, StarIcon } from "@heroicons/react/24/outline";
+import { StarIcon as StarSolidIcon } from "@heroicons/react/24/solid";
 import { useTranslation } from "react-i18next";
 
 import { useToggleLike } from "@/hooks/useMarketplace";
 import type { MarketplaceListing } from "@/service/marketplaceService";
+import ReviewSummaryBadge from "./components/ReviewSummaryBadge";
 
 interface AgentListingCardProps {
   listing: MarketplaceListing;
@@ -87,12 +88,12 @@ function AgentListingCard({
               )}
               <button
                 onClick={handleLikeClick}
-                className="flex h-7 w-7 items-center justify-center rounded-lg transition-all hover:bg-red-50 dark:hover:bg-red-950/20"
+                className="flex h-7 w-7 items-center justify-center rounded-lg transition-all hover:bg-amber-50 dark:hover:bg-amber-950/20"
               >
                 {listing.has_liked ? (
-                  <HeartSolidIcon className="h-4 w-4 text-red-500" />
+                  <StarSolidIcon className="h-4 w-4 text-amber-500" />
                 ) : (
-                  <HeartIcon className="h-4 w-4 text-neutral-400 transition-colors group-hover:text-red-500" />
+                  <StarIcon className="h-4 w-4 text-neutral-400 transition-colors group-hover:text-amber-500" />
                 )}
               </button>
             </div>
@@ -102,7 +103,7 @@ function AgentListingCard({
         <div className="relative mt-auto border-t border-neutral-100 px-4 py-2.5 dark:border-neutral-800">
           <div className="flex items-center gap-4 text-xs">
             <div className="flex items-center gap-1 text-neutral-600 dark:text-neutral-400">
-              <HeartIcon className="h-3.5 w-3.5" />
+              <StarIcon className="h-3.5 w-3.5" />
               <span className="font-medium">{listing.likes_count}</span>
             </div>
             <div className="flex items-center gap-1 text-neutral-600 dark:text-neutral-400">
@@ -216,12 +217,12 @@ function AgentListingCard({
             )}
             <button
               onClick={handleLikeClick}
-              className="flex h-9 w-9 items-center justify-center rounded-lg transition-all hover:bg-red-50 dark:hover:bg-red-950/20"
+              className="flex h-9 w-9 items-center justify-center rounded-lg transition-all hover:bg-amber-50 dark:hover:bg-amber-950/20"
             >
               {listing.has_liked ? (
-                <HeartSolidIcon className="h-5 w-5 text-red-500" />
+                <StarSolidIcon className="h-5 w-5 text-amber-500" />
               ) : (
-                <HeartIcon className="h-5 w-5 text-neutral-400 transition-colors group-hover:text-red-500" />
+                <StarIcon className="h-5 w-5 text-neutral-400 transition-colors group-hover:text-amber-500" />
               )}
             </button>
           </div>
@@ -258,7 +259,7 @@ function AgentListingCard({
         {/* Stats */}
         <div className="flex items-center gap-5 text-sm">
           <div className="flex items-center gap-1.5 text-neutral-600 dark:text-neutral-400">
-            <HeartIcon className="h-4 w-4" />
+            <StarIcon className="h-4 w-4" />
             <span className="font-medium">{listing.likes_count}</span>
           </div>
           <div className="flex items-center gap-1.5 text-neutral-600 dark:text-neutral-400">
@@ -299,6 +300,16 @@ function AgentListingCard({
             </svg>
             <span className="font-medium">{listing.views_count}</span>
           </div>
+          {listing.positive_review_count + listing.negative_review_count >=
+            10 && (
+            <div className="ml-auto">
+              <ReviewSummaryBadge
+                positiveCount={listing.positive_review_count}
+                negativeCount={listing.negative_review_count}
+                compact
+              />
+            </div>
+          )}
         </div>
       </div>
 

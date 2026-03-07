@@ -65,6 +65,8 @@ class ChatTaskContext:
     agent_run_id: UUID | None = None
     agent_run_start_time: float | None = None
     active_node_id: str | None = None
+    active_node_name: str | None = None
+    active_node_content: str = ""
     tool_calls_by_node: dict[str, list[dict[str, Any]]] = field(default_factory=dict)
     tool_call_data: dict[str, dict[str, Any]] = field(default_factory=dict)
     agent_name: str = ""
@@ -246,6 +248,7 @@ async def handle_streaming_chunk(ctx: ChatTaskContext, stream_event: dict[str, A
     chunk_content = stream_event["data"]["content"]
     text_content = extract_content_text(chunk_content)
     ctx.full_content += text_content
+    ctx.active_node_content += text_content
     stream_event["data"]["content"] = text_content
     await ctx.publisher.publish(json.dumps(stream_event))
 
@@ -724,12 +727,16 @@ async def handle_node_start(ctx: ChatTaskContext, stream_event: dict[str, Any]) 
             logger.warning(f"Failed to append timeline entry: {e}")
 
     ctx.active_node_id = stream_event["data"].get("node_id")
+    ctx.active_node_name = stream_event["data"].get("node_name")
+    ctx.active_node_content = ""
 
     await ctx.publisher.publish(json.dumps(stream_event))
 
 
 async def handle_node_end(ctx: ChatTaskContext, stream_event: dict[str, Any]) -> None:
     ctx.active_node_id = None
+    ctx.active_node_name = None
+    ctx.active_node_content = ""
     if ctx.agent_run_id:
         try:
             agent_run_repo = AgentRunRepository(ctx.get_db())
@@ -905,15 +912,29 @@ async def handle_abort(
 
     # Handle AgentRun - create if not exists, or update existing
     if ctx.agent_run_id:
-        # Update existing AgentRun to cancelled
+        # Update existing AgentRun to cancelled, preserving tool calls and active node content
         try:
             agent_run_repo = AgentRunRepository(ctx.get_db())
             now = time.time()
+
+            # Build final_node_data so tool calls and in-progress node content
+            # survive a page refresh (reconstructAgentExecutionFromMetadata needs them).
+            final_node_data: dict[str, Any] = {}
+            if ctx.tool_calls_by_node:
+                final_node_data["tool_calls"] = ctx.tool_calls_by_node
+            # Save the active node's partial output so the phase can be reconstructed
+            if ctx.active_node_id and ctx.active_node_content:
+                final_node_data["node_outputs"] = {ctx.active_node_id: ctx.active_node_content}
+                final_node_data["node_order"] = [ctx.active_node_id]
+                if ctx.active_node_name:
+                    final_node_data["node_names"] = {ctx.active_node_id: ctx.active_node_name}
+
             await agent_run_repo.finalize(
                 agent_run_id=ctx.agent_run_id,
                 status="cancelled",
                 ended_at=now,
                 duration_ms=int((now - (ctx.agent_run_start_time or now)) * 1000),
+                final_node_data=final_node_data if final_node_data else None,
             )
             logger.debug(f"Marked AgentRun {ctx.agent_run_id} as cancelled")
         except Exception as e:

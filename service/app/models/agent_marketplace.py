@@ -64,6 +64,8 @@ class AgentMarketplace(SQLModel, table=True):
     likes_count: int = Field(default=0, index=True)
     forks_count: int = Field(default=0, index=True)
     views_count: int = Field(default=0)
+    positive_review_count: int = Field(default=0)
+    negative_review_count: int = Field(default=0)
 
     # Visibility control
     is_published: bool = Field(default=False, index=True)
@@ -129,6 +131,8 @@ class AgentMarketplaceRead(SQLModel):
     likes_count: int
     forks_count: int
     views_count: int
+    positive_review_count: int
+    negative_review_count: int
     is_published: bool
     fork_mode: ForkMode
     scope: MarketplaceScope

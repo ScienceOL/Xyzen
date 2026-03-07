@@ -582,7 +582,8 @@
     "settings": "设置",
     "redeem": "兑换码",
     "region": "地区",
-    "about": "关于"
+    "about": "关于",
+    "creatorEarnings": "已赚取 {{amount}} 积分"
   },
   "wallet": {
     "freeBalance": "免费",

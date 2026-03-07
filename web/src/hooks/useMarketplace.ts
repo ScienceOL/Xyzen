@@ -15,6 +15,7 @@ import type {
   PublishRequest,
   PublishResponse,
   SearchParams,
+  SubmitReviewRequest,
   UpdateAgentRequest,
 } from "@/service/marketplaceService";
 
@@ -45,6 +46,7 @@ export const marketplaceKeys = {
     [...marketplaceKeys.all, "trending", limit] as const,
   recentlyPublished: (limit: number) =>
     [...marketplaceKeys.all, "recently-published", limit] as const,
+  reviews: (id: string) => [...marketplaceKeys.all, "reviews", id] as const,
 };
 
 const DEFAULT_MARKETPLACE_PAGE_SIZE = 20;
@@ -566,6 +568,78 @@ export function useToggleLike() {
       });
       queryClient.invalidateQueries({
         queryKey: marketplaceKeys.recentlyPublished(6),
+      });
+    },
+  });
+}
+
+/**
+ * Hook to fetch reviews for a marketplace listing
+ */
+export function useMarketplaceReviews(
+  marketplaceId: string | undefined,
+  limit = 20,
+  offset = 0,
+) {
+  return useQuery({
+    queryKey: marketplaceId
+      ? [...marketplaceKeys.reviews(marketplaceId), { limit, offset }]
+      : ["marketplace", "reviews", "undefined"],
+    queryFn: () =>
+      marketplaceId
+        ? marketplaceService.listReviews(marketplaceId, limit, offset)
+        : Promise.reject(new Error("No marketplace ID provided")),
+    enabled: !!marketplaceId,
+    staleTime: 1000 * 60 * 2, // 2 minutes
+  });
+}
+
+/**
+ * Hook to submit a review
+ */
+export function useSubmitReview() {
+  const queryClient = useQueryClient();
+
+  return useMutation({
+    mutationFn: ({
+      marketplaceId,
+      request,
+    }: {
+      marketplaceId: string;
+      request: SubmitReviewRequest;
+    }) => marketplaceService.submitReview(marketplaceId, request),
+    onSuccess: (_data, variables) => {
+      queryClient.invalidateQueries({
+        queryKey: marketplaceKeys.reviews(variables.marketplaceId),
+      });
+      queryClient.invalidateQueries({
+        queryKey: marketplaceKeys.listing(variables.marketplaceId),
+      });
+      queryClient.invalidateQueries({
+        queryKey: marketplaceKeys.listings(),
+      });
+    },
+  });
+}
+
+/**
+ * Hook to delete a review
+ */
+export function useDeleteReview() {
+  const queryClient = useQueryClient();
+
+  return useMutation({
+    mutationFn: (marketplaceId: string) =>
+      marketplaceService.deleteReview(marketplaceId),
+    onSuccess: (_data, marketplaceId) => {
+      queryClient.invalidateQueries({
+        queryKey: marketplaceKeys.reviews(marketplaceId),
+      });
+      queryClient.invalidateQueries({
+        queryKey: marketplaceKeys.listing(marketplaceId),
+      });
+      queryClient.invalidateQueries({
+        queryKey: marketplaceKeys.listings(),
       });
     },
   });

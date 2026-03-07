@@ -275,9 +275,14 @@
     "or": "或直接发送邮件至"
   },
   "about": {
+    "tabAbout": "关于",
+    "tabApplication": "内部申请",
     "frontend": "前端",
     "backend": "后端",
-    "versionMismatch": "检测到版本不匹配，请尝试刷新页面。"
+    "version": "版本",
+    "refresh": "刷新",
+    "versionMismatch": "检测到版本不匹配，请尝试刷新页面。",
+    "versionMismatchHint": "您的浏览器正在运行 v{{frontendVersion}}，刷新以获取 v{{backendVersion}}。"
   },
   "account": {
     "title": "账户",

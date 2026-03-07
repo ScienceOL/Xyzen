@@ -13,6 +13,7 @@ from app.models.knowledge_set import KnowledgeSet
 from app.models.links import AgentMcpServerLink
 from app.models.mcp import McpServer
 from app.models.root_agent import RootAgent
+from app.repos.root_agent import RootAgentRepository
 
 logger = logging.getLogger(__name__)
 
@@ -156,6 +157,20 @@ class AgentRepository:
         for agent in agents:
             self._validate_agent_graph_config(agent)
         return agents
+
+    async def get_agents_by_parent(self, parent_id: UUID) -> Sequence[Agent]:
+        """
+        Fetches all agents with the given parent_id, ordered by sort_order.
+
+        Args:
+            parent_id: The UUID of the parent agent.
+
+        Returns:
+            List of Agent instances.
+        """
+        statement = select(Agent).where(Agent.parent_id == parent_id).order_by(col(Agent.sort_order))
+        result = await self.db.exec(statement)
+        return result.all()
 
     async def get_agent_by_user_and_name(self, user_id: str, name: str) -> Agent | None:
         """
@@ -335,6 +350,12 @@ class AgentRepository:
         agent_dict["user_id"] = user_id
         agent_dict["graph_config"] = graph_config  # Use generated or provided config
         agent_dict["sort_order"] = next_sort_order
+
+        # Default parent_id to root agent if not specified
+        if agent_dict.get("parent_id") is None and user_id:
+            root_record = await RootAgentRepository(self.db).get_by_user_id(user_id)
+            if root_record:
+                agent_dict["parent_id"] = root_record.agent_id
         agent = Agent(**agent_dict)
 
         self.db.add(agent)

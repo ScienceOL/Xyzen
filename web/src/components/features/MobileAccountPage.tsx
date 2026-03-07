@@ -18,6 +18,7 @@ import { NotificationCenter } from "@/components/features/NotificationCenter";
 import { PointsInfoModal } from "@/components/features/PointsInfoModal";
 import { CheckInModal } from "@/components/modals/CheckInModal";
 import { useAuth } from "@/hooks/useAuth";
+import { useDeveloperWallet } from "@/hooks/useDeveloper";
 import { useBilling, useCheckIn, useSubscriptionInfo } from "@/hooks/ee";
 import { checkInService } from "@/service/checkinService";
 import { useXyzen } from "@/store";
@@ -35,6 +36,8 @@ export default function MobileAccountPage() {
   const billing = useBilling();
   const checkIn = useCheckIn();
   const checkInStatus = checkIn?.query.data;
+  const walletQuery = useDeveloperWallet();
+  const creatorEarnings = walletQuery.data?.total_earned;
 
   const queryClient = useQueryClient();
 
@@ -173,6 +176,13 @@ export default function MobileAccountPage() {
             <div className="min-w-0 flex-1">
               <p className="text-sm text-neutral-900 dark:text-neutral-100">
                 {t("subscription.creator")}
+              </p>
+              <p className="text-xs text-neutral-500 dark:text-neutral-400">
+                {creatorEarnings != null
+                  ? t("app.account.creatorEarnings", {
+                      amount: creatorEarnings.toLocaleString(),
+                    })
+                  : "—"}
               </p>
             </div>
             <ChevronRightIcon className="h-4 w-4 flex-shrink-0 text-neutral-400 dark:text-neutral-500" />

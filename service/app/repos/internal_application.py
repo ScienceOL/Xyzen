@@ -1,8 +1,9 @@
 """Internal application repository for managing application submissions."""
 
 import logging
+from uuid import UUID
 
-from sqlmodel import col, select
+from sqlmodel import col, func, select
 from sqlmodel.ext.asyncio.session import AsyncSession
 
 from app.models.internal_application import InternalApplication
@@ -42,3 +43,28 @@ class InternalApplicationRepository:
         )
         result = await self.db.exec(statement)
         return list(result.all())
+
+    async def get_all(self, limit: int = 50, offset: int = 0) -> tuple[list[InternalApplication], int]:
+        """Get all internal applications, newest first, with total count."""
+        count_stmt = select(func.count()).select_from(InternalApplication)
+        count_result = await self.db.exec(count_stmt)
+        total = count_result.one()
+
+        statement = (
+            select(InternalApplication).order_by(col(InternalApplication.created_at).desc()).limit(limit).offset(offset)
+        )
+        result = await self.db.exec(statement)
+        return list(result.all()), total
+
+    async def get_by_id(self, app_id: UUID) -> InternalApplication | None:
+        """Get a single internal application by ID."""
+        statement = select(InternalApplication).where(col(InternalApplication.id) == app_id)
+        result = await self.db.exec(statement)
+        return result.first()
+
+    async def update(self, application: InternalApplication) -> InternalApplication:
+        """Persist changes to an internal application."""
+        self.db.add(application)
+        await self.db.flush()
+        await self.db.refresh(application)
+        return application

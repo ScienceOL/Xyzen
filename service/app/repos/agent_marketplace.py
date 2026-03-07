@@ -333,6 +333,84 @@ class AgentMarketplaceRepository:
             return new_count[0]
         return 0
 
+    async def increment_positive_reviews(self, marketplace_id: UUID) -> int:
+        """
+        Increments the positive review count atomically.
+        This function does NOT commit the transaction.
+        """
+        statement = (
+            update(AgentMarketplace)
+            .where(col(AgentMarketplace.id) == marketplace_id)
+            .values(positive_review_count=AgentMarketplace.positive_review_count + 1)
+            .returning(col(AgentMarketplace.positive_review_count))
+        )
+        result = await self.db.exec(statement)
+        new_count = result.first()
+        if new_count:
+            return new_count[0]
+        return 0
+
+    async def decrement_positive_reviews(self, marketplace_id: UUID) -> int:
+        """
+        Decrements the positive review count atomically, guarding against negative.
+        This function does NOT commit the transaction.
+        """
+        statement = (
+            update(AgentMarketplace)
+            .where(col(AgentMarketplace.id) == marketplace_id)
+            .values(
+                positive_review_count=case(
+                    (AgentMarketplace.positive_review_count > 0, AgentMarketplace.positive_review_count - 1),
+                    else_=0,
+                )
+            )
+            .returning(col(AgentMarketplace.positive_review_count))
+        )
+        result = await self.db.exec(statement)
+        new_count = result.first()
+        if new_count is not None:
+            return new_count[0]
+        return 0
+
+    async def increment_negative_reviews(self, marketplace_id: UUID) -> int:
+        """
+        Increments the negative review count atomically.
+        This function does NOT commit the transaction.
+        """
+        statement = (
+            update(AgentMarketplace)
+            .where(col(AgentMarketplace.id) == marketplace_id)
+            .values(negative_review_count=AgentMarketplace.negative_review_count + 1)
+            .returning(col(AgentMarketplace.negative_review_count))
+        )
+        result = await self.db.exec(statement)
+        new_count = result.first()
+        if new_count:
+            return new_count[0]
+        return 0
+
+    async def decrement_negative_reviews(self, marketplace_id: UUID) -> int:
+        """
+        Decrements the negative review count atomically, guarding against negative.
+        This function does NOT commit the transaction.
+        """
+        statement = (
+            update(AgentMarketplace)
+            .where(col(AgentMarketplace.id) == marketplace_id)
+            .values(
+                negative_review_count=case(
+                    (AgentMarketplace.negative_review_count > 0, AgentMarketplace.negative_review_count - 1),
+                    else_=0,
+                )
+            )
+            .returning(col(AgentMarketplace.negative_review_count))
+        )
+        result = await self.db.exec(statement)
+        new_count = result.first()
+        if new_count is not None:
+            return new_count[0]
+        return 0
+
     async def increment_forks(self, marketplace_id: UUID) -> bool:
         """
         Increments the forks count for a marketplace listing atomically.

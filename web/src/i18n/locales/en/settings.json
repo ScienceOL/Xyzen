@@ -296,9 +296,14 @@
     "or": "or email us directly at"
   },
   "about": {
+    "tabAbout": "About",
+    "tabApplication": "Internal Application",
     "frontend": "Frontend",
     "backend": "Backend",
-    "versionMismatch": "Version mismatch detected. Try refreshing the page."
+    "version": "Version",
+    "refresh": "Refresh",
+    "versionMismatch": "Version mismatch detected. Try refreshing the page.",
+    "versionMismatchHint": "Your browser is running v{{frontendVersion}}. Refresh to get v{{backendVersion}}."
   },
   "account": {
     "title": "Account",

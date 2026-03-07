@@ -11,7 +11,7 @@ This module provides the following endpoints for agent marketplace:
 - GET /my-listings: Get current user's published listings
 """
 
-from typing import Any, Literal
+from typing import TYPE_CHECKING, Any, Literal
 from uuid import UUID
 
 from fastapi import APIRouter, Depends, HTTPException, Query
@@ -37,6 +37,9 @@ from app.models.agent_marketplace import (
 )
 from app.models.agent_snapshot import AgentSnapshotRead
 from app.repos import AgentMarketplaceRepository, AgentSnapshotRepository
+
+if TYPE_CHECKING:
+    from app.models.agent_review import AgentReview
 
 router = APIRouter(tags=["marketplace"])
 
@@ -108,6 +111,37 @@ class LikeResponse(BaseModel):
 
     is_liked: bool
     likes_count: int
+
+
+class SubmitReviewRequest(BaseModel):
+    """Request model for submitting/updating a review"""
+
+    is_positive: bool
+    content: str | None = None
+
+
+class ReviewResponse(BaseModel):
+    """Response model for a single review"""
+
+    id: str
+    user_id: str
+    marketplace_id: str
+    is_positive: bool
+    content: str | None
+    author_display_name: str | None
+    author_avatar_url: str | None
+    has_forked: bool
+    created_at: str
+    updated_at: str
+
+
+class ReviewListResponse(BaseModel):
+    """Response model for paginated review list"""
+
+    reviews: list[ReviewResponse]
+    total: int
+    has_more: bool
+    user_review: ReviewResponse | None
 
 
 class RequirementsResponse(BaseModel):
@@ -832,3 +866,153 @@ async def get_my_listings(
     )
 
     return [AgentMarketplaceRead(**listing.model_dump()) for listing in listings]
+
+
+def _review_to_response(
+    review: "AgentReview",
+    has_forked: bool = False,
+) -> ReviewResponse:
+    """Convert an AgentReview model to a ReviewResponse."""
+    return ReviewResponse(
+        id=str(review.id),
+        user_id=review.user_id,
+        marketplace_id=str(review.marketplace_id),
+        is_positive=review.is_positive,
+        content=review.content,
+        author_display_name=review.author_display_name,
+        author_avatar_url=review.author_avatar_url,
+        has_forked=has_forked,
+        created_at=review.created_at.isoformat(),
+        updated_at=review.updated_at.isoformat(),
+    )
+
+
+@router.post("/{marketplace_id}/reviews", response_model=ReviewResponse)
+async def submit_review(
+    marketplace_id: UUID,
+    request: SubmitReviewRequest,
+    user_info: UserInfo = Depends(get_current_user_info),
+    db: AsyncSession = Depends(get_session),
+) -> ReviewResponse:
+    """
+    Submit or update a review for a marketplace listing.
+    Each user can have at most one review per listing.
+    """
+    marketplace_repo = AgentMarketplaceRepository(db)
+    listing = await marketplace_repo.get_by_id(marketplace_id)
+    if not listing:
+        raise HTTPException(status_code=404, detail="Marketplace listing not found")
+
+    marketplace_service = AgentMarketplaceService(db)
+    review = await marketplace_service.submit_review(
+        marketplace_id=marketplace_id,
+        user_id=user_info.id,
+        is_positive=request.is_positive,
+        content=request.content,
+        author_display_name=user_info.display_name,
+        author_avatar_url=user_info.avatar_url,
+    )
+
+    await db.commit()
+
+    # Check if submitter has forked this agent
+    from sqlmodel import select
+
+    from app.models.agent import Agent
+
+    stmt = (
+        select(Agent.id)
+        .where(
+            Agent.original_source_id == marketplace_id,
+            Agent.user_id == user_info.id,
+        )
+        .limit(1)
+    )
+    result = await db.exec(stmt)
+    has_forked = result.first() is not None
+
+    return _review_to_response(review, has_forked=has_forked)
+
+
+@router.get("/{marketplace_id}/reviews", response_model=ReviewListResponse)
+async def list_reviews(
+    marketplace_id: UUID,
+    limit: int = Query(default=20, le=50),
+    offset: int = Query(default=0, ge=0),
+    user_id: str | None = Depends(get_current_user_optional),
+    db: AsyncSession = Depends(get_session),
+) -> ReviewListResponse:
+    """
+    Get paginated reviews for a marketplace listing.
+    Includes the current user's review if authenticated.
+    """
+    from sqlmodel import select
+
+    from app.models.agent import Agent
+    from app.repos import AgentReviewRepository
+
+    marketplace_repo = AgentMarketplaceRepository(db)
+    listing = await marketplace_repo.get_by_id(marketplace_id)
+    if not listing:
+        raise HTTPException(status_code=404, detail="Marketplace listing not found")
+
+    review_repo = AgentReviewRepository(db)
+    reviews = await review_repo.list_by_listing(marketplace_id, limit=limit, offset=offset)
+    total = await review_repo.count_by_listing(marketplace_id)
+
+    # Batch-query which reviewers have forked this agent
+    reviewer_ids = {r.user_id for r in reviews}
+    if user_id:
+        reviewer_ids.add(user_id)
+    forked_user_ids: set[str] = set()
+    if reviewer_ids:
+        stmt = (
+            select(Agent.user_id)
+            .where(
+                Agent.original_source_id == marketplace_id,
+                Agent.user_id.in_(reviewer_ids),  # type: ignore[union-attr]
+            )
+            .distinct()
+        )
+        result = await db.exec(stmt)
+        forked_user_ids = {uid for uid in result.all() if uid is not None}
+
+    user_review = None
+    if user_id:
+        user_review_obj = await review_repo.get_by_user_and_listing(user_id, marketplace_id)
+        if user_review_obj:
+            user_review = _review_to_response(
+                user_review_obj,
+                has_forked=user_id in forked_user_ids,
+            )
+
+    return ReviewListResponse(
+        reviews=[_review_to_response(r, has_forked=r.user_id in forked_user_ids) for r in reviews],
+        total=total,
+        has_more=(offset + limit) < total,
+        user_review=user_review,
+    )
+
+
+@router.delete("/{marketplace_id}/reviews")
+async def delete_review(
+    marketplace_id: UUID,
+    user_id: str = Depends(get_current_user),
+    db: AsyncSession = Depends(get_session),
+) -> dict[str, bool]:
+    """
+    Delete the current user's review for a marketplace listing.
+    """
+    marketplace_repo = AgentMarketplaceRepository(db)
+    listing = await marketplace_repo.get_by_id(marketplace_id)
+    if not listing:
+        raise HTTPException(status_code=404, detail="Marketplace listing not found")
+
+    marketplace_service = AgentMarketplaceService(db)
+    review = await marketplace_service.delete_review(marketplace_id, user_id)
+
+    if not review:
+        raise HTTPException(status_code=404, detail="Review not found")
+
+    await db.commit()
+    return {"deleted": True}
